@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aegis Demo &mdash; Frames</title>
+    <link rel="stylesheet" href="/src/style.css" />
+    <style>
+      iframe { display: block; width: 320px; height: 90px; border: 1px solid #ccc; margin-bottom: 16px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p class="badge">DEMO &mdash; SYNTHETIC DATA</p>
+    </header>
+    <main class="page">
+      <h1>Frames</h1>
+      <p><a href="/index.html">&larr; back</a></p>
+
+      <h2>Same-origin iframe</h2>
+      <iframe id="same-origin-frame" src="/frame-form.html" title="same-origin form"></iframe>
+
+      <h2>Cross-origin iframe</h2>
+      <p>
+        Served from a second Vite instance on port 5175 (<code>pnpm portal:alt</code>) &mdash; a
+        different origin even though it's the same machine, because origin includes the port.
+      </p>
+      <iframe id="cross-origin-frame" src="http://localhost:5175/frame-form.html" title="cross-origin form"></iframe>
+    </main>
+  </body>
+</html>

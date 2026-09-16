@@ -8,9 +8,17 @@ only ever sees tokens and redacted pixels, and only ever proposes actions — th
 reacquires, re-hydrates and executes them. See [`docs/architecture.md`](docs/architecture.md) for
 the full design and [`AGENTS.md`](AGENTS.md) for the invariants every change must respect.
 
-This repository is currently at **Stage 0 — Foundations** (see [`docs/STAGES.md`](docs/STAGES.md)):
-repo structure, contracts, extension and server shells. There is no agent logic, ML or PII
-detection yet — those land in later stages.
+This repository is currently at **Stage 1 — Observe** (see [`docs/STAGES.md`](docs/STAGES.md)).
+Stage 0 built the repo structure, contracts and shells; Stage 1 adds **Layer 1 (Observe)**: an
+on-demand harvester content script (Set-of-Marks elements with stable fingerprints, visibility and
+hit-testing, text blocks, media, shadow DOM and same-origin frames), a capture pipeline (settle
+wait, screenshot with scale mapping, capture throttle, NEW_SCREEN/SAME_SCREEN change detection),
+a debug overlay, and an input watcher that never reports raw values.
+
+Everything Stage 1 observes is **local only** — it is branded `LocalOnly<T>` (see
+[`extension/observe/types.ts`](extension/observe/types.ts)) and provably cannot reach
+`net/network.ts`. There is still no PII detection, redaction, ML or agent logic — those land in
+Stages 2, 3, 5 and 6.
 
 ## Prerequisites
 
@@ -44,9 +52,23 @@ Serves on `http://localhost:8000`. `GET /health` and `POST /v1/plan` are availab
 pnpm portal
 ```
 
-Serves on `http://localhost:5174`. Open `/kyc.html` for the synthetic KYC form, or
-`/kyc.html?banner=1` to test a cookie banner covering the Submit button. **All data on these pages
-is synthetic** — see the "DEMO — SYNTHETIC DATA" badge on every page.
+Serves on `http://localhost:5174`. **All data on these pages is synthetic** — see the
+"DEMO — SYNTHETIC DATA" badge on every page. Scenario pages:
+
+| Page | What it exercises |
+| ---- | ----------------- |
+| `/kyc.html` | Synthetic KYC form (Aadhaar, PAN, password, photo/ID placeholders). `?banner=1` adds a cookie banner over Submit |
+| `/calibration.html` | Coloured squares at known positions — the screenshot/coordinate alignment gate |
+| `/shadow.html` | Form fields inside open **and closed** shadow roots |
+| `/frames.html` | A same-origin iframe and a cross-origin one (needs `pnpm portal:alt`) |
+| `/dynamic.html` | A modal that opens after 1s, a form that re-renders with new ids/classes, three identical "Add" buttons |
+| `/hidden.html` | Every visibility-hiding technique, plus a button covered by a banner |
+
+For the cross-origin iframe on `frames.html`, also run a second origin:
+
+```sh
+pnpm portal:alt     # http://localhost:5175
+```
 
 ### Extension — Chrome
 
@@ -76,8 +98,18 @@ Add-on** → select any file inside `extension/.output/firefox-mv3` (e.g. `manif
 Firefox is built as **MV3** (event-page background, `sidebar_action`), not WXT's MV2 default —
 see `extension/wxt.config.ts`. Click the Aegis toolbar icon to open the sidebar.
 
-If the panel shows a host-permission warning, grant `<all_urls>` via `about:addons` → Aegis →
-Permissions, or accept the prompt shown after loading.
+### Permissions
+
+Aegis installs with a deliberately small permission set: `activeTab`, `scripting`, `storage`
+(plus `sidePanel` on Chrome) and one required host permission, `http://localhost/*`, purely so the
+demo portal works without a prompt during development. There is **no required `<all_urls>`** and
+**no statically-registered content script** — the harvester is injected on demand.
+
+The first time you click **Observe**, the panel requests the `<all_urls>` *optional* permission.
+That broad scope is unavoidable for screenshots specifically: `tabs.captureVisibleTab` only accepts
+the literal `<all_urls>` permission or an active `activeTab` grant — a scoped per-origin host
+permission is rejected even when it exactly matches the tab. See
+[`extension/shared/permissions.ts`](extension/shared/permissions.ts) for the details.
 
 ## Checks
 
@@ -94,7 +126,7 @@ Individual pieces:
 ```sh
 pnpm gen:types      # regenerate extension/shared/schema/*.d.ts from /shared/schema/*.schema.json
 pnpm schema:check    # validate shared/schema/examples/* against the JSON Schemas
-pnpm typecheck        # extension TypeScript
+pnpm typecheck        # extension TypeScript (includes the e2e specs and the LocalOnly type proof)
 pnpm lint             # ESLint across the repo
 pnpm test             # extension Vitest suite
 pnpm server:lint      # ruff check + ruff format --check
@@ -102,15 +134,36 @@ pnpm server:test      # server pytest
 pnpm zip              # package both browser builds as .zip
 ```
 
+### End-to-end tests (Playwright, Chromium)
+
+```sh
+pnpm portal          # terminal 1 — http://localhost:5174
+pnpm portal:alt      # terminal 2 — http://localhost:5175 (for frames.html)
+pnpm e2e             # terminal 3 — builds the extension, then runs the suite
+```
+
+`pnpm e2e` is deliberately **not** part of `pnpm check`: it needs a real (headed) browser plus
+both portal servers running, which doesn't belong in the fast feedback loop. One-off browser
+setup: `npx playwright install chromium`.
+
+Firefox e2e is manual — follow [`docs/manual-test-firefox.md`](docs/manual-test-firefox.md), which
+mirrors every Chromium test as a checklist.
+
 ## Repository layout
 
 ```
-extension/    WXT-based MV3 extension (Chrome + Firefox), React side panel, plain-TS content script
-server/       FastAPI server, Pydantic schemas, VLM adapter interface + MockAdapter
+extension/
+  observe/      Stage 1: harvester, fingerprints, visibility, change detection, overlay (LocalOnly)
+  entrypoints/  background (capture pipeline), content (harvester), sidepanel (React UI)
+  privacy/      Stage 2 stubs — firewall.seal(), vault, policy, redactor
+  net/          network.ts — the ONLY network path out of the extension
+  shared/       config.ts (all tuning thresholds), messages.ts, permissions.ts, schema types
+  e2e/          Playwright specs (Chromium) — run with `pnpm e2e`
+server/         FastAPI server, Pydantic schemas, VLM adapter interface + MockAdapter
 shared/schema/  JSON Schema contracts (payload.v1, plan.v1) — the single source of truth
-demo-portal/  Vite static site with the synthetic KYC demo form
-eval/         Evaluation harness (not implemented yet — see eval/README.md)
-docs/         Architecture, build stages, threat model, PII policy matrix
+demo-portal/    Vite static site: kyc, calibration, shadow, frames, dynamic, hidden scenarios
+eval/           Evaluation harness (not implemented yet — see eval/README.md)
+docs/           Architecture, build stages, threat model, PII policy matrix, Firefox test checklist
 ```
 
 ## Contributing / working on this repo

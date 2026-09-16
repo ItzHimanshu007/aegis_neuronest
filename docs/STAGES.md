@@ -32,6 +32,18 @@ The Set-of-Marks harvester: number interactive elements, compute stable fingerpr
 rectangles and visibility, detect screen change, capture screenshots on change only, capture side
 channels, and watch user input. Screen-state JSON is produced but still never leaves the browser.
 
+**Delivered:** `extension/observe/` — harvester (DOM walk incl. open *and* closed shadow roots,
+candidate/media classification, AccName roles+names, visibility with `visibilityReason` and
+`hitOk` hit-testing, text blocks, salted cyrb53 fingerprints with duplicate ordinals), frame
+composition (same-origin recursion; cross-origin via FRAME_HELLO size match, else
+`iframe-unmapped`), capture pipeline (settle wait, state-token retry, capture throttle +
+coalescing queue, scale mapping), NEW_SCREEN/SAME_SCREEN detector with dHash fallback, closed-shadow
+debug overlay (hidden for every capture), and a debounced input watcher that reports only
+`{fp, hasValue, valueLenBucket}`. All of it is branded `LocalOnly<T>` and provably cannot reach
+`net/network.ts`. Also landed the Stage 0 fix-ups F1–F5 (toolbar action, least-privilege
+permissions with on-demand injection, accurate Firefox data-collection declaration, the
+`credential` policy class, and `shared/config.ts`).
+
 ## Stage 2 — Privacy core
 
 The real `firewall.seal()`, the HMAC token vault with a non-extractable session key, the policy

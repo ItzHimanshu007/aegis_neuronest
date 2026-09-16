@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aegis Demo &mdash; Shadow DOM</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header>
+      <p class="badge">DEMO &mdash; SYNTHETIC DATA</p>
+    </header>
+    <main class="page">
+      <h1>Shadow DOM fields</h1>
+      <p><a href="/index.html">&larr; back</a></p>
+
+      <section>
+        <h2>Open shadow root</h2>
+        <aegis-open-field label="Open-shadow name" value="Priya Shah"></aegis-open-field>
+      </section>
+
+      <section>
+        <h2>Closed shadow root</h2>
+        <aegis-closed-field label="Closed-shadow email" value="priya@example.com"></aegis-closed-field>
+      </section>
+    </main>
+    <script type="module" src="/src/shadow.ts"></script>
+  </body>
+</html>

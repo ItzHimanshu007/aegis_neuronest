@@ -19,3 +19,5 @@ __pycache__/
 *.log
 
 extension/models/*.onnx
+test-results/
+playwright-report/

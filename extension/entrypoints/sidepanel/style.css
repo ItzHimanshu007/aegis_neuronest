@@ -105,3 +105,61 @@ input[type='text'][disabled] {
   background: #f5f5f5;
   color: #888;
 }
+
+.screenshot-scroll {
+  max-width: 100%;
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin: 8px 0;
+}
+
+.screenshot-wrap {
+  position: relative;
+}
+
+.screenshot-wrap img {
+  display: block;
+}
+
+.overlay-mark {
+  position: absolute;
+  border: 1.5px solid #2ecc71;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+.overlay-mark span {
+  position: absolute;
+  top: -14px;
+  left: -1.5px;
+  background: #2ecc71;
+  color: #fff;
+  font: 9px/12px monospace;
+  padding: 0 2px;
+  white-space: nowrap;
+}
+.overlay-mark-hidden {
+  border-style: dashed;
+}
+.overlay-mark-blocked {
+  border-color: #e74c3c;
+}
+.overlay-mark-blocked span {
+  background: #e74c3c;
+}
+
+.marks-list {
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: 11px;
+  font-family: monospace;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 4px;
+}
+.mark-row {
+  padding: 2px 0;
+  border-bottom: 1px solid #eee;
+  word-break: break-word;
+}

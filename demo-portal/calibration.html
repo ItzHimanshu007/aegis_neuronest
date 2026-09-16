@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aegis Demo &mdash; Calibration</title>
+    <link rel="stylesheet" href="/src/style.css" />
+    <style>
+      .field {
+        position: absolute;
+        width: 40px;
+        height: 40px;
+        border: 2px solid #000;
+        box-sizing: border-box;
+      }
+      #canvas {
+        position: relative;
+        width: 1200px;
+        height: 3000px;
+        background: repeating-linear-gradient(0deg, #fafafa, #fafafa 99px, #eee 100px);
+      }
+      .note {
+        position: sticky;
+        top: 0;
+        background: #fff3cd;
+        padding: 8px 12px;
+        z-index: 10;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p class="badge">DEMO &mdash; SYNTHETIC DATA</p>
+    </header>
+    <main class="page" style="max-width: none;">
+      <h1>Calibration</h1>
+      <p><a href="/index.html">&larr; back</a></p>
+      <p class="note">
+        Zoom note: this page cannot detect the browser's zoom level from script reliably (no
+        standards-track API for it) &mdash; the alignment test drives zoom from Playwright/CDP
+        instead and reads <code>window.devicePixelRatio</code> / <code>visualViewport.scale</code>
+        as reported here: <span id="dpr-report"></span>. Squares are positioned in CSS pixels
+        relative to <code>#canvas</code>, which starts at the top of the page.
+      </p>
+      <div id="canvas">
+        <div
+          id="sq-top-left"
+          class="field"
+          data-square-id="top-left"
+          data-expected-color="#e74c3c"
+          style="left: 20px; top: 20px; background: #e74c3c;"
+        ></div>
+        <div
+          id="sq-top-right"
+          class="field"
+          data-square-id="top-right"
+          data-expected-color="#3498db"
+          style="left: 1140px; top: 20px; background: #3498db;"
+        ></div>
+        <div
+          id="sq-bottom-left"
+          class="field"
+          data-square-id="bottom-left"
+          data-expected-color="#2ecc71"
+          style="left: 20px; top: 2940px; background: #2ecc71;"
+        ></div>
+        <div
+          id="sq-bottom-right"
+          class="field"
+          data-square-id="bottom-right"
+          data-expected-color="#f1c40f"
+          style="left: 1140px; top: 2940px; background: #f1c40f;"
+        ></div>
+        <div
+          id="sq-center"
+          class="field"
+          data-square-id="center"
+          data-expected-color="#9b59b6"
+          style="left: 580px; top: 1480px; background: #9b59b6;"
+        ></div>
+      </div>
+    </main>
+    <script type="module">
+      document.getElementById('dpr-report').textContent =
+        `dpr=${window.devicePixelRatio}, visualViewport.scale=${window.visualViewport ? window.visualViewport.scale : 'n/a'}`;
+    </script>
+  </body>
+</html>

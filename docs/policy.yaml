@@ -8,20 +8,31 @@
 #   not_needed: the value is on screen but the task does not require it
 #
 # ACTIONS
-#   USER_ENTERS           Aegis never handles the value. The loop stops, the user types it
-#                         themselves, and nothing about it is transmitted. Used for secrets that
-#                         must never be automated at all.
-#   TOKEN_WITH_APPROVAL   Replace with an HMAC token before sealing. The token may be re-hydrated
-#                         locally into a matching field, but only after explicit, upfront user
-#                         approval for that origin.
-#   TOKEN                 Replace with an HMAC token before sealing. Re-hydration is allowed under
-#                         the standard type-bound and origin-bound rules, without a separate prompt.
-#   FILL                  Cover the region with a solid fill in the screenshot. Irreversible.
-#                         The only treatment ever applied to text PII - never pixelate text.
-#   BLUR                  Irreversible blur. Faces only. Never used for text.
-#   FILL_REGION           Solid-fill an entire detected region (a document, card or signature),
-#                         not just a text span.
-#   ALLOW                 Send as-is. Nothing about this value is identifying in context.
+#   USER_ENTERS               Aegis never handles the value at all - not even in memory, not even
+#                             for one task. The loop stops, the user types it directly into the
+#                             PAGE themselves, and nothing about it is transmitted or retained.
+#                             Used for one-time/transient secrets Aegis has no business touching.
+#   USER_PROVIDED_ORIGIN_BOUND
+#                             Aegis DOES handle the value, but only ever as something the user
+#                             hands it directly (typed into the Aegis panel at task start - never
+#                             extracted or read back from the page), kept in memory only, and only
+#                             filled into an input[type=password] field on the one origin the user
+#                             approved it for. Requires upfront approval, like
+#                             TOKEN_WITH_APPROVAL, but there is no token and no re-hydration from a
+#                             vault - the plan text can never reference this value, only the
+#                             executor's own type-bound fill logic uses it. Cleared when the task
+#                             ends.
+#   TOKEN_WITH_APPROVAL       Replace with an HMAC token before sealing. The token may be re-hydrated
+#                             locally into a matching field, but only after explicit, upfront user
+#                             approval for that origin.
+#   TOKEN                     Replace with an HMAC token before sealing. Re-hydration is allowed under
+#                             the standard type-bound and origin-bound rules, without a separate prompt.
+#   FILL                      Cover the region with a solid fill in the screenshot. Irreversible.
+#                             The only treatment ever applied to text PII - never pixelate text.
+#   BLUR                      Irreversible blur. Faces only. Never used for text.
+#   FILL_REGION               Solid-fill an entire detected region (a document, card or signature),
+#                             not just a text span.
+#   ALLOW                     Send as-is. Nothing about this value is identifying in context.
 #
 # A type that appears nowhere below is treated as non_pii -> ALLOW.
 # When two rules could apply, the more restrictive action wins.
@@ -31,10 +42,27 @@ version: 1
 classes:
   never_automated:
     description: >-
-      Secrets. Aegis will not type these, will not tokenize them, and will not let them reach the
-      server in any form. The plan must hand control back to the user.
-    types: [PASSWORD, OTP, CVV, UPI_PIN]
+      One-time or transient secrets. Aegis will not type these, will not tokenize them, will not
+      hold them in memory even briefly, and will not let them reach the server in any form. The
+      plan must hand control back to the user to enter directly into the page. Distinct from
+      `credential` below: these are never plausible for Aegis to fill on the user's behalf even
+      with approval, because they're single-use or issued per-attempt (an OTP from an SMS, a CVV
+      read off a physical card, a UPI PIN) - there is nothing durable for Aegis to be trusted with.
+    types: [OTP, CVV, UPI_PIN]
     needed: USER_ENTERS
+    not_needed: FILL
+
+  credential:
+    description: >-
+      Login secrets the task may genuinely need submitted, unlike never_automated's one-time
+      codes. The user provides the value directly into the Aegis panel at task start (Aegis never
+      extracts or reads a password back from the page or any profile data) - it lives in memory
+      only, is cleared when the task ends, requires the same upfront approval as `high`, and the
+      executor will only ever fill it into an input[type=password] field on the one origin it was
+      approved for. It is never tokenized and never appears in plan text, because a token would
+      mean the server-visible plan references it, however indirectly - see AGENTS.md invariant 4.
+    types: [PASSWORD]
+    needed: USER_PROVIDED_ORIGIN_BOUND
     not_needed: FILL
 
   high:

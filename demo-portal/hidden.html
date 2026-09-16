@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aegis Demo &mdash; Hidden elements</title>
+    <link rel="stylesheet" href="/src/style.css" />
+    <style>
+      .row { margin-bottom: 12px; }
+      #off-screen { position: absolute; left: -9999px; top: 0; }
+      #zero-size { width: 0; height: 0; padding: 0; border: 0; overflow: hidden; }
+      #banner-cover {
+        position: relative;
+      }
+      #banner-cover .banner {
+        position: absolute;
+        inset: 0;
+        background: rgba(200, 0, 0, 0.85);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p class="badge">DEMO &mdash; SYNTHETIC DATA</p>
+    </header>
+    <main class="page">
+      <h1>Hidden elements</h1>
+      <p><a href="/index.html">&larr; back</a></p>
+
+      <div class="row"><label for="h-display-none">display:none</label><input id="h-display-none" type="text" style="display:none" /></div>
+      <div class="row"><label for="h-visibility-hidden">visibility:hidden</label><input id="h-visibility-hidden" type="text" style="visibility:hidden" /></div>
+      <div class="row"><label for="h-opacity-zero">opacity:0</label><input id="h-opacity-zero" type="text" style="opacity:0" /></div>
+      <div class="row"><label for="h-off-screen">off-screen</label><input id="h-off-screen" type="text" style="position:absolute;left:-9999px;" /></div>
+      <div class="row"><label for="h-aria-hidden">aria-hidden</label><input id="h-aria-hidden" type="text" aria-hidden="true" /></div>
+      <div class="row" inert><label for="h-inert">inert ancestor</label><input id="h-inert" type="text" /></div>
+      <div class="row"><label for="h-zero-size">zero-size</label><input id="h-zero-size" type="text" style="width:0;height:0;padding:0;border:0;" /></div>
+
+      <div class="row" id="banner-cover">
+        <!-- Deliberately a <span>, not a <label for>: a label associated with a button would
+             become the button's accessible name, hiding its own "Click me" text. -->
+        <span class="row-caption">Button covered by a banner</span>
+        <button id="h-covered-button" type="button">Click me</button>
+        <div class="banner">This banner covers the button above (hitOk should be false)</div>
+      </div>
+    </main>
+  </body>
+</html>

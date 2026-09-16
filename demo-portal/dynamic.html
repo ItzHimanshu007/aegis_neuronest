@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aegis Demo &mdash; Dynamic</title>
+    <link rel="stylesheet" href="/src/style.css" />
+    <style>
+      #modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #modal {
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        min-width: 240px;
+      }
+      .add-row {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p class="badge">DEMO &mdash; SYNTHETIC DATA</p>
+    </header>
+    <main class="page">
+      <h1>Dynamic content</h1>
+      <p><a href="/index.html">&larr; back</a></p>
+
+      <section>
+        <h2>Modal (opens after 1s)</h2>
+        <p>A <code>role=dialog</code> modal appears automatically 1 second after load.</p>
+        <button id="open-modal-btn" type="button">Open modal again</button>
+      </section>
+
+      <section>
+        <h2>Re-render with new classes/ids</h2>
+        <div id="rerender-target">
+          <label for="rerender-field-a1">Re-rendered field</label>
+          <input id="rerender-field-a1" class="field-v1" type="text" />
+        </div>
+        <button id="rerender-btn" type="button">Re-render form</button>
+      </section>
+
+      <section>
+        <h2>Duplicate "Add" buttons</h2>
+        <div class="add-row"><span>Item 1</span> <button class="add-btn" type="button">Add</button></div>
+        <div class="add-row"><span>Item 2</span> <button class="add-btn" type="button">Add</button></div>
+        <div class="add-row"><span>Item 3</span> <button class="add-btn" type="button">Add</button></div>
+      </section>
+    </main>
+
+    <script type="module" src="/src/dynamic.ts"></script>
+  </body>
+</html>

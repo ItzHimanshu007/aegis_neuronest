@@ -12,11 +12,14 @@
     "zip": "wxt zip --browser chrome",
     "zip:firefox": "wxt zip --browser firefox",
     "typecheck": "wxt prepare && tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "pree2e": "wxt build --browser chrome",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "dom-accessibility-api": "^0.7.1"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",
@@ -26,6 +29,7 @@
     "vitest": "^5.0.1",
     "web-ext": "^10.6.0",
     "wxt": "^0.21.4",
-    "happy-dom": "^20.14.5"
+    "happy-dom": "^20.14.5",
+    "@playwright/test": "^1.63.0"
   }
 }

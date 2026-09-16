@@ -1,16 +1,19 @@
 /**
- * Typed message bus between background, content scripts and the side panel.
+ * Typed message bus between the background script and the side panel.
  *
- * This is the ONLY message contract in the extension. Nothing here transmits page data to the
- * server — that boundary is `net/network.ts`. Content-script → background messages carry only
- * local display data (see PING_PAGE).
+ * This is the ONLY public message contract in the extension. Nothing here transmits page data to
+ * the server — that boundary is `net/network.ts`. `OBSERVE`'s response is a full `Observation`
+ * (see observe/types.ts's `LocalOnly<T>`), which is fine to pass over this internal bus — it
+ * never leaves the browser this way; see observe/__tests__/localOnly.typetest.ts for the proof
+ * that it specifically cannot reach `net/network.ts -> send()`.
+ *
+ * Internal content-script <-> background messages (HARVEST_TREE, FRAME_HELLO, etc.) are NOT part
+ * of this bus — they're implementation details of the capture pipeline, typed locally in
+ * entrypoints/content.ts and entrypoints/background.ts.
  */
 
-export interface PingPageResult {
-  url: string;
-  title: string;
-  elementCount: number;
-}
+import type { ChangeResult } from '../observe/change';
+import type { Observation } from '../observe/types';
 
 export interface HealthResult {
   status: string;
@@ -18,12 +21,18 @@ export interface HealthResult {
   model_adapter: string;
 }
 
+export interface ObserveResult {
+  observation: Observation;
+  change: ChangeResult;
+}
+
 /** Message payload/response map. Add new message types here, never ad hoc. */
 export interface MessageMap {
   /** Background -> server health check (proxies net/network.ts health()). No page data. */
   PING_SERVER: { data: undefined; response: HealthResult };
-  /** Side panel -> background -> content script. Local-only page summary for display in the panel. */
-  PING_PAGE: { data: { tabId: number } | undefined; response: PingPageResult };
+  /** Side panel -> background: runs the full Stage 1 capture pipeline for `tabId` and returns the
+   * resulting Observation plus the NEW_SCREEN/SAME_SCREEN decision against the previous one. */
+  OBSERVE: { data: { tabId: number }; response: ObserveResult };
   /** TODO(stage-3): starts extension/agent/runAgentLoop.ts for the active tab. */
   START_TASK: { data: { task: string }; response: void };
   /** TODO(stage-3): stops the running agent loop. */
@@ -75,25 +84,12 @@ interface Envelope {
   error?: string;
 }
 
-/** Sends a message from the side panel or content script to the background script. */
+/** Sends a message from the side panel to the background script. */
 export async function sendMessage<T extends MessageType>(
   type: T,
   data: MessageMap[T]['data'],
 ): Promise<MessageMap[T]['response']> {
   const envelope = (await browser.runtime.sendMessage({ type, data } satisfies Message<T>)) as Envelope;
-  if (!envelope?.ok) {
-    throw new Error(envelope?.error ?? `Message ${type} failed`);
-  }
-  return envelope.response as MessageMap[T]['response'];
-}
-
-/** Sends a message from the background script to a specific tab's content script. */
-export async function sendMessageToTab<T extends MessageType>(
-  tabId: number,
-  type: T,
-  data: MessageMap[T]['data'],
-): Promise<MessageMap[T]['response']> {
-  const envelope = (await browser.tabs.sendMessage(tabId, { type, data } satisfies Message<T>)) as Envelope;
   if (!envelope?.ok) {
     throw new Error(envelope?.error ?? `Message ${type} failed`);
   }

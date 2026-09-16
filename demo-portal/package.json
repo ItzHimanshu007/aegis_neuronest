@@ -4,9 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --port 5174 --strictPort",
+    "dev": "vite",
+    "dev:alt": "vite --config vite.alt.config.ts",
     "build": "vite build",
-    "preview": "vite preview --port 5174 --strictPort"
+    "preview": "vite preview",
+    "preview:alt": "vite preview --config vite.alt.config.ts"
   },
   "devDependencies": {
     "vite": "^8.3.0"
