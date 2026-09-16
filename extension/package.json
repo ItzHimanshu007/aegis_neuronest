@@ -1,0 +1,31 @@
+{
+  "name": "aegis-extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "postinstall": "wxt prepare",
+    "dev": "wxt --browser chrome",
+    "dev:firefox": "wxt --browser firefox",
+    "build": "wxt build --browser chrome",
+    "build:firefox": "wxt build --browser firefox",
+    "zip": "wxt zip --browser chrome",
+    "zip:firefox": "wxt zip --browser firefox",
+    "typecheck": "wxt prepare && tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@wxt-dev/module-react": "^1.2.2",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.1",
+    "web-ext": "^10.6.0",
+    "wxt": "^0.21.4",
+    "happy-dom": "^20.14.5"
+  }
+}

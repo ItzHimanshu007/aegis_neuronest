@@ -1,0 +1,88 @@
+# Aegis PII policy matrix.
+#
+# DATA ONLY. There is no policy engine yet - TODO(stage-2) implements
+# extension/privacy/policy.ts, which reads this file as its single source of truth.
+#
+# Each class lists the PII types it covers and the action to take in two situations:
+#   needed:     the task genuinely requires this value (e.g. the form asks for it)
+#   not_needed: the value is on screen but the task does not require it
+#
+# ACTIONS
+#   USER_ENTERS           Aegis never handles the value. The loop stops, the user types it
+#                         themselves, and nothing about it is transmitted. Used for secrets that
+#                         must never be automated at all.
+#   TOKEN_WITH_APPROVAL   Replace with an HMAC token before sealing. The token may be re-hydrated
+#                         locally into a matching field, but only after explicit, upfront user
+#                         approval for that origin.
+#   TOKEN                 Replace with an HMAC token before sealing. Re-hydration is allowed under
+#                         the standard type-bound and origin-bound rules, without a separate prompt.
+#   FILL                  Cover the region with a solid fill in the screenshot. Irreversible.
+#                         The only treatment ever applied to text PII - never pixelate text.
+#   BLUR                  Irreversible blur. Faces only. Never used for text.
+#   FILL_REGION           Solid-fill an entire detected region (a document, card or signature),
+#                         not just a text span.
+#   ALLOW                 Send as-is. Nothing about this value is identifying in context.
+#
+# A type that appears nowhere below is treated as non_pii -> ALLOW.
+# When two rules could apply, the more restrictive action wins.
+
+version: 1
+
+classes:
+  never_automated:
+    description: >-
+      Secrets. Aegis will not type these, will not tokenize them, and will not let them reach the
+      server in any form. The plan must hand control back to the user.
+    types: [PASSWORD, OTP, CVV, UPI_PIN]
+    needed: USER_ENTERS
+    not_needed: FILL
+
+  high:
+    description: >-
+      Strong government or financial identifiers. Usable for fraud on their own, so re-hydration
+      requires explicit upfront approval scoped to the origin.
+    types: [AADHAAR, PAN, CARD_NUMBER, BANK_ACCOUNT]
+    needed: TOKEN_WITH_APPROVAL
+    not_needed: FILL
+
+  medium:
+    description: >-
+      Ordinary personal data. Routinely required by forms, so tokenization without a separate prompt
+      is proportionate.
+    types: [NAME, PHONE, EMAIL, ADDRESS, DOB, HEALTH]
+    needed: TOKEN
+    not_needed: FILL
+
+  biometric:
+    description: >-
+      Faces. Blur is the one place irreversible blur is correct, because a solid box over a face
+      destroys the visual context the agent needs to understand the page.
+    types: [FACE, PHOTO]
+    needed: BLUR
+    not_needed: BLUR
+
+  documents:
+    description: >-
+      Whole-document imagery. The entire region goes, not just the text inside it, because layout
+      and photograph are identifying on their own.
+    types: [ID_DOCUMENT, CARD_IMAGE, SIGNATURE, QR]
+    needed: FILL_REGION
+    not_needed: FILL_REGION
+
+  quasi:
+    description: >-
+      Not identifying alone, identifying in combination. Tokenized only when an identity item from
+      high/medium/biometric/documents is present on the same screen; otherwise sent as-is.
+    types: [CITY, EMPLOYER, DATE, ORDER_ID]
+    needed: TOKEN_IF_IDENTITY_PRESENT
+    not_needed: TOKEN_IF_IDENTITY_PRESENT
+    conditional:
+      when: identity_item_on_screen
+      then: TOKEN
+      else: ALLOW
+
+  non_pii:
+    description: Everything else.
+    types: []
+    needed: ALLOW
+    not_needed: ALLOW

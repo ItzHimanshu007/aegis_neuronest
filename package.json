@@ -1,0 +1,40 @@
+{
+  "name": "aegis",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Aegis — a privacy-preserving browser vision agent (SIH26171, ISRO / Dept. of Space)",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@10.22.0",
+  "scripts": {
+    "dev:chrome": "pnpm --filter aegis-extension dev",
+    "dev:firefox": "pnpm --filter aegis-extension dev:firefox",
+    "build": "pnpm --filter aegis-extension build && pnpm --filter aegis-extension build:firefox",
+    "zip": "pnpm --filter aegis-extension zip && pnpm --filter aegis-extension zip:firefox",
+    "portal": "pnpm --filter aegis-demo-portal dev",
+    "portal:build": "pnpm --filter aegis-demo-portal build",
+    "gen:types": "node scripts/gen-types.mjs",
+    "schema:check": "node scripts/validate-fixtures.mjs",
+    "typecheck": "pnpm --filter aegis-extension typecheck",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "pnpm --filter aegis-extension test",
+    "server": "uv run --project server uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload --app-dir server",
+    "server:lint": "uv run --project server ruff check server && uv run --project server ruff format --check server",
+    "server:test": "uv run --project server pytest server/tests -q",
+    "check": "pnpm run schema:check && pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run server:lint && pnpm run server:test",
+    "manifests": "node scripts/print-manifests.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "eslint": "^10.10.0",
+    "globals": "^17.12.0",
+    "json-schema-to-typescript": "^16.0.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.70.0"
+  }
+}

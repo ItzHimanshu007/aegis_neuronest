@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aegis Demo &mdash; KYC Verification</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header>
+      <p class="badge">DEMO &mdash; SYNTHETIC DATA. No field on this page identifies a real person.</p>
+    </header>
+
+    <main class="page">
+      <h1>KYC Verification</h1>
+      <p><a href="/index.html">&larr; back</a></p>
+
+      <div class="kyc-layout">
+        <form id="kyc-form" autocomplete="off">
+          <div class="field">
+            <label for="full-name">Full name</label>
+            <input id="full-name" name="full-name" type="text" value="Asha Verma" data-pii="true" />
+          </div>
+
+          <div class="field">
+            <label for="email">Email address</label>
+            <input id="email" name="email" type="email" placeholder="you@example.com" />
+          </div>
+
+          <div class="field">
+            <label for="phone">Phone number</label>
+            <input id="phone" name="phone" type="tel" value="+91 98xxxxxx10" />
+          </div>
+
+          <div class="field">
+            <label for="dob">Date of birth</label>
+            <input id="dob" name="dob" type="date" value="1994-03-12" />
+          </div>
+
+          <div class="field">
+            <label for="address">Address</label>
+            <textarea id="address" name="address" rows="2">221B, MG Road, Bengaluru, KA 560001</textarea>
+          </div>
+
+          <div class="field">
+            <label for="aadhaar">Aadhaar number</label>
+            <input id="aadhaar" name="aadhaar" type="text" placeholder="XXXX XXXX XXXX" value="2345 6789 0123" />
+          </div>
+
+          <div class="field">
+            <label for="pan">PAN</label>
+            <input id="pan" name="pan" type="text" placeholder="ABCDE1234F" />
+          </div>
+
+          <div class="field">
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" autocomplete="new-password" value="hunter22" />
+          </div>
+
+          <button id="submit" type="submit">Submit verification</button>
+        </form>
+
+        <aside class="side-panel-demo">
+          <div class="photo-box" aria-label="Profile photo placeholder">
+            <img
+              src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Crect width='160' height='160' fill='%23cccccc'/%3E%3C/svg%3E"
+              alt="profile photo"
+              width="160"
+              height="160"
+            />
+            <!-- TODO(stage-6): replace with a synthetic generated face for face-detection testing -->
+            <p class="caption">Profile photo</p>
+          </div>
+
+          <div class="id-card">
+            <img
+              src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='176'%3E%3Crect width='280' height='176' fill='%23e8e8e8' stroke='%23999'/%3E%3Ctext x='20' y='30' font-family='sans-serif' font-size='14' fill='%23555'%3ESPECIMEN%3C/text%3E%3Ctext x='20' y='55' font-family='sans-serif' font-size='11' fill='%23777'%3EGovernment of India%3C/text%3E%3Ctext x='20' y='140' font-family='monospace' font-size='13' fill='%23333'%3E2345 6789 0123%3C/text%3E%3C/svg%3E"
+              alt="specimen Aadhaar card"
+              width="280"
+              height="176"
+            />
+            <p class="caption">Specimen Aadhaar card (synthetic, not a real document)</p>
+          </div>
+
+          <table class="account-summary">
+            <caption>Account summary</caption>
+            <tbody>
+              <tr>
+                <th scope="row">Account holder</th>
+                <td>Asha Verma</td>
+              </tr>
+              <tr>
+                <th scope="row">Account number</th>
+                <td>xxxx-xxxx-4471</td>
+              </tr>
+              <tr>
+                <th scope="row">Balance</th>
+                <td>&#8377; 42,318.00</td>
+              </tr>
+            </tbody>
+          </table>
+        </aside>
+      </div>
+    </main>
+
+    <div id="cookie-banner" class="cookie-banner" hidden>
+      <p>We use cookies to make this synthetic demo work. This banner can cover the Submit button.</p>
+      <button id="cookie-accept" type="button">Accept</button>
+    </div>
+
+    <script type="module" src="/src/kyc.ts"></script>
+  </body>
+</html>

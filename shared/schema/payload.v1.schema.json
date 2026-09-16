@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aegis.local/schema/payload.v1.schema.json",
+  "title": "PayloadV1",
+  "description": "Sanitized payload sent from the extension to the Aegis server. This object is the ONLY thing that crosses the network boundary. It may contain tokens ([[PII:TYPE:xxxxxxxx]]) and redacted pixels, never raw PII.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["session", "capture_id", "schema", "mode", "task", "page", "elements", "redactions"],
+  "properties": {
+    "session": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque per-session id. Not derived from user identity."
+    },
+    "capture_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identifies one observation of one screen state."
+    },
+    "schema": {
+      "const": "aegis/1",
+      "description": "Contract version marker."
+    },
+    "mode": {
+      "$ref": "#/$defs/mode"
+    },
+    "task": {
+      "type": "string",
+      "description": "The user's task, already tokenized. May contain tokens."
+    },
+    "page": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "title"],
+      "properties": {
+        "url": { "type": "string", "description": "Sanitized URL. Query/fragment PII is tokenized or stripped." },
+        "title": { "type": "string", "description": "Sanitized document title." },
+        "type": { "type": "string", "description": "Coarse page classification, e.g. kyc_form, checkout, login." }
+      }
+    },
+    "elements": {
+      "type": "array",
+      "description": "Set-of-Marks elements. Labels are sanitized; raw values are never included.",
+      "items": { "$ref": "#/$defs/element" }
+    },
+    "visual_regions": {
+      "type": "array",
+      "description": "Regions produced by the local vision detector.",
+      "items": { "$ref": "#/$defs/visualRegion" }
+    },
+    "redactions": {
+      "type": "array",
+      "description": "Every redaction applied to the image, declared so the server can reason about what it cannot see.",
+      "items": { "$ref": "#/$defs/redaction" }
+    },
+    "image": {
+      "$ref": "#/$defs/dataUrlImage",
+      "description": "Redacted screenshot as a data URL. Omitted in image-only-off or text-delta routing."
+    },
+    "delta": {
+      "type": "object",
+      "description": "Same-screen incremental update. TODO(stage-8): define the delta shape.",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "mode": {
+      "type": "string",
+      "enum": ["fast", "balanced", "accurate"],
+      "description": "Routing mode. Trades latency against perception depth."
+    },
+    "bbox": {
+      "type": "array",
+      "description": "Axis-aligned box [x, y, w, h] in CSS pixels relative to the viewport.",
+      "items": { "type": "integer" },
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "valueLenBucket": {
+      "type": "string",
+      "enum": ["empty", "short", "medium", "long"],
+      "description": "Coarse length bucket. Never the value, never the exact length."
+    },
+    "element": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mark_id", "fp", "role", "label", "bbox", "visible", "enabled"],
+      "properties": {
+        "mark_id": { "type": "integer", "minimum": 0, "description": "Set-of-Marks number drawn on the image." },
+        "fp": { "type": "string", "minLength": 1, "description": "Stable element fingerprint used to reacquire the element before acting. Not a selector and not derived from page id/class names." },
+        "role": { "type": "string", "description": "Accessibility role, e.g. textbox, button, combobox." },
+        "label": { "type": "string", "description": "Sanitized accessible name. May contain tokens." },
+        "input_type": { "type": "string", "description": "Input type, e.g. text, email, password. Drives token type matching on re-hydration." },
+        "has_value": { "type": "boolean", "description": "Whether the field currently holds a value. The value itself is never sent." },
+        "value_len_bucket": { "$ref": "#/$defs/valueLenBucket" },
+        "bbox": { "$ref": "#/$defs/bbox" },
+        "visible": { "type": "boolean" },
+        "enabled": { "type": "boolean" },
+        "hidden_interactive": { "type": "boolean", "description": "Interactive in the DOM but not visible to the user. Flagged as a possible injection/clickjacking vector." }
+      }
+    },
+    "visualRegion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rid", "class", "bbox"],
+      "properties": {
+        "rid": { "type": "string", "minLength": 1, "description": "Region id, unique within the capture." },
+        "class": { "type": "string", "description": "Detector class, e.g. button, face, id_document, card, signature, qr." },
+        "bbox": { "$ref": "#/$defs/bbox" },
+        "ocr": { "type": "string", "description": "OCR text for detector-only regions, already tokenized." }
+      }
+    },
+    "redaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rid", "kind", "type", "bbox"],
+      "properties": {
+        "rid": { "type": "string", "minLength": 1 },
+        "kind": {
+          "type": "string",
+          "enum": ["FILL", "BLUR", "FILL_REGION"],
+          "description": "FILL = solid fill over text PII. BLUR = irreversible blur, faces only. FILL_REGION = solid fill over a whole document/card region."
+        },
+        "type": { "type": "string", "description": "PII type that triggered the redaction, e.g. AADHAAR, FACE, PASSWORD." },
+        "bbox": { "$ref": "#/$defs/bbox" },
+        "reason": { "type": "string", "description": "Why the policy fired. Must not restate the redacted value." }
+      }
+    },
+    "dataUrlImage": {
+      "type": "string",
+      "pattern": "^data:image/(webp|jpeg);base64,[A-Za-z0-9+/]+={0,2}$"
+    }
+  }
+}

@@ -1,0 +1,97 @@
+{
+  "session": "s_7f3a9c1e",
+  "capture_id": "c_000412",
+  "schema": "aegis/1",
+  "mode": "balanced",
+  "task": "Complete the KYC form for [[PII:NAME:k4m2xq7b]] and submit it",
+  "page": {
+    "url": "http://localhost:5174/kyc.html",
+    "title": "Aegis Demo - KYC Verification",
+    "type": "kyc_form"
+  },
+  "elements": [
+    {
+      "mark_id": 12,
+      "fp": "fp_a1b2c3d4e5f60718",
+      "role": "textbox",
+      "label": "Full name",
+      "input_type": "text",
+      "has_value": true,
+      "value_len_bucket": "medium",
+      "bbox": [240, 196, 320, 36],
+      "visible": true,
+      "enabled": true
+    },
+    {
+      "mark_id": 14,
+      "fp": "fp_b2c3d4e5f6071829",
+      "role": "textbox",
+      "label": "Email address",
+      "input_type": "email",
+      "has_value": false,
+      "value_len_bucket": "empty",
+      "bbox": [240, 252, 320, 36],
+      "visible": true,
+      "enabled": true
+    },
+    {
+      "mark_id": 18,
+      "fp": "fp_c3d4e5f607182930",
+      "role": "textbox",
+      "label": "Password",
+      "input_type": "password",
+      "has_value": true,
+      "value_len_bucket": "short",
+      "bbox": [240, 420, 320, 36],
+      "visible": true,
+      "enabled": true
+    },
+    {
+      "mark_id": 22,
+      "fp": "fp_d4e5f60718293041",
+      "role": "button",
+      "label": "Submit verification",
+      "bbox": [240, 520, 160, 44],
+      "visible": true,
+      "enabled": true,
+      "hidden_interactive": false
+    }
+  ],
+  "visual_regions": [
+    {
+      "rid": "r_face_01",
+      "class": "face",
+      "bbox": [612, 180, 128, 128]
+    },
+    {
+      "rid": "r_doc_01",
+      "class": "id_document",
+      "bbox": [600, 340, 280, 176],
+      "ocr": "Government of India [[PII:AADHAAR:h4r3k2wq]]"
+    }
+  ],
+  "redactions": [
+    {
+      "rid": "r_face_01",
+      "kind": "BLUR",
+      "type": "FACE",
+      "bbox": [612, 180, 128, 128],
+      "reason": "biometric class detected by local vision model"
+    },
+    {
+      "rid": "r_aadhaar_01",
+      "kind": "FILL",
+      "type": "AADHAAR",
+      "bbox": [244, 476, 312, 28],
+      "reason": "12-digit Verhoeff-valid identifier in a field labelled Aadhaar"
+    },
+    {
+      "rid": "r_password_01",
+      "kind": "FILL",
+      "type": "PASSWORD",
+      "bbox": [244, 424, 312, 28],
+      "reason": "input_type password is never automated and never transmitted"
+    }
+  ],
+  "image": "data:image/webp;base64,UklGRhIAAABXRUJQVlA4TAYAAAAvAAAAAAfQ//73v/+BiOh/AAA="
+}
