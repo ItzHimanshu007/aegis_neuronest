@@ -1,6 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { sendMessage, type HealthResult, type ObserveResult } from '../../shared/messages';
 import { hasSiteAccess, requestSiteAccess } from '../../shared/permissions';
+import { processObservation, type ProcessResult } from '../../agentHost';
+import { PrivacySession } from '../../agentHost/session';
+import { PrivacyPreview } from './PrivacyPreview';
+import { send } from '../../net/network';
+import type { Mode } from '../../privacy/redactor';
 import type { RawElement } from '../../observe/types';
 
 type ServerStatus = 'checking' | 'online' | 'offline';
@@ -51,6 +56,18 @@ export default function App() {
   const [showOverlay, setShowOverlay] = useState(true);
   const [permissionRecheckKey, setPermissionRecheckKey] = useState(0);
   const capturePermissionNote = useCapturePermissionNote(permissionRecheckKey);
+
+  // Stage 2: the privacy session (vault + identity state) lives here, in the panel document —
+  // never in the background service worker, which can be evicted mid-task. Closing the panel
+  // tears this whole context down, which IS the session end (see agentHost/session.ts).
+  const sessionRef = useRef<PrivacySession | null>(null);
+  if (!sessionRef.current) sessionRef.current = new PrivacySession();
+
+  const [taskText, setTaskText] = useState('');
+  const [mode, setMode] = useState<Mode>('balanced');
+  const [processResult, setProcessResult] = useState<ProcessResult | null>(null);
+  const [sanitizing, setSanitizing] = useState(false);
+  const [sendState, setSendState] = useState<{ digest: string; size: number; at: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -104,6 +121,65 @@ export default function App() {
     }
   };
 
+  /** Observe & Sanitize: runs the whole Stage 2 pipeline locally and shows the Privacy Preview.
+   * Nothing is sent — `send()` is a separate, explicit button. */
+  const handleObserveAndSanitize = async () => {
+    setObserveError(null);
+    setSanitizing(true);
+    setSendState(null);
+    try {
+      const [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
+      if (!activeTab?.id || !activeTab.url) throw new Error('No active tab (click the Aegis toolbar icon once on this tab first)');
+
+      const access = await requestSiteAccess(activeTab.url);
+      if (!access.granted) throw new Error(`Screen-capture access was denied (needed to observe ${access.origin}).`);
+
+      const observeResponse = await sendMessage('OBSERVE', { tabId: activeTab.id });
+      setObserveResult(observeResponse);
+
+      const session = sessionRef.current!;
+      // Stage 2 preview treats the observed origin as consented; Stage 3's consent screen will
+      // populate this properly from an explicit user decision.
+      session.consentedOrigins.add(new URL(observeResponse.observation.url).origin);
+
+      const result = await processObservation({
+        observation: observeResponse.observation,
+        task: taskText,
+        mode,
+        session,
+        stateToken: observeResponse.observation.viewport,
+        requestSpanRects: async (request) => {
+          const envelope = (await browser.tabs.sendMessage(observeResponse.tabId, { type: 'SPAN_RECTS', data: request }, { frameId: 0 })) as
+            | { ok: true; response: { stale: boolean; results?: Array<{ blockRef: string; rects: Array<{ x: number; y: number; width: number; height: number }>; notFound?: boolean }> } }
+            | { ok: false; error: string };
+          if (!envelope?.ok) throw new Error(envelope?.error ?? 'SPAN_RECTS failed');
+          return envelope.response;
+        },
+      });
+      setProcessResult(result);
+      (window as unknown as { __aegisLastProcessResult?: ProcessResult }).__aegisLastProcessResult = result;
+    } catch (err) {
+      setObserveError(err instanceof Error ? err.message : String(err));
+      setProcessResult(null);
+    } finally {
+      setSanitizing(false);
+      setPermissionRecheckKey((k) => k + 1);
+    }
+  };
+
+  const handleSend = async () => {
+    if (!processResult) return;
+    setObserveError(null);
+    try {
+      const result = await send(processResult.payload);
+      setSendState({ digest: result.digest, size: result.size, at: new Date().toISOString() });
+      // The payload is single-use — clear it so the UI can't offer a replay that would throw.
+      setProcessResult({ ...processResult, payload: processResult.payload });
+    } catch (err) {
+      setObserveError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
   return (
     <div>
       <h1>
@@ -134,11 +210,44 @@ export default function App() {
           </section>
 
           <section>
-            <label>Observe (local only — never sent to the server)</label>
+            <label>Task (tokenized locally before anything is sent)</label>
+            <input
+              type="text"
+              value={taskText}
+              placeholder="e.g. Fill in the KYC form for asha@example.com"
+              onChange={(e) => setTaskText(e.target.value)}
+            />
+            <label>
+              Mode{' '}
+              <select value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
+                <option value="fast">fast</option>
+                <option value="balanced">balanced</option>
+                <option value="accurate">accurate</option>
+              </select>
+            </label>
+            <div className="button-row">
+              <button className="action" onClick={handleObserveAndSanitize} disabled={sanitizing}>
+                {sanitizing ? 'Sanitizing…' : 'Observe & Sanitize'}
+              </button>
+              <button className="action" onClick={handleSend} disabled={!processResult}>
+                Send to server (mock)
+              </button>
+            </div>
+            {observeError && <pre className="error">{observeError}</pre>}
+            {sendState && (
+              <pre>
+                {`sent\ndigest ${sendState.digest}\nbytes  ${sendState.size}\nat     ${sendState.at}`}
+              </pre>
+            )}
+          </section>
+
+          {processResult && <PrivacyPreview result={processResult} />}
+
+          <section>
+            <label>Observation only (local, no sanitization)</label>
             <button className="action" onClick={handleObserve} disabled={observing}>
               {observing ? 'Observing…' : 'Observe'}
             </button>
-            {observeError && <pre>{observeError}</pre>}
             {observeResult && <ObservationView result={observeResult} showOverlay={showOverlay} onToggleOverlay={() => setShowOverlay((v) => !v)} />}
           </section>
 

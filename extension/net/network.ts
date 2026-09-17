@@ -10,7 +10,7 @@
  * over those bytes before sending, and a sealed payload is single-use — replaying one throws.
  */
 
-import { consumeSealed, isRegisteredSealed, sha256Hex, type SanitizedPayload } from '../privacy/firewall';
+import { consumeSealed, isRegisteredSealed, sha256Hex, type SanitizedPayload } from '../privacy/sealedRegistry';
 import type { HealthResult } from '../shared/messages';
 
 // TODO(stage-3): read from WXT env / import.meta.env.WXT_SERVER_URL properly once the build

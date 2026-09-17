@@ -31,14 +31,24 @@ const TOKENIZING_ACTIONS: Action[] = ['TOKEN', 'TOKEN_WITH_APPROVAL'];
 const REDACTING_ACTIONS: Action[] = ['FILL', 'FILL_REGION', 'BLUR', 'USER_ENTERS', 'USER_PROVIDED_ORIGIN_BOUND'];
 
 /**
- * Replaces every rule hit in `text` with either its token or a `[REDACTED:TYPE]` marker, depending
- * on the policy action, then neutralizes any token-like leftovers. Replacements are applied
- * right-to-left so earlier offsets stay valid.
+ * Sanitizes a string in this ORDER, which matters:
+ *
+ *   1. `neutralize()` FIRST — kills any token look-alike the page planted, while nothing in the
+ *      string is yet a token of ours.
+ *   2. run rules against the neutralized text, so match offsets refer to the string we're about
+ *      to edit.
+ *   3. replace each hit with its token or `[REDACTED:TYPE]`, right-to-left so earlier offsets
+ *      stay valid.
+ *
+ * Doing it the other way round (tokenize, then neutralize) destroys the very tokens we just
+ * minted — `neutralize()` cannot tell a token we issued a microsecond ago from one a hostile page
+ * planted, and it is not supposed to be able to.
  */
 export async function sanitizeText(text: string, options: SanitizeTextOptions): Promise<SanitizedText> {
-  const matches = runRules(text, {}).sort((a, b) => b.start - a.start);
+  const neutralized = neutralize(text);
+  const matches = runRules(neutralized.text, {}).sort((a, b) => b.start - a.start);
   const applied: SanitizedText['applied'] = [];
-  let result = text;
+  let result = neutralized.text;
 
   for (const match of matches) {
     const action = options.decideFor(match.category, match.matchedText);
@@ -57,8 +67,7 @@ export async function sanitizeText(text: string, options: SanitizeTextOptions): 
     result = result.slice(0, match.start) + replacement + result.slice(match.start + match.matchedText.length);
   }
 
-  const neutralized = neutralize(result);
-  return { text: neutralized.text, applied, neutralizedCount: neutralized.neutralizedCount };
+  return { text: result, applied, neutralizedCount: neutralized.neutralizedCount };
 }
 
 const ID_LIKE_SEGMENT = /^(?:\d{6,}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-fA-F]{16,}|[A-Za-z0-9+/=_-]{20,})$/;

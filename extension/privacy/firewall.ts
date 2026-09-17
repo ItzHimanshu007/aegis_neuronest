@@ -27,20 +27,7 @@ import { verifyMasks, type RedactResult } from './redactor';
 import type { Action, Category } from './categoryTypes';
 import type { Detection } from './detect/types';
 import type { DraftPayload } from './payloadBuilder';
-
-declare const SANITIZED_PAYLOAD_BRAND: unique symbol;
-
-/** A payload that has passed every `seal()` check. Only `net/network.ts -> send()` accepts this
- * type, and it re-checks the runtime registry too, so a type assertion alone is not enough. */
-export interface SanitizedPayload {
-  readonly [SANITIZED_PAYLOAD_BRAND]: true;
-  /** The EXACT bytes to send. `send()` transmits these verbatim — it never re-serializes. */
-  readonly bytes: Uint8Array;
-  /** Lowercase hex SHA-256 of `bytes`. */
-  readonly digest: string;
-  readonly capture_id: string;
-  readonly size: number;
-}
+import { registerSealed, sha256Hex, type SanitizedPayload } from './sealedRegistry';
 
 export type SealFailureReason =
   | 'schema'
@@ -52,6 +39,8 @@ export type SealFailureReason =
   | 'capture-id-mismatch'
   | 'image-count';
 
+export { isRegisteredSealed, consumeSealed, sha256Hex, type SanitizedPayload } from './sealedRegistry';
+
 export class SealError extends Error {
   constructor(
     readonly reason: SealFailureReason,
@@ -60,18 +49,6 @@ export class SealError extends Error {
     super(`seal() refused: ${reason} — ${JSON.stringify(details)?.slice(0, 500)}`);
     this.name = 'SealError';
   }
-}
-
-const sealedRegistry = new WeakSet<object>();
-
-/** @internal exposed only for net/network.ts's runtime check. */
-export function isRegisteredSealed(payload: object): boolean {
-  return sealedRegistry.has(payload);
-}
-
-/** @internal exposed only for net/network.ts — a sealed payload is single-use. */
-export function consumeSealed(payload: object): boolean {
-  return sealedRegistry.delete(payload);
 }
 
 // --- ajv ---------------------------------------------------------------------------------------
@@ -152,11 +129,6 @@ export function canonicalize(value: unknown): string {
     .filter(([, v]) => v !== undefined)
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
   return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonicalize(v)}`).join(',')}}`;
-}
-
-export async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', bytes as unknown as ArrayBuffer);
-  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 const NON_ALLOW_ACTIONS: Action[] = ['TOKEN', 'TOKEN_WITH_APPROVAL', 'FILL', 'FILL_REGION', 'BLUR', 'USER_ENTERS', 'USER_PROVIDED_ORIGIN_BOUND'];
@@ -286,7 +258,7 @@ export async function seal(draft: DraftPayload, ctx: SealContext): Promise<SealR
     size: bytes.byteLength,
   } as SanitizedPayload;
 
-  sealedRegistry.add(payload);
+  registerSealed(payload);
 
   return {
     payload,
