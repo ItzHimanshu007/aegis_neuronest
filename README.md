@@ -8,35 +8,28 @@ only ever sees tokens and redacted pixels, and only ever proposes actions — th
 reacquires, re-hydrates and executes them. See [`docs/architecture.md`](docs/architecture.md) for
 the full design and [`AGENTS.md`](AGENTS.md) for the invariants every change must respect.
 
-This repository is currently at **Stage 2.5 — Firefox and architecture v6 foundations** (see [`docs/STAGES.md`](docs/STAGES.md)).
-Stage 0 built the repo structure, contracts and shells. Stage 1 added **Layer 1 (Observe)**: an
-on-demand harvester content script (Set-of-Marks elements with stable fingerprints, visibility and
-hit-testing, text blocks, media, shadow DOM and same-origin frames), a capture pipeline (settle
-wait, screenshot with scale mapping, capture throttle, NEW_SCREEN/SAME_SCREEN change detection),
-a debug overlay, and an input watcher that never reports raw values.
+This repository is currently at **Stage 3A** (see [`docs/STAGES.md`](docs/STAGES.md)). Stages 0-2
+built the repo, the observation pipeline and the privacy core; Stage 2.5 added the Privacy Scene
+Graph, stable element IDs, state tokens, schema v2, the authority classifier and Firefox bring-up.
 
-Stage 2 adds **Layer 2 (Privacy)**: a detection cascade (privacy tags, autocomplete tokens, field
-context, regex + checksums, labelled-value fallback), a policy engine driven by
-[`docs/policy.yaml`](docs/policy.yaml), an HMAC token vault whose key is non-extractable and
-in-memory only, a side-channel sanitizer, a DOM-rect screenshot redactor, and the real
-`firewall.seal()` — eight fail-closed checks that are the only way to mint the `SanitizedPayload`
-that `net/network.ts → send()` accepts. A Privacy Preview panel shows exactly what would leave.
+Stage 3A adds the pieces the agent loop will call into:
 
-Stage 2.5 adds real Firefox automation, a session-scoped Privacy Scene Graph with stable EIDs,
-schema v2 and state tokens, stale-plan checks, the pure L0–L5 authority classifier, local audit and
-linkability state, and sensing/context-expansion foundations. See the
-[`Stage 2.5 report`](docs/STAGE-2.5-REPORT.md) for measured results and remaining manual checks.
+- a **Privacy Set-of-Marks** — each outbound element's EID drawn on the sanitized image, never
+  inside a mask, so the model can name what it can see;
+- a **server reasoning adapter** for any OpenAI-compatible endpoint with image input, with schema
+  validation, a single repair pass and server-side grounding checks;
+- deterministic **mock scenarios**, including adversarial ones with a test recording which layer
+  refuses each;
+- a **model probe** that measures a candidate endpoint against this pipeline.
 
-Everything the extension observes is **local only** — it is branded `LocalOnly<T>` (see
-[`extension/observe/types.ts`](extension/observe/types.ts)) and provably cannot reach
-`net/network.ts`. The planner, agent loop and executor land in Stage 3; perception models follow in
-Stages 5–7.
+Everything the extension observes is **local only** — branded `LocalOnly<T>` (see
+[`extension/observe/types.ts`](extension/observe/types.ts)) and provably unable to reach
+`net/network.ts`. The agent loop, executor and consent UI land in Stage 3B.
 
 **Where the privacy pipeline runs matters.** The detection cascade, the policy engine and the token
 vault all live in the **side panel document**, not the background service worker: Chrome can
 terminate an MV3 service worker after ~30 seconds idle, which would destroy the vault's session key
-mid-task. Background stays a thin capture-only router that passes observations through and retains
-nothing raw (enforced by
+mid-task. Background stays a thin capture-only router that retains nothing raw (enforced by
 [`extension/privacy/__tests__/backgroundNoRawCache.test.ts`](extension/privacy/__tests__/backgroundNoRawCache.test.ts)).
 
 ## Prerequisites
@@ -187,8 +180,9 @@ extension/
   e2e/          Playwright specs (Chromium) — run with `pnpm e2e`
 server/         FastAPI server, Pydantic schemas, VLM adapter interface + MockAdapter
 shared/schema/  JSON Schema contracts (payload.v2, plan.v2) — the single source of truth
-demo-portal/    Vite static site: kyc, calibration, shadow, frames, dynamic, hidden, pii-zoo
-eval/           Evaluation harness (reports/ holds the Stage 2 baseline — see eval/README.md)
+demo-portal/    Vite static site: kyc, calibration, shadow, frames, dynamic, hidden, pii-zoo,
+                search (Enter authority), injection (planted instructions)
+eval/           reports/ (baselines, timings, probe results), model_probe/ (sealed fixtures + probe)
 docs/           Architecture, build stages, threat model, PII policy matrix, Firefox test checklist
 ```
 

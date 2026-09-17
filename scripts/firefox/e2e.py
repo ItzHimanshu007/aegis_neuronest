@@ -249,6 +249,50 @@ try:
     })()""")
     assert burst['all'] and burst['count']==4
     record('Rapid capture throttle', '4 concurrent Observe requests completed')
+    # --- Stage 3A: occlusion signal and the Privacy Set-of-Marks ------------------------------
+    navigate('kyc.html?banner=1')
+    d.set_context('content')
+    d.execute_script("document.getElementById('submit').scrollIntoView({block:'center'})")
+    time.sleep(.3)
+    observe(sanitize=True)
+    occlusion = panel("""const d=JSON.parse(window.__aegisLastProcessResult.preview.draftJson);
+      const submit=d.elements.find(e=>/submit/i.test(e.label));
+      const eids=new Set(d.elements.map(e=>e.eid));
+      return {occluded:submit?.occluded===true,
+              visible:submit?.visible===true,
+              coverNamedIsOutbound:d.elements.every(e=>!e.covered_by||eids.has(e.covered_by))};""")
+    assert all(occlusion.values()), occlusion
+    record('Occluded submit reported (banner)', json.dumps(occlusion))
+
+    navigate('kyc.html')
+    d.set_context('content')
+    d.execute_script("document.getElementById('submit').scrollIntoView({block:'center'})")
+    time.sleep(.3)
+    observe(sanitize=True)
+    clear = panel("""const d=JSON.parse(window.__aegisLastProcessResult.preview.draftJson);
+      return {noneFlagged:d.elements.filter(e=>e.occluded).length};""")
+    assert clear['noneFlagged'] == 0, clear
+    record('No clear field flagged as occluded', json.dumps(clear))
+
+    # A fresh screen: SAME_SCREEN captures carry no image, so there would be no pixels to sample.
+    navigate('search.html')
+    observe(sanitize=True)
+    marks = panel("""return (async()=>{
+      const r=window.__aegisLastProcessResult, d=JSON.parse(r.preview.draftJson);
+      if(!d.image) return {error:'no image in payload'};
+      const img=new Image();img.src=d.image;await img.decode();
+      const c=new OffscreenCanvas(img.naturalWidth,img.naturalHeight),ctx=c.getContext('2d');
+      ctx.drawImage(img,0,0);
+      const px=ctx.getImageData(0,0,img.naturalWidth,img.naturalHeight).data;
+      let marked=0;
+      for(let i=0;i<px.length;i+=4){
+        if(Math.abs(px[i]-27)<24&&Math.abs(px[i+1]-110)<24&&Math.abs(px[i+2]-243)<24) marked++;
+      }
+      return {markPixels:marked,sealed:/^[0-9a-f]{64}$/.test(r.preview.digest)};
+    })()""")
+    assert marks.get('markPixels', 0) > 0 and marks.get('sealed'), marks
+    record('Set-of-Marks drawn and sealed', json.dumps(marks))
+
     navigate('calibration.html')
     for zoom, scrolled in [(1,False),(1.25,False),(.67,False),(1,True)]:
         panel(f"return browser.tabs.query({{active:true,currentWindow:true}}).then(([tab])=>browser.tabs.setZoom(tab.id,{zoom}))")
@@ -263,4 +307,4 @@ try:
 finally:
     d.quit()
     report = ROOT / 'eval/reports/firefox-stage2.5.json'
-    report.write_text(json.dumps({'firefoxVersion': d.capabilities.get('browserVersion'), 'complete': len(results) >= 21, 'results': results}, indent=2) + '\n')
+    report.write_text(json.dumps({'firefoxVersion': d.capabilities.get('browserVersion'), 'complete': len(results) >= 24, 'results': results}, indent=2) + '\n')

@@ -86,6 +86,11 @@ export const AEGIS_CONFIG = {
   /** Redacted screenshot long-edge size (px) per mode, before lossless PNG export (WebP evaluation is Stage 8). Balances payload
    * size against the server's ability to read layout — Fast trades detail for latency, Accurate
    * keeps the most. */
+  /** Encoding is lossless PNG (see privacy/redactor.ts's canvasToDataUrl). Lossless keeps mask
+   * verification sound: the pixels verifyMasks() samples are exactly the pixels drawn. It costs
+   * roughly 3x the bytes of WebP — measured on Stage 3A captures, WebP q85 is 0.27-0.31x of PNG
+   * and WebP LOSSLESS is 0.28-0.32x, so the saving does not require giving up bit-exact pixels.
+   * Stage 8 owns the switch. */
   SERVER_IMAGE_MAX_SIDE_FAST: 960,
   SERVER_IMAGE_MAX_SIDE_BALANCED: 1280,
   SERVER_IMAGE_MAX_SIDE_ACCURATE: 1600,

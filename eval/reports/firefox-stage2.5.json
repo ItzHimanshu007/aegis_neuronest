@@ -88,6 +88,21 @@
       "notes": "4 concurrent Observe requests completed"
     },
     {
+      "item": "Occluded submit reported (banner)",
+      "status": "PASS",
+      "notes": "{\"coverNamedIsOutbound\": true, \"occluded\": true, \"visible\": true}"
+    },
+    {
+      "item": "No clear field flagged as occluded",
+      "status": "PASS",
+      "notes": "{\"noneFlagged\": 0}"
+    },
+    {
+      "item": "Set-of-Marks drawn and sealed",
+      "status": "PASS",
+      "notes": "{\"markPixels\": 1459, \"sealed\": true}"
+    },
+    {
       "item": "Screenshot alignment at 100%",
       "status": "PASS",
       "notes": "1 visible calibration squares"

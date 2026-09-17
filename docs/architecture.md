@@ -15,7 +15,7 @@ it cannot grant itself authority or disclose information the local policy withhe
 6. **Privacy Policy** decides treatment from sensitivity, necessity, linkability and origin; locked classes cannot be weakened and generated policy data is the single source of defaults.
 7. **Token Vault** maps HMAC tokens to local values using a non-extractable per-session key, and permits restoration only inside a matching `type` action on a consented origin.
 8. **Redactor** accepts local rectangles and decisions, solid-fills text and unscanned media, blurs faces only, and returns a verified redacted image.
-9. **Privacy Set-of-Marks** draws Scene Graph EIDs on sanitized pixels for remote grounding in Stage 3; it never invents another element identity.
+9. **Privacy Set-of-Marks** draws Scene Graph EIDs on sanitized pixels for remote grounding; it never invents another element identity.
 10. **Egress Firewall** validates the outbound draft, scans text/tokens and mask coverage/integrity, and seals immutable canonical bytes with a digest and runtime registry entry for the sole `network.send` path.
 11. **Remote Reasoning** uses an open-weight VLM behind an OpenAI-compatible API to return an initial short plan and batched actions echoing `state_token`, with the current image and sanitized text history only.
 12. **Action Authority Gate** classifies every proposed action L0–L5, checks consent locally and always asks the user for L5 commits; the classifier is pure in Stage 2.5 and wired in Stage 3.
@@ -49,6 +49,27 @@ flowchart TD
   Recover --> Observe
   Session -. categories and timings only .-> Judge[Audit / Judge Mode]
 ```
+
+## Marks and mask verification
+
+The Set-of-Marks (`extension/privacy/som.ts`) runs after redaction and before the downscale, so
+tags are drawn at full resolution and stay legible once the image is shrunk to the mode's server
+size. A tag carries the EID string and nothing else, and `seal()` refuses any label that is not
+`^E[0-9]{1,6}$` or that names an element the payload does not contain.
+
+Tags are never drawn inside a mask. When an element is fully covered by one, its tag goes just
+outside the mask edge instead. That rule is what lets `verifyMasks()` keep sampling the image that
+actually ships, rather than a pre-marks copy: nothing a mark draws can land where a mask is
+checked. Tags also never overlap each other, and an element with nowhere clear to go is left
+untagged rather than marked wrongly.
+
+## Image encoding
+
+The sanitized image is lossless PNG. Lossless keeps mask verification trivially sound — the pixels
+`verifyMasks()` samples are the pixels that were drawn — at roughly 3x the bytes of WebP. Measured
+on Stage 3A captures, WebP q85 is 0.27-0.31x of PNG and WebP **lossless** is 0.28-0.32x, so the
+saving does not actually require giving up bit-exact pixels. Stage 8 owns that change; see
+`shared/config.ts`.
 
 ## Consent and recovery
 
