@@ -8,7 +8,7 @@ only ever sees tokens and redacted pixels, and only ever proposes actions — th
 reacquires, re-hydrates and executes them. See [`docs/architecture.md`](docs/architecture.md) for
 the full design and [`AGENTS.md`](AGENTS.md) for the invariants every change must respect.
 
-This repository is currently at **Stage 2 — Privacy core** (see [`docs/STAGES.md`](docs/STAGES.md)).
+This repository is currently at **Stage 2.5 — Firefox and architecture v6 foundations** (see [`docs/STAGES.md`](docs/STAGES.md)).
 Stage 0 built the repo structure, contracts and shells. Stage 1 added **Layer 1 (Observe)**: an
 on-demand harvester content script (Set-of-Marks elements with stable fingerprints, visibility and
 hit-testing, text blocks, media, shadow DOM and same-origin frames), a capture pipeline (settle
@@ -22,9 +22,15 @@ in-memory only, a side-channel sanitizer, a DOM-rect screenshot redactor, and th
 `firewall.seal()` — eight fail-closed checks that are the only way to mint the `SanitizedPayload`
 that `net/network.ts → send()` accepts. A Privacy Preview panel shows exactly what would leave.
 
+Stage 2.5 adds real Firefox automation, a session-scoped Privacy Scene Graph with stable EIDs,
+schema v2 and state tokens, stale-plan checks, the pure L0–L5 authority classifier, local audit and
+linkability state, and sensing/context-expansion foundations. See the
+[`Stage 2.5 report`](docs/STAGE-2.5-REPORT.md) for measured results and remaining manual checks.
+
 Everything the extension observes is **local only** — it is branded `LocalOnly<T>` (see
 [`extension/observe/types.ts`](extension/observe/types.ts)) and provably cannot reach
-`net/network.ts`. There is still no ML or agent loop — those land in Stages 3, 5 and 6.
+`net/network.ts`. The planner, agent loop and executor land in Stage 3; perception models follow in
+Stages 5–7.
 
 **Where the privacy pipeline runs matters.** The detection cascade, the policy engine and the token
 vault all live in the **side panel document**, not the background service worker: Chrome can
@@ -53,7 +59,7 @@ This also runs `wxt prepare` in `extension/` (via `postinstall`) to generate WXT
 ### Server (FastAPI, mock adapter by default)
 
 ```sh
-pnpm server
+pnpm run server
 ```
 
 Serves on `http://localhost:8000`. `GET /health` and `POST /v1/plan` are available; see
@@ -139,7 +145,7 @@ Individual pieces:
 ```sh
 pnpm gen:types       # regenerate extension/shared/schema/*.d.ts from /shared/schema/*.schema.json
 pnpm gen:policy      # regenerate extension/privacy/policyData.ts from docs/policy.yaml
-pnpm gen:validator   # precompile payload.v1 into extension/privacy/generated/payloadValidator.js
+pnpm gen:validator   # precompile payload.v2 and plan.v2 into extension/privacy/generated/
 pnpm schema:check    # validate shared/schema/examples/* against the JSON Schemas
 pnpm typecheck        # extension TypeScript (includes the e2e specs and the LocalOnly type proof)
 pnpm lint             # ESLint across the repo
@@ -161,8 +167,8 @@ pnpm e2e             # terminal 3 — builds the extension, then runs the suite
 both portal servers running, which doesn't belong in the fast feedback loop. One-off browser
 setup: `npx playwright install chromium`.
 
-Firefox e2e is manual — follow [`docs/manual-test-firefox.md`](docs/manual-test-firefox.md), which
-mirrors every Chromium test as a checklist.
+Run `pnpm e2e:firefox` for the real Firefox MV3 suite. Setup, measured capability results and
+remaining human checks are in [`docs/manual-test-firefox.md`](docs/manual-test-firefox.md).
 
 ## Repository layout
 
@@ -172,11 +178,15 @@ extension/
   entrypoints/  background (capture pipeline), content (harvester), sidepanel (React UI + agentHost)
   agentHost/    Stage 2: the privacy pipeline, running in the SIDE PANEL document (see below)
   privacy/      Stage 2: detection cascade, policy engine, token vault, redactor, firewall.seal()
+  scene/        Stage 2.5: EID registry, state tokens, local/outbound projections
+  authority/    Stage 2.5: pure L0–L5 action classifier
+  sensing/      Stage 2.5: sensing and context-expansion decisions
+  audit/        Stage 2.5: bounded in-memory audit; replay remains a Stage 4 stub
   net/          network.ts — the ONLY network path out of the extension
   shared/       config.ts (all tuning thresholds), messages.ts, permissions.ts, schema types
   e2e/          Playwright specs (Chromium) — run with `pnpm e2e`
 server/         FastAPI server, Pydantic schemas, VLM adapter interface + MockAdapter
-shared/schema/  JSON Schema contracts (payload.v1, plan.v1) — the single source of truth
+shared/schema/  JSON Schema contracts (payload.v2, plan.v2) — the single source of truth
 demo-portal/    Vite static site: kyc, calibration, shadow, frames, dynamic, hidden, pii-zoo
 eval/           Evaluation harness (reports/ holds the Stage 2 baseline — see eval/README.md)
 docs/           Architecture, build stages, threat model, PII policy matrix, Firefox test checklist

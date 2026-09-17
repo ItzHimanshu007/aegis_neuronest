@@ -26,8 +26,13 @@ async function setPageZoom(panelPage: import('@playwright/test').Page, targetPag
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
     await browser.tabs.setZoom(tab!.id!, factor);
   }, factor);
-  // Let layout settle at the new zoom before reading positions.
-  await targetPage.waitForTimeout(200);
+  // Browser zoom may preserve a document anchor rather than scrollY=0. Explicitly
+  // reset both axes before the top-of-page measurement, then wait for a sample to be visible.
+  await targetPage.evaluate(() => window.scrollTo(0, 0));
+  await targetPage.waitForFunction(() => [...document.querySelectorAll('[data-square-id]')].some(el => {
+    const r = el.getBoundingClientRect();
+    return r.x+r.width/2 >= 0 && r.x+r.width/2 < innerWidth && r.y+r.height/2 >= 0 && r.y+r.height/2 < innerHeight;
+  }));
 }
 
 /** Reads the RGB colour of the screenshot at a given top-level CSS *viewport* position (i.e. the

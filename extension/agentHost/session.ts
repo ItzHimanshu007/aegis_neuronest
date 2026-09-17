@@ -1,3 +1,8 @@
+import { AuditLog } from '../audit/log';
+import { emptyCounters } from '../sensing';
+import { EIDRegistry } from '../scene/registry';
+import { StateTokens } from '../scene/stateTokens';
+import type { SceneGraph } from '../scene';
 /**
  * Per-task privacy session (Stage 2 Part A2). Owns the vault, the identity-accumulation state and
  * the user's category overrides.
@@ -18,6 +23,11 @@ import { newSessionId } from '../privacy/payloadBuilder';
 import type { Action, Category } from '../privacy/categoryTypes';
 
 export class PrivacySession {
+  readonly audit = new AuditLog();
+  sensingCounters = emptyCounters();
+  readonly registry = new EIDRegistry();
+  readonly stateTokens = new StateTokens();
+  scene?: SceneGraph;
   readonly vault = new TokenVault();
   readonly privacyState = new SessionPrivacyState();
   readonly sessionId = newSessionId();
@@ -43,6 +53,11 @@ export class PrivacySession {
   /** Ends the task: clears the vault (dropping the key reference) and the identity state. */
   end(): void {
     this.vault.clear();
+    this.audit.clear();
+    this.sensingCounters = emptyCounters();
+    this.registry.clear();
+    this.stateTokens.clear();
+    this.scene = undefined;
     this.privacyState.clear();
     this.consentedOrigins.clear();
     this.taskCategories.clear();

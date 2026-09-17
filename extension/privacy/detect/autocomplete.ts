@@ -44,7 +44,7 @@ export function categoryFromAutocomplete(autocomplete: string | undefined): Cate
   return undefined;
 }
 
-export function detectFromAutocomplete(el: RawElement, captureId: string, idFor: (suffix: string) => string): Detection[] {
+export function detectFromAutocomplete(el: RawElement, captureId: string, idFor: (suffix: string) => string, eid: import('../../scene/registry').EID): Detection[] {
   const category = categoryFromAutocomplete(el.autocomplete);
   if (!category) return [];
   return [
@@ -54,7 +54,7 @@ export function detectFromAutocomplete(el: RawElement, captureId: string, idFor:
       source: 'autocomplete',
       category,
       confidence: 0.85,
-      target: { kind: 'element', ref: el.fp },
+      target: { kind: 'element', ref: eid },
       rects: [el.bbox],
     },
   ];

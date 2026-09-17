@@ -66,7 +66,9 @@ export function mergeDetections(detections: Detection[]): MergedDetection[] {
     }
 
     for (const cluster of clusters) {
-      const winner = cluster.reduce((best, current) => (riskRank(current.category) < riskRank(best.category) ? current : best));
+      const explicit = cluster.find(d => d.source === 'field_context' && d.category !== 'PRIVATE_GENERIC');
+      const secret = cluster.find(d => ['PASSWORD', 'OTP', 'CVV', 'UPI_PIN', 'SECRET'].includes(d.category));
+      const winner = secret ?? explicit ?? cluster.reduce((best, current) => (riskRank(current.category) < riskRank(best.category) ? current : best));
       const sources = Array.from(new Set(cluster.map((d) => d.source)));
       const confidences = cluster.map((d) => d.confidence);
       // Combine confidences as "probability at least one source is right" (1 - product of misses)

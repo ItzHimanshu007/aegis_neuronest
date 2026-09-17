@@ -4,7 +4,6 @@ import type { RawElement } from '../types';
 
 function makeEl(fp: string, fpOrdinal: number, visible = true): RawElement {
   return {
-    mark_id: 0,
     fp,
     fpOrdinal,
     frameId: 0,
@@ -70,10 +69,10 @@ describe('computeMutationDiff', () => {
 });
 
 describe('toMarkIdentity (Stage 2 Part A2: background must not cache raw observations)', () => {
-  it('projects down to exactly fp, fpOrdinal and visible — nothing else', () => {
+  it('projects down to exactly frameId, fp, fpOrdinal and visible — nothing else', () => {
     const withPii = { ...makeEl('a', 0), name: 'Asha Verma', labelText: 'Full name', value: 'Asha Verma' };
     const [projected] = toMarkIdentity([withPii]);
-    expect(Object.keys(projected!).sort()).toEqual(['fp', 'fpOrdinal', 'visible']);
+    expect(Object.keys(projected!).sort()).toEqual(['fp', 'fpOrdinal', 'frameId', 'visible']);
   });
 
   it('never lets a name or value leak into the projection, even serialized', () => {
@@ -86,6 +85,11 @@ describe('toMarkIdentity (Stage 2 Part A2: background must not cache raw observa
   it('preserves fp/fpOrdinal/visible values exactly', () => {
     const el = makeEl('xyz', 2, false);
     const [projected] = toMarkIdentity([el]);
-    expect(projected).toEqual({ fp: 'xyz', fpOrdinal: 2, visible: false });
+    expect(projected).toEqual({ frameId: 0, fp: 'xyz', fpOrdinal: 2, visible: false });
   });
+});
+
+it('does not collapse equal fingerprints in different frames', () => {
+  const a=makeEl('dup',0),b={...makeEl('dup',0),frameId:1};
+  expect(computeMutationDiff([a,b],[a])).toMatchObject({mutationScore:1,previousMarkCount:2});
 });

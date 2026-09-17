@@ -1,10 +1,11 @@
+import { buildScene, toOutboundDraft, type EID } from '../../scene';
+import { EIDRegistry } from '../../scene/registry';
 import { describe, expect, it } from 'vitest';
 import { buildPayload, capTextBudget, classifyPageType, newSessionId, type ElementDecision } from '../payloadBuilder';
 import { markLocalOnly, type RawElement, type RawObservation } from '../../observe/types';
 
 function makeElement(overrides: Partial<RawElement> = {}): RawElement {
   return {
-    mark_id: 0,
     fp: 'fp-1',
     fpOrdinal: 0,
     frameId: 0,
@@ -45,18 +46,19 @@ function makeObservation(elements: RawElement[]): RawObservation {
 }
 
 function build(elements: RawElement[], decisions: Array<[string, ElementDecision]> = []) {
-  return buildPayload({
-    observation: markLocalOnly(makeObservation(elements)),
-    task: 'do the thing',
-    url: 'https://example.test/',
-    title: 'Example',
-    mode: 'balanced',
-    session: 'sess-1',
-    elementDecisions: new Map(decisions),
-    texts: [],
-    redactions: [],
-    visualRegions: [],
-  });
+  const observation = markLocalOnly(makeObservation(elements));
+  const registry = new EIDRegistry(); registry.reconcile(observation);
+  const byFp = new Map(decisions);
+  const elementDecisions = new Map<EID, ElementDecision>();
+  for (const el of elements) { const d = byFp.get(el.fp); if (d) elementDecisions.set(registry.identity(el).eid, d); }
+  return buildPayload(toOutboundDraft(buildScene(observation, [], [], registry, {
+    sessionId: 'sess-1', stateTokenId: 'Sabcdefghij', stateToken: { mutationCounter: 0, scrollX: 0, scrollY: 0, dpr: 1, visualScale: 1, innerWidth: 1000, innerHeight: 600 },
+    screen: { decision: 'NEW_SCREEN', reason: 'test' }, screenEpoch: 1,
+    task: 'do the thing', url: 'https://example.test/', title: 'Example', mode: 'balanced',
+    labels: new Map(elements.map(el => [registry.identity(el).eid, el.name])),
+    texts: [], elementDecisions, tokensByDetection: new Map(),
+  })));
+
 }
 
 describe('buildPayload', () => {
@@ -106,7 +108,7 @@ describe('buildPayload', () => {
 
   it('sets schema and mode', () => {
     const payload = build([makeElement()]);
-    expect(payload.schema).toBe('aegis/1');
+    expect(payload.schema).toBe('aegis/2');
     expect(payload.mode).toBe('balanced');
   });
 

@@ -1,5 +1,5 @@
 import { harvestFrame } from '../observe/harvester';
-import { debugOverlay } from '../observe/overlay';
+import { debugOverlay, type OverlayElement } from '../observe/overlay';
 import { waitForSettle } from '../observe/settle';
 import { InputWatcher } from '../observe/inputWatcher';
 import { computeSpanRects, getTextParts } from '../observe/spanRects';
@@ -279,9 +279,9 @@ export function harvestDocumentTree(
  * data) — for the fpMap we need those references too, so this re-walks just far enough to pair
  * each RawElement back up with its source Element via bbox+fp identity. Cheap: only interactive
  * candidates, not the whole tree. */
-function collectMarkedElements(doc: Document, elements: Omit<RawElement, 'mark_id' | 'fpOrdinal'>[]): { element: Element; fp: string }[] {
+function collectMarkedElements(doc: Document, elements: Omit<RawElement, 'eid' | 'fpOrdinal'>[]): { element: Element; fp: string }[] {
   if (elements.length === 0) return [];
-  const byFp = new Map<string, Omit<RawElement, 'mark_id' | 'fpOrdinal'>[]>();
+  const byFp = new Map<string, Omit<RawElement, 'eid' | 'fpOrdinal'>[]>();
   for (const el of elements) {
     const list = byFp.get(el.fp) ?? [];
     list.push(el);
@@ -384,7 +384,7 @@ type AegisContentMessage =
   | { type: 'GET_STATE_TOKEN' }
   | { type: 'HIDE_OVERLAY' }
   | { type: 'SHOW_OVERLAY' }
-  | { type: 'RENDER_OVERLAY'; data: { elements: RawElement[]; media: RawMedia[] } }
+  | { type: 'RENDER_OVERLAY'; data: { elements: OverlayElement[]; media: RawMedia[] } }
   | { type: 'SPAN_RECTS'; data: { capture_id: string; stateToken: StateToken; spans: SpanRequest[] } };
 
 function isAegisMessage(message: unknown): message is AegisContentMessage {

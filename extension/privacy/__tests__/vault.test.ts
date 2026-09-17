@@ -128,10 +128,15 @@ describe('TokenVault canRehydrate (the invariant-4 gate)', () => {
     }
   });
 
-  it('allows select ONLY for the selectable categories', async () => {
+  it('denies select even for categories commonly rendered as dropdowns', async () => {
     const cityToken = await vault.tokenize('CITY', 'Bengaluru', { origin: 'https://a.test', source: 'page' });
-    expect(vault.canRehydrate(cityToken, { ...base, actionType: 'select', fieldCategory: 'CITY' })).toBe(true);
+    expect(vault.canRehydrate(cityToken, { ...base, actionType: 'select', fieldCategory: 'CITY' })).toBe(false);
     expect(vault.canRehydrate(pageEmailToken, { ...base, actionType: 'select', fieldCategory: 'EMAIL' })).toBe(false);
+  });
+
+  it('denies page and credential restoration after origin consent expires', () => {
+    expect(vault.canRehydrate(pageEmailToken, { ...base, actionType: 'type', fieldCategory: 'EMAIL', consentedOrigins: new Set() })).toBe(false);
+    expect(vault.canRehydrate(credentialToken, { origin: 'https://bank.test', actionType: 'type', fieldCategory: 'PASSWORD', fieldInputType: 'password', consentedOrigins: new Set() })).toBe(false);
   });
 
   it('denies when the field category does not match the token type', () => {
@@ -171,7 +176,7 @@ describe('TokenVault resolve', () => {
   it('returns the original value when permitted', async () => {
     const vault = await makeVault();
     const token = await vault.tokenize('EMAIL', 'Asha.Verma@Example.com', { origin: 'https://a.test', source: 'page' });
-    const value = vault.resolve(token, { actionType: 'type', fieldCategory: 'EMAIL', origin: 'https://a.test', consentedOrigins: new Set() });
+    const value = vault.resolve(token, { actionType: 'type', fieldCategory: 'EMAIL', origin: 'https://a.test', consentedOrigins: new Set(['https://a.test']) });
     expect(value).toBe('Asha.Verma@Example.com'); // original casing preserved, not the normalized form
   });
 

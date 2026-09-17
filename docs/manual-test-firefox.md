@@ -1,117 +1,78 @@
-# Manual test checklist — Firefox (Stage 1)
+# Firefox verification — Stage 2.5
 
-Automated Playwright e2e runs on Chromium only (Stage 1 Part G.2: "Firefox: automated e2e is
-optional"). Playwright cannot load a temporary MV3 add-on into Firefox the way it can into
-Chromium, so the same checks are run by hand here. Everything below mirrors a Chromium e2e test —
-the test file each item corresponds to is named so failures can be compared directly.
+Measured on macOS, Firefox **156.0**, geckodriver **0.37.1**, Selenium **4.49.0**, 2026-09-17.
+`pnpm e2e:firefox` passed all 21 recorded checks against the unmodified generated MV3 manifest.
+The machine-readable result is [firefox-stage2.5.json](../eval/reports/firefox-stage2.5.json).
 
-## Setup
-
-```sh
-pnpm install
-pnpm build                 # builds extension/.output/firefox-mv3
-pnpm portal                # demo portal on http://localhost:5174
-pnpm portal:alt            # second origin on http://localhost:5175 (needed for frames.html)
-```
-
-Load the add-on: `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on** → pick any
-file inside `extension/.output/firefox-mv3` (e.g. `manifest.json`).
-
-Or, to have `web-ext` launch a clean profile with it already loaded:
+## Reproduce
 
 ```sh
-cd extension && npx web-ext run --source-dir=.output/firefox-mv3
+pnpm install --frozen-lockfile
+pnpm portal                 # separate terminal, port 5174
+pnpm portal:alt             # separate terminal, port 5175
+pnpm run server             # mock API on port 8000 (needed for Chromium send test)
+pnpm e2e:firefox
 ```
 
-Note the add-on is removed when Firefox restarts (temporary add-ons always are), so permissions
-granted below are re-requested on the next run. That is expected.
+The harness uses a fresh temporary Firefox profile/add-on, native toolbar clicks, and native
+Allow/Deny permission responses. It closes that profile at the end. Firefox must be installed;
+the defaults are `/Applications/Firefox.app/Contents/MacOS/firefox` and
+`/opt/homebrew/bin/geckodriver`; override with `FIREFOX_BINARY` / `GECKODRIVER` if needed.
+`uv run` resolves the pinned Selenium dependency from the script metadata.
 
-## 1. Toolbar button and sidebar (F1)
+Classic WebDriver/BiDi do not expose Firefox's auxiliary sidebar as a normal tab. After Selenium's
+temporary install, the harness addresses the sidebar through Firefox's existing Marionette actor
+with geckodriver `--allow-system-access`. It does not patch the manifest, the app, or its permissions.
+Checks return booleans/counts; raw values and image pixels are inspected inside the browser.
 
-- [ ] An **Aegis** button is present in the toolbar (its tooltip reads "Aegis").
-- [ ] Clicking it **opens** the sidebar showing the Aegis panel.
-- [ ] Clicking it again **closes** the sidebar (Firefox uses `sidebarAction.toggle()`, called
-      synchronously inside `action.onClicked` — see entrypoints/background.ts).
-- [ ] The panel header shows "Aegis" with a status dot.
+## Results
 
-## 2. Permissions (F2)
+| Item | Result | Measured behavior |
+| --- | --- | --- |
+| Sidebar load/header | PASS | Actual sidebar document rendered Aegis under MV3 |
+| Toolbar open/close | PASS | Native action clicks closed/opened sidebar via `sidebarAction.toggle()` |
+| Initial permissions/injection | PASS | No `<all_urls>` at install; no manifest content scripts; on-demand injection |
+| Single-site capture permission | PASS | Before an action/activeTab grant, localhost host permission alone failed with `Missing activeTab permission` |
+| activeTab capture | PASS | After a toolbar action grant, capture succeeded without `<all_urls>` |
+| Sidebar `permissions.request` | PASS | Trusted Observe click displayed native prompt; Deny showed an error; subsequent Allow completed capture |
+| Subsequent Observe | PASS | Repeated observations completed without another permission prompt |
+| KYC controls and text | PASS | Name/email/password/submit found; no known raw value in panel text; password absent from harvested values |
+| Privacy Preview | PASS | Exact sealed KYC bytes contain none of the known synthetic raw values; sanitized image produced |
+| OffscreenCanvas | PASS | Both PNG and WebP MIME exports succeeded in the sidebar document |
+| WebCrypto HMAC | PASS | Non-extractable SHA-256 HMAC key signed 32 bytes; raw export rejected |
+| Sidebar lifetime | PASS | Close/reopen destroyed document sentinel and prior process result; in-memory session/key references cannot survive that document |
+| Open/closed shadow roots | PASS | Both found, including one closed-shadow control through extension-only closed-root access |
+| Frames | PASS | Methods `top`, `same-origin`, `src-size-match`; two framed controls; zero `iframe-unmapped` regions |
+| Dynamic page | PASS | Modal transition `NEW_SCREEN / dialog-appeared`; id/class rerender retained fp and EID; identical Add ordinals 0/1/2 |
+| Hidden elements | PASS | All six hide reasons and off-screen case correct; covered button visible with hitOk=false |
+| Capture hygiene | PASS | Overlay restored; sampled screenshot border had no overlay green |
+| Capture burst | PASS | Four concurrent Observe requests completed |
+| Alignment 100%, 125%, 67% | PASS | Pixel colors matched at 1, 1, 2 visible calibration-square centers respectively |
+| Alignment after scroll, 100% | PASS | Center square matched |
 
-- [ ] `about:addons` → Aegis → Permissions shows **no** `<all_urls>` granted at install time
-      (only `http://localhost/*`, plus activeTab/scripting/storage).
-- [ ] The panel shows the note: "Aegis will ask for screen-capture access the first time you click
-      Observe."
-- [ ] Clicking **Observe** raises Firefox's permission prompt for access to all sites.
-- [ ] **Deny** it → the panel shows "Screen-capture access was denied (needed to observe …)".
-- [ ] Click **Observe** again and **Allow** → the observation completes.
-- [ ] Re-clicking Observe afterwards does **not** prompt again.
-- [ ] Verify `tabs.captureVisibleTab` works with this permission set. (On Chrome, a scoped
-      per-origin host permission is *not* sufficient for `captureVisibleTab` — only `<all_urls>`
-      or `activeTab` — which is why `requestSiteAccess()` requests `<all_urls>`. Confirm Firefox
-      behaves the same way, and note it here if it differs.)
-- [ ] `about:debugging` → Inspect the background script → confirm no `content_scripts` entry
-      exists in the manifest; the harvester is injected on demand via `scripting.executeScript`.
+Firefox capture requires **`activeTab` or `<all_urls>`**, not just a host permission for the current
+site, at the tested operating point. A toolbar click can confer activeTab; a sidebar Observe click
+alone is a different gesture, so the existing explicit optional `<all_urls>` request remains.
+See [MDN captureVisibleTab](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/tabs/captureVisibleTab),
+[closed-root access](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/dom/openOrClosedShadowRoot),
+and [geckodriver flags](https://firefox-source-docs.mozilla.org/testing/geckodriver/Flags.html).
 
-## 3. kyc.html — marks, roles, names (mirrors e2e/kyc.spec.ts)
+## Fixed during bring-up
 
-Open `http://localhost:5174/kyc.html`, then Observe.
+The click handler used to await `tabs.query` before calling `permissions.request`. Firefox lost the
+user gesture across that await and rejected the request. The handler now starts the permission
+request synchronously in the click and obtains tab context concurrently; there is no browser sniff.
 
-- [ ] The mark list contains `textbox "Full name"`, `textbox "Email address"`,
-      `textbox "Password"`, and `button "Submit verification"`.
-- [ ] **No raw value appears anywhere in the panel**: search the panel for `Asha Verma`,
-      `hunter22`, `2345 6789 0123` — none must appear.
-- [ ] There is **no** "Show values" toggle anywhere in the panel.
-- [ ] The screenshot renders in the panel with the mark overlay aligned to the real controls.
+## Remaining human checks
 
-## 4. calibration.html — alignment (mirrors e2e/calibration.spec.ts)
+All programmatically drivable Firefox checklist items above ran. A visual review of overlay edges,
+toolbar placement and permission wording is still useful: load
+`extension/.output/firefox-mv3/manifest.json` via `about:debugging#/runtime/this-firefox`, open
+`http://localhost:5174/kyc.html`, click the toolbar, click Observe, then review the list/screenshot.
+On `calibration.html`, compare overlay edges at 100%, 125%, 67% and after scrolling; automated tests
+sample centers and a border, not every pixel or subjective layout.
 
-Open `http://localhost:5174/calibration.html`, then Observe.
-
-- [ ] Each coloured square's overlay rectangle sits exactly on the square in the panel's
-      screenshot view, at **100%**, **125%** and **67%** zoom (Ctrl/Cmd + `+` / `-`).
-- [ ] Scroll halfway down and re-Observe: overlays still align.
-- [ ] If they drift, note the reported `scaleX`/`scaleY` vs `window.devicePixelRatio` — a
-      non-uniform scaleX vs scaleY means the capture and `window.innerHeight` disagree.
-
-## 5. shadow.html — shadow DOM (mirrors e2e/shadow.spec.ts)
-
-- [ ] The **open** shadow root's field ("Open-shadow name") appears in the mark list.
-- [ ] The **closed** shadow root's field ("Closed-shadow email") appears too. Firefox exposes
-      closed roots to extensions via `Element.openOrClosedShadowRoot`; if this field is missing,
-      that API is unavailable in this Firefox version — record the version here.
-
-## 6. frames.html — frame mapping (mirrors e2e/frames.spec.ts)
-
-- [ ] The **same-origin** iframe's "Framed name" field appears, and its overlay box is drawn over
-      the iframe (i.e. composed into top-level coordinates, not at the page origin).
-- [ ] The **cross-origin** iframe (port 5175) is either mapped, or reported as an
-      `iframe-unmapped` media region. Record which — this is the main Chrome/Firefox difference
-      worth documenting, since Chrome and Firefox resolve frame ids differently.
-
-## 7. dynamic.html — change detection and fingerprints (mirrors e2e/dynamic.spec.ts)
-
-- [ ] Dismiss the auto-opening modal, Observe (baseline), then click **Open modal again** and
-      Observe: the panel reports `NEW_SCREEN (dialog-appeared)`.
-- [ ] Click **Re-render form**, Observe: the "Re-rendered field" mark keeps the **same `fp`** as
-      before the re-render, despite its id and class changing.
-- [ ] The three "Add" buttons share one `fp` and carry ordinals `0`, `1`, `2`.
-
-## 8. hidden.html — visibility (mirrors e2e/hidden.spec.ts)
-
-- [ ] Every hidden field is still listed, flagged hidden, with the right reason:
-      `display-none`, `visibility-hidden`, `opacity-zero`, `aria-hidden`, `inert`, `zero-size`,
-      and off-screen as `outside-viewport` (or `clipped`).
-- [ ] The banner-covered "Click me" button is **visible** but reports `hitOk=false`.
-
-## 9. Overlay and capture hygiene (mirrors e2e/overlay-and-throttle.spec.ts)
-
-- [ ] After an observation, the debug overlay is drawn over the page.
-- [ ] Observe a second time: **the overlay does not appear in the captured screenshot** shown in
-      the panel (it is hidden for the capture, then restored).
-- [ ] The overlay is visible again on the page after the capture finishes.
-- [ ] Click Observe rapidly several times: every observation completes, none error out, and
-      Firefox does not complain about capture rate limits.
-
-## 10. Report
-
-Record the Firefox version, and for each unchecked box, what happened instead. Anything that
-differs from Chromium belongs in the Stage report's "Known issues" section.
+The **Chrome native permission bubble remains a user check**: load the unmodified
+`extension/.output/chrome-mv3` in `chrome://extensions`, open KYC, open Aegis, click Observe yourself
+and press Allow. Chromium Playwright uses a temporary test copy with the optional host permission
+pre-granted; it cannot certify that native bubble. This does not affect the real Firefox prompt test.

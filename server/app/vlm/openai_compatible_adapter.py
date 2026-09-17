@@ -1,14 +1,14 @@
 """Adapter for an open-weight VLM served behind an OpenAI-compatible API (vLLM).
 
 TODO(stage-3): implement — static prompt prefix for KV-cache reuse, JSON-schema-constrained
-output against plan.v1.schema.json, batched plans with fingerprints + expect. See
+output against plan.v2.schema.json, batched plans with fingerprints + expect. See
 docs/architecture.md layer 6.
 """
 
 from __future__ import annotations
 
-from app.schemas.payload import PayloadV1
-from app.schemas.plan import PlanV1
+from app.schemas.payload import PayloadV2
+from app.schemas.plan import PlanV2
 
 
 class OpenAICompatibleAdapter:
@@ -16,7 +16,7 @@ class OpenAICompatibleAdapter:
         self.base_url = base_url
         self.model = model
 
-    async def plan(self, payload: PayloadV1) -> PlanV1:
+    async def plan(self, payload: PayloadV2) -> PlanV2:
         raise NotImplementedError(
             "OpenAICompatibleAdapter lands in Stage 3 — see AGENTS.md and docs/STAGES.md"
         )

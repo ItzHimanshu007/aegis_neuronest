@@ -91,21 +91,33 @@ export default function App() {
     };
   }, []);
 
+  /** Capture transport has no independent numbering. Only the session registry issues EIDs. */
+  const identifyObservation = async (result: ObserveResult) => {
+    sessionRef.current!.registry.reconcile(result.observation);
+    await browser.tabs.sendMessage(result.tabId, { type: 'RENDER_OVERLAY', data: {
+      elements: result.observation.elements.map(({ eid, bbox, visible, hitOk }) => ({ eid, bbox, visible, hitOk })),
+      media: result.observation.media,
+    } }, { frameId: 0 }).catch(() => { /* Debug overlay failure cannot affect privacy capture. */ });
+  };
+
   // F2: requestSiteAccess must be called synchronously from this click handler's own gesture —
   // see shared/permissions.ts's docblock. No `await` happens before the permissions.request call.
   const handleObserve = async () => {
     setObserveError(null);
     setObserving(true);
     try {
-      const [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
+      const [access, [activeTab]] = await Promise.all([
+        requestSiteAccess(),
+        browser.tabs.query({ active: true, currentWindow: true }),
+      ]);
       if (!activeTab?.id || !activeTab.url) throw new Error('No active tab (or its URL is not visible yet — click the Aegis toolbar icon once on this tab first)');
 
-      const access = await requestSiteAccess(activeTab.url);
       if (!access.granted) {
-        throw new Error(`Screen-capture access was denied (needed to observe ${access.origin}). Click Observe again and choose Allow to continue.`);
+        throw new Error(`Screen-capture access was denied (needed to observe ${new URL(activeTab.url).origin}). Click Observe again and choose Allow to continue.`);
       }
 
       const result = await sendMessage('OBSERVE', { tabId: activeTab.id });
+      await identifyObservation(result);
       setObserveResult(result);
       // Test-only hook for Playwright e2e (e2e/calibration.spec.ts etc.) to read the full,
       // already-rendered-to-the-DOM ObserveResult without needing to scrape/reconstruct it from
@@ -128,13 +140,16 @@ export default function App() {
     setSanitizing(true);
     setSendState(null);
     try {
-      const [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
+      const [access, [activeTab]] = await Promise.all([
+        requestSiteAccess(),
+        browser.tabs.query({ active: true, currentWindow: true }),
+      ]);
       if (!activeTab?.id || !activeTab.url) throw new Error('No active tab (click the Aegis toolbar icon once on this tab first)');
 
-      const access = await requestSiteAccess(activeTab.url);
-      if (!access.granted) throw new Error(`Screen-capture access was denied (needed to observe ${access.origin}).`);
+      if (!access.granted) throw new Error(`Screen-capture access was denied (needed to observe ${new URL(activeTab.url).origin}).`);
 
       const observeResponse = await sendMessage('OBSERVE', { tabId: activeTab.id });
+      await identifyObservation(observeResponse);
       setObserveResult(observeResponse);
       (window as unknown as { __aegisLastObserveResult?: ObserveResult }).__aegisLastObserveResult = observeResponse;
 
@@ -149,6 +164,7 @@ export default function App() {
         mode,
         session,
         stateToken: observeResponse.stateToken,
+        screen: observeResponse.change,
         requestSpanRects: async (request) => {
           const envelope = (await browser.tabs.sendMessage(observeResponse.tabId, { type: 'SPAN_RECTS', data: request }, { frameId: 0 })) as
             | { ok: true; response: { stale: boolean; results?: Array<{ blockRef: string; rects: Array<{ x: number; y: number; width: number; height: number }>; notFound?: boolean }> } }
@@ -313,8 +329,8 @@ function ObservationView({
       {/* Values are never rendered here — only structural fields (AGENTS.md invariant 1 / Part E: no "Show values" toggle exists). */}
       <div className="marks-list">
         {observation.elements.map((el) => (
-          <div key={`${el.mark_id}`} className="mark-row">
-            #{el.mark_id} <b>{el.role}</b> "{el.name || el.labelText || '(no name)'}" {el.visible ? '' : `hidden(${el.visibilityReason})`}{' '}
+          <div key={`${el.eid}`} className="mark-row">
+            {el.eid} <b>{el.role}</b> "{el.name || el.labelText || '(no name)'}" {el.visible ? '' : `hidden(${el.visibilityReason})`}{' '}
             {el.hitOk === false ? 'hitOk=false' : ''} fp={el.fp}
             {el.fpOrdinal > 0 ? `#${el.fpOrdinal}` : ''}
           </div>
@@ -329,7 +345,7 @@ function MarkOverlay({ elements, scaleX, scaleY }: { elements: RawElement[]; sca
     <>
       {elements.map((el) => (
         <div
-          key={el.mark_id}
+          key={el.eid}
           className={`overlay-mark ${el.visible ? '' : 'overlay-mark-hidden'} ${el.hitOk === false ? 'overlay-mark-blocked' : ''}`}
           style={{
             left: el.bbox.x * scaleX,
@@ -338,7 +354,7 @@ function MarkOverlay({ elements, scaleX, scaleY }: { elements: RawElement[]; sca
             height: el.bbox.height * scaleY,
           }}
         >
-          <span>{el.mark_id}</span>
+          <span>{el.eid}</span>
         </div>
       ))}
     </>

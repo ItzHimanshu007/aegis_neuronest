@@ -15,7 +15,7 @@ import type { Detection } from './types';
 
 export const GENERIC_PRIVACY_ATTRS = new Set(['data-private', 'data-pii', 'data-hj-suppress', 'data-clarity-mask', 'rr-mask', 'rr-block', 'sentry-mask']);
 
-export function detectFromTags(el: RawElement, captureId: string, idFor: (suffix: string) => string): Detection[] {
+export function detectFromTags(el: RawElement, captureId: string, idFor: (suffix: string) => string, eid: import('../../scene/registry').EID): Detection[] {
   const detections: Detection[] = [];
   const rects = [el.bbox];
 
@@ -26,7 +26,7 @@ export function detectFromTags(el: RawElement, captureId: string, idFor: (suffix
       source: 'tag',
       category: 'PASSWORD',
       confidence: 1,
-      target: { kind: 'element', ref: el.fp },
+      target: { kind: 'element', ref: eid },
       rects,
     });
     return detections; // password is unambiguous; no need to also emit the generic marker
@@ -39,7 +39,7 @@ export function detectFromTags(el: RawElement, captureId: string, idFor: (suffix
       source: 'tag',
       category: 'PRIVATE_GENERIC',
       confidence: 0.5,
-      target: { kind: 'element', ref: el.fp },
+      target: { kind: 'element', ref: eid },
       rects,
     });
   }

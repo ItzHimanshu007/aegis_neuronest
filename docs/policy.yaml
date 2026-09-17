@@ -41,7 +41,7 @@
 # LOCKED CLASSES (see `locked` below) can never be downgraded by a user setting. A user may make
 # the policy stricter, never looser, for those classes.
 
-version: 2
+version: 3
 
 # Classes whose actions user settings can never downgrade.
 locked:
@@ -66,6 +66,11 @@ identity_categories:
   - DOB
   - ADDRESS
   - FACE
+  - VOTER_ID
+  - PASSPORT
+  - DRIVING_LICENCE
+  - ABHA
+  - UAN
 
 classes:
   never_automated:
@@ -92,7 +97,7 @@ classes:
     description: >-
       Strong government or financial identifiers. Usable for fraud on their own, so re-hydration
       requires explicit upfront approval scoped to the origin.
-    categories: [AADHAAR, PAN, CARD_NUMBER, BANK_ACCOUNT, UPI_ID]
+    categories: [AADHAAR, PAN, CARD_NUMBER, BANK_ACCOUNT, UPI_ID, VOTER_ID, PASSPORT, DRIVING_LICENCE, ABHA, UAN]
     needed: TOKEN_WITH_APPROVAL
     not_needed: FILL
 
@@ -125,13 +130,14 @@ classes:
   quasi:
     description: >-
       Not identifying alone, identifying in combination. Tokenized only once an identity category
-      has been seen on this origin during this task (see identity_categories); otherwise sent
-      as-is, because a bare city or date carries no linkage on its own.
-    categories: [CITY, PIN_CODE, EMPLOYER, DATE, ORDER_ID, IFSC]
+      has been seen on this origin during this task (see identity_categories), or at least
+      LINKABILITY_QUASI_K distinct quasi categories have accumulated there. Previously vaulted
+      values remain protected even when a later view omits their labels.
+    categories: [CITY, PIN_CODE, EMPLOYER, DATE, ORDER_ID, IFSC, TRACKING_ID]
     needed: TOKEN_IF_IDENTITY_PRESENT
     not_needed: TOKEN_IF_IDENTITY_PRESENT
     conditional:
-      when: identity_seen_on_origin
+      when: identity_seen_on_origin_or_quasi_threshold
       then: TOKEN
       else: ALLOW
 
@@ -140,3 +146,11 @@ classes:
     categories: []
     needed: ALLOW
     not_needed: ALLOW
+
+# Generated authority defaults. Consent wiring is Stage 3.
+authority:
+  commit_words: [submit, pay, pay now, place order, confirm, send, delete, remove, transfer, apply, book, register, sign up, upload, proceed to pay, checkout, जमा करें, भुगतान करें, भेजें, हटाएं, पुष्टि करें, आवेदन करें, पंजीकरण करें]
+  ambiguous_form_button_level: L5
+  password_requires_user: true
+  cross_origin_requires_user: true
+  commit_requires_user: true

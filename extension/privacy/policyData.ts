@@ -5,7 +5,38 @@
 
 import type { Action, Category, PolicyClass } from './categoryTypes';
 
-export const POLICY_VERSION = 2;
+export const POLICY_VERSION = 3;
+export const AUTHORITY_DEFAULTS = {
+    "commit_words": [
+      "submit",
+      "pay",
+      "pay now",
+      "place order",
+      "confirm",
+      "send",
+      "delete",
+      "remove",
+      "transfer",
+      "apply",
+      "book",
+      "register",
+      "sign up",
+      "upload",
+      "proceed to pay",
+      "checkout",
+      "जमा करें",
+      "भुगतान करें",
+      "भेजें",
+      "हटाएं",
+      "पुष्टि करें",
+      "आवेदन करें",
+      "पंजीकरण करें"
+    ],
+    "ambiguous_form_button_level": "L5",
+    "password_requires_user": true,
+    "cross_origin_requires_user": true,
+    "commit_requires_user": true
+  } as const;
 
 export const LOCKED_CLASSES: PolicyClass[] = [
     "never_automated",
@@ -26,7 +57,12 @@ export const IDENTITY_CATEGORIES: Category[] = [
     "UPI_ID",
     "DOB",
     "ADDRESS",
-    "FACE"
+    "FACE",
+    "VOTER_ID",
+    "PASSPORT",
+    "DRIVING_LICENCE",
+    "ABHA",
+    "UAN"
   ] as Category[];
 
 export interface PolicyClassData {
@@ -66,7 +102,12 @@ export const POLICY_CLASSES: Record<PolicyClass, PolicyClassData> = {
     "PAN",
     "CARD_NUMBER",
     "BANK_ACCOUNT",
-    "UPI_ID"
+    "UPI_ID",
+    "VOTER_ID",
+    "PASSPORT",
+    "DRIVING_LICENCE",
+    "ABHA",
+    "UAN"
   ] as Category[],
     needed: "TOKEN_WITH_APPROVAL" as Action | 'TOKEN_IF_IDENTITY_PRESENT',
     not_needed: "FILL" as Action | 'TOKEN_IF_IDENTITY_PRESENT',
@@ -113,18 +154,19 @@ export const POLICY_CLASSES: Record<PolicyClass, PolicyClassData> = {
     conditional: undefined,
   },
   quasi: {
-    description: "Not identifying alone, identifying in combination. Tokenized only once an identity category has been seen on this origin during this task (see identity_categories); otherwise sent as-is, because a bare city or date carries no linkage on its own.",
+    description: "Not identifying alone, identifying in combination. Tokenized only once an identity category has been seen on this origin during this task (see identity_categories), or at least LINKABILITY_QUASI_K distinct quasi categories have accumulated there. Previously vaulted values remain protected even when a later view omits their labels.",
     categories: [
     "CITY",
     "PIN_CODE",
     "EMPLOYER",
     "DATE",
     "ORDER_ID",
-    "IFSC"
+    "IFSC",
+    "TRACKING_ID"
   ] as Category[],
     needed: "TOKEN_IF_IDENTITY_PRESENT" as Action | 'TOKEN_IF_IDENTITY_PRESENT',
     not_needed: "TOKEN_IF_IDENTITY_PRESENT" as Action | 'TOKEN_IF_IDENTITY_PRESENT',
-    conditional: { when: "identity_seen_on_origin", then: "TOKEN", else: "ALLOW" },
+    conditional: { when: "identity_seen_on_origin_or_quasi_threshold", then: "TOKEN", else: "ALLOW" },
   },
   non_pii: {
     description: "Everything else.",
@@ -148,6 +190,11 @@ export const CATEGORY_TO_CLASS: Partial<Record<Category, PolicyClass>> = {
     "CARD_NUMBER": "high",
     "BANK_ACCOUNT": "high",
     "UPI_ID": "high",
+    "VOTER_ID": "high",
+    "PASSPORT": "high",
+    "DRIVING_LICENCE": "high",
+    "ABHA": "high",
+    "UAN": "high",
     "NAME": "medium",
     "PHONE": "medium",
     "EMAIL": "medium",
@@ -169,5 +216,6 @@ export const CATEGORY_TO_CLASS: Partial<Record<Category, PolicyClass>> = {
     "EMPLOYER": "quasi",
     "DATE": "quasi",
     "ORDER_ID": "quasi",
-    "IFSC": "quasi"
+    "IFSC": "quasi",
+    "TRACKING_ID": "quasi"
   } as Partial<Record<Category, PolicyClass>>;

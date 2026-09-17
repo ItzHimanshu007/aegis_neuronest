@@ -13,6 +13,7 @@
  * value) — callers should call `getElementFieldContext` regardless of `hasValue`.
  */
 
+import { categoryFromAutocomplete } from './autocomplete';
 import { matchLabelCategories } from './labels';
 import type { Category } from '../categoryTypes';
 import type { CssRect, RawElement, RawTextBlock } from '../../observe/types';
@@ -21,15 +22,17 @@ import { AEGIS_CONFIG } from '../../shared/config';
 /** Element label/name/id-based context. Tries the accessible name first (usually the richest
  * signal), then the explicit label text, then the `name`/`id` attributes as a last resort (sites
  * that skip visible labels but keep semantic `name="email"` attributes). */
-export function getElementFieldContext(el: Pick<RawElement, 'name' | 'labelText' | 'nameAttr' | 'inputType'>): Category | undefined {
+export function getElementFieldContext(el: Pick<RawElement, 'name' | 'labelText' | 'nameAttr' | 'inputType' | 'autocomplete'>): Category | undefined {
   if (el.inputType === 'password') return 'PASSWORD';
+  const ac = categoryFromAutocomplete(el.autocomplete);
+  if (ac === 'PIN_CODE') return ac;
 
   const sources = [el.name, el.labelText, el.nameAttr].filter((s): s is string => Boolean(s));
   for (const source of sources) {
     const matches = matchLabelCategories(source);
     if (matches.length > 0) return matches[0];
   }
-  return undefined;
+  return ac;
 }
 
 const KEY_VALUE_PATTERN = /^([^:：]{2,40})[:：]\s*(.+)$/;

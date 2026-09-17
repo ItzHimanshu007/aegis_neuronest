@@ -11,7 +11,7 @@ function makeDraft(): DraftPayload {
   return {
     session: 'sess-1',
     capture_id: 'cap-1',
-    schema: 'aegis/1',
+    schema: 'aegis/2', state_token: 'Sabcdefghij',
     mode: 'balanced',
     task: 'Do the thing',
     page: { url: 'https://example.test/', title: 'Example' },

@@ -299,7 +299,7 @@ export default defineBackground(() => {
         usedHelloFrameIds.add(match.frameId);
         try {
           const subtree = await sendToFrame<{
-            elements: RawElement[] | Omit<RawElement, 'mark_id' | 'fpOrdinal'>[];
+            elements: RawElement[] | Omit<RawElement, 'eid' | 'fpOrdinal'>[];
             media: FrameComposeInput['media'];
             textBlocks: FrameComposeInput['textBlocks'];
           }>(tabId, { type: 'HARVEST_SUBTREE', data: { salt } }, match.frameId);
@@ -310,7 +310,7 @@ export default defineBackground(() => {
           resultInputs.push({
             frameId: syntheticId,
             offsetChain: [{ x: media.bbox.x, y: media.bbox.y, scale: 1 }, ...input.offsetChain],
-            elements: subtree.elements as Omit<RawElement, 'mark_id' | 'fpOrdinal'>[],
+            elements: subtree.elements as Omit<RawElement, 'eid' | 'fpOrdinal'>[],
             media: subtree.media,
             textBlocks: subtree.textBlocks,
           });

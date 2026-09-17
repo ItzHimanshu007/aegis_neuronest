@@ -7,7 +7,7 @@
 import type { Observation } from '../../observe/types';
 import type { Detection } from './types';
 
-// TODO(stage-6): classify visual regions (face/ID document/card/signature/QR) from the local
+// TODO(stage-5): classify visual regions (face/ID document/card/signature/QR) from the local
 // vision model's output and turn matches into Detections targeting `visual_regions[]` entries.
 export function visualDetect(_observation: Observation, _captureId: string): Detection[] {
   return [];
@@ -19,7 +19,7 @@ export function nerDetect(_observation: Observation, _captureId: string): Detect
   return [];
 }
 
-// TODO(stage-7): OCR spans inside detector-only image regions (Stage 1/6's unified detector marks
+// TODO(stage-6): OCR spans inside detector-only image regions (Stage 1/6's unified detector marks
 // a region as text-bearing but DOM has nothing there — e.g. a canvas-rendered form).
 export function ocrDetect(_observation: Observation, _captureId: string): Detection[] {
   return [];

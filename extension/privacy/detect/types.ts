@@ -8,13 +8,13 @@
 import type { LocalOnly } from '../../observe/types';
 import type { Category } from '../categoryTypes';
 
-export type DetectionSource = 'tag' | 'autocomplete' | 'rule' | 'field_context' | 'unscanned' | 'visual' | 'ner' | 'ocr';
+export type DetectionSource = 'tag' | 'autocomplete' | 'rule' | 'field_context' | 'unscanned' | 'vault' | 'visual' | 'ner' | 'ocr';
 
 export type DetectionTargetKind = 'element' | 'text_span' | 'media' | 'side_channel' | 'task';
 
 export interface DetectionTarget {
   kind: DetectionTargetKind;
-  /** Meaning depends on `kind`: element `fp`, text block `blockRef`, media `rid`,
+  /** Meaning depends on `kind`: element `eid`, text block `blockRef`, media `rid`,
    * side_channel `'url' | 'title'`, or `'task'` itself. */
   ref: string;
 }
@@ -40,6 +40,7 @@ export interface Detection {
   /** 0..1. Rule hits with a checksum start high (0.9+); context-only rules and bare field-context
    * matches start lower; merging multiple sources for the same target raises confidence. */
   confidence: number;
+  fill?: import('./fillState').FillState;
   target: DetectionTarget;
   span?: DetectionSpan;
   /** LocalOnly, never serialized — see privacy/firewall.ts for the one place anything derived

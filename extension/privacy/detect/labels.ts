@@ -28,9 +28,10 @@ export const LABEL_DICTIONARY: LabelEntry[] = [
   { category: 'DOB', phrases: ['date of birth', 'dob', 'birth date', 'जन्म तिथि'] },
   { category: 'ADDRESS', phrases: ['address', 'street address', 'पता'] },
   { category: 'CITY', phrases: ['city', 'town', 'शहर'] },
-  { category: 'PIN_CODE', phrases: ['pin code', 'pincode', 'postal code', 'zip code', 'पिन कोड'] },
+  { category: 'PIN_CODE', phrases: ['pin code', 'pincode', 'postal pin', 'postal code', 'zip code', 'पिन कोड'] },
   { category: 'AADHAAR', phrases: ['aadhaar', 'aadhar', 'आधार'] },
   { category: 'PAN', phrases: ['pan', 'pan number', 'permanent account number'] },
+  { category: 'CARD_NUMBER', phrases: ['card number', 'credit card', 'debit card', 'कार्ड नंबर'] },
   { category: 'BANK_ACCOUNT', phrases: ['account number', 'bank account', 'खाता संख्या'] },
   { category: 'IFSC', phrases: ['ifsc', 'ifsc code'] },
   { category: 'UPI_ID', phrases: ['upi id', 'upi', 'vpa'] },
@@ -39,17 +40,24 @@ export const LABEL_DICTIONARY: LabelEntry[] = [
   { category: 'OTP', phrases: ['otp', 'one time password', 'one-time password', 'verification code'] },
   { category: 'CVV', phrases: ['cvv', 'cvc', 'card verification value', 'security code'] },
   { category: 'UPI_PIN', phrases: ['upi pin', 'mpin', 'm-pin'] },
+  { category: 'VOTER_ID', phrases: ['voter id', 'epic', 'मतदाता पहचान पत्र'] },
+  { category: 'PASSPORT', phrases: ['passport', 'पासपोर्ट'] },
+  { category: 'DRIVING_LICENCE', phrases: ['driving licence', 'driving license', 'ड्राइविंग लाइसेंस'] },
+  { category: 'ABHA', phrases: ['abha', 'ayushman bharat health account', 'आभा', 'आयुष्मान भारत स्वास्थ्य खाता'] },
+  { category: 'UAN', phrases: ['uan', 'universal account number', 'यूनिवर्सल खाता संख्या', 'यू ए एन'] },
+  { category: 'TRACKING_ID', phrases: ['tracking id', 'tracking number', 'awb', 'consignment', 'खेप संख्या'] },
+  { category: 'PRIVATE_GENERIC', phrases: ['gift message', 'personal note', 'निजी संदेश'] },
   { category: 'PASSWORD', phrases: ['password', 'पासवर्ड'] },
   { category: 'HEALTH', phrases: ['blood group', 'diagnosis', 'medical condition', 'health condition'] },
   { category: 'VEHICLE_REG', phrases: ['vehicle number', 'registration number', 'vehicle reg'] },
   { category: 'ORDER_ID', phrases: ['order id', 'order number', 'order no'] },
-  { category: 'SECRET', phrases: ['api key', 'secret key', 'access token', 'auth token', 'token', 'secret'] },
+  { category: 'SECRET', phrases: ['api key', 'secret key', 'access token', 'auth token', 'token', 'secret', 'pin', 'atm pin', 'card pin', 'security pin', 'digit pin', 'पिन'] },
 ];
 
 /** Whole-word-boundary categories that MUST NOT partial-match inside a longer word (Stage 2 Part
  * A1 needs this to be conservative: catching "otp" inside an unrelated word would over-trigger
  * the never-read-value guard). */
-const SECRET_CATEGORIES: Category[] = ['OTP', 'CVV', 'UPI_PIN'];
+const SECRET_CATEGORIES: Category[] = ['PASSWORD', 'OTP', 'CVV', 'UPI_PIN', 'SECRET'];
 
 export function normalizeLabel(raw: string): string {
   return raw
@@ -73,22 +81,27 @@ function containsPhrase(normalized: string, phrase: string): boolean {
 }
 
 /** Finds every category whose dictionary phrase appears in `label`. Returns categories in
- * dictionary declaration order (most-specific-first is the caller's job if it matters). */
+ * descending specificity order; explicit overrides break equal-length ties. */
 export function matchLabelCategories(label: string): Category[] {
   const normalized = normalizeLabel(label);
   if (!normalized) return [];
-  const found: Category[] = [];
-  for (const entry of LABEL_DICTIONARY) {
-    if (entry.phrases.some((phrase) => containsPhrase(normalized, phrase))) {
-      found.push(entry.category);
-    }
-  }
-  return found;
+  const hits = LABEL_DICTIONARY.flatMap(entry => entry.phrases
+    .filter(phrase => containsPhrase(normalized, phrase))
+    .map(phrase => ({ category: entry.category, length: normalizeLabel(phrase).length })));
+  const overrides = Object.entries(LABEL_OVERRIDES).filter(([phrase]) => containsPhrase(normalized, phrase))
+    .map(([phrase, category]) => ({ category, length: normalizeLabel(phrase).length }));
+  hits.unshift(...overrides);
+  hits.sort((a, b) => b.length - a.length);
+  return [...new Set(hits.map(hit => hit.category))];
 }
 
 /** True if `label` matches OTP, CVV or UPI_PIN — the categories whose raw value the harvester
  * must never read in the first place (Stage 2 Part A1). */
-export function isSecretLabel(label: string): boolean {
-  const categories = matchLabelCategories(label);
-  return categories.some((c) => SECRET_CATEGORIES.includes(c));
+export function isSecretLabel(label: string, autocomplete?: string): boolean {
+  if (autocomplete?.toLowerCase().split(/\s+/).includes('postal-code')) return false;
+  const category = matchLabelCategories(label)[0];
+  return category !== undefined && SECRET_CATEGORIES.includes(category);
 }
+
+/** Explicit specificity overrides documented for reviewers and table tests. */
+export const LABEL_OVERRIDES = { 'company name': 'EMPLOYER', 'pin code': 'PIN_CODE', 'security code': 'CVV' } as const;

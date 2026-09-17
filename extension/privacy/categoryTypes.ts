@@ -18,6 +18,11 @@ export type Category =
   | 'CARD_NUMBER'
   | 'BANK_ACCOUNT'
   | 'UPI_ID'
+  | 'VOTER_ID'
+  | 'PASSPORT'
+  | 'DRIVING_LICENCE'
+  | 'ABHA'
+  | 'UAN'
   // medium
   | 'NAME'
   | 'PHONE'
@@ -43,7 +48,8 @@ export type Category =
   | 'EMPLOYER'
   | 'DATE'
   | 'ORDER_ID'
-  | 'IFSC';
+  | 'IFSC'
+  | 'TRACKING_ID';
 
 export const ALL_CATEGORIES: Category[] = [
   'OTP',
@@ -56,6 +62,11 @@ export const ALL_CATEGORIES: Category[] = [
   'CARD_NUMBER',
   'BANK_ACCOUNT',
   'UPI_ID',
+  'VOTER_ID',
+  'PASSPORT',
+  'DRIVING_LICENCE',
+  'ABHA',
+  'UAN',
   'NAME',
   'PHONE',
   'EMAIL',
@@ -78,6 +89,7 @@ export const ALL_CATEGORIES: Category[] = [
   'DATE',
   'ORDER_ID',
   'IFSC',
+  'TRACKING_ID',
 ];
 
 export type PolicyClass = 'never_automated' | 'credential' | 'high' | 'medium' | 'biometric' | 'documents' | 'quasi' | 'non_pii';
@@ -91,3 +103,5 @@ export type Action =
   | 'BLUR'
   | 'USER_ENTERS'
   | 'USER_PROVIDED_ORIGIN_BOUND';
+
+export const ALL_ACTIONS: readonly Action[] = ['ALLOW', 'TOKEN', 'TOKEN_WITH_APPROVAL', 'FILL', 'FILL_REGION', 'BLUR', 'USER_ENTERS', 'USER_PROVIDED_ORIGIN_BOUND'];

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { load as loadYaml } from 'js-yaml';
-import { CATEGORY_TO_CLASS, IDENTITY_CATEGORIES, LOCKED_CLASSES, POLICY_CLASSES, POLICY_VERSION } from '../policyData';
+import { AUTHORITY_DEFAULTS, CATEGORY_TO_CLASS, IDENTITY_CATEGORIES, LOCKED_CLASSES, POLICY_CLASSES, POLICY_VERSION } from '../policyData';
 import { ALL_CATEGORIES } from '../categoryTypes';
 
 interface YamlPolicyClass {
@@ -14,6 +14,7 @@ interface YamlPolicyClass {
 }
 
 interface YamlPolicy {
+  authority: typeof AUTHORITY_DEFAULTS;
   version: number;
   locked: string[];
   identity_categories: string[];
@@ -85,4 +86,9 @@ describe('policyData.ts matches docs/policy.yaml (the single source of truth)', 
       }
     }
   });
+});
+
+it('authority defaults match YAML and preserve mandatory consent', () => {
+  expect(AUTHORITY_DEFAULTS).toEqual(yamlDoc.authority);
+  expect(AUTHORITY_DEFAULTS).toMatchObject({commit_requires_user:true,password_requires_user:true,cross_origin_requires_user:true,ambiguous_form_button_level:'L5'});
 });

@@ -1,3 +1,4 @@
+import type { OutboundDraft, EID, StateTokenId } from '../scene';
 /**
  * Payload builder (Stage 2 Part F.4). Assembles a `DraftPayload` — the shape `firewall.seal()`
  * validates and turns into a `SanitizedPayload`.
@@ -9,8 +10,7 @@
 
 import { AEGIS_CONFIG } from '../shared/config';
 import type { Action, Category } from './categoryTypes';
-import type { RedactedImage } from './redactor';
-import type { Observation, RawElement } from '../observe/types';
+import type { RawElement } from '../observe/types';
 
 export type Mode = 'fast' | 'balanced' | 'accurate';
 
@@ -30,26 +30,8 @@ export interface SanitizedTextBlock {
   bbox: [number, number, number, number];
 }
 
-export interface BuildPayloadInput {
-  observation: Observation;
-  /** Sanitized task text (already tokenized/neutralized by sideChannels). */
-  task: string;
-  /** Sanitized page url/title. */
-  url: string;
-  title: string;
-  mode: Mode;
-  session: string;
-  image?: RedactedImage;
-  /** Per-element decisions, keyed by `fp`. */
-  elementDecisions: Map<string, ElementDecision>;
-  /** Already-sanitized text blocks. */
-  texts: SanitizedTextBlock[];
-  /** Redaction manifest entries derived from the applied masks. */
-  redactions: DraftRedaction[];
-  visualRegions: DraftVisualRegion[];
-}
-
 export interface DraftRedaction {
+  eid?: EID;
   rid: string;
   kind: 'FILL' | 'LABELLED_FILL' | 'BLUR' | 'FILL_REGION';
   type: string;
@@ -66,7 +48,7 @@ export interface DraftVisualRegion {
 }
 
 export interface DraftElement {
-  mark_id: number;
+  eid: EID;
   fp: string;
   role: string;
   label: string;
@@ -83,7 +65,9 @@ export interface DraftElement {
 export interface DraftPayload {
   session: string;
   capture_id: string;
-  schema: 'aegis/1';
+  schema: 'aegis/2';
+  state_token: StateTokenId;
+  field_hints?: Array<{ eid: EID; category: Category; fill: 'empty' }>;
   mode: Mode;
   task: string;
   page: { url: string; title: string; type?: string };
@@ -92,15 +76,6 @@ export interface DraftPayload {
   texts?: SanitizedTextBlock[];
   redactions: DraftRedaction[];
   image?: string;
-}
-
-/** Categories whose fields must never carry a length bucket — Stage 2 Part A1/F.3. The schema can
- * only enforce this for `input_type === 'password'` (OTP/CVV are detected by label, which the
- * schema can't see), so the builder enforces the full rule. */
-const NO_LENGTH_BUCKET_CATEGORIES: Category[] = ['PASSWORD', 'OTP', 'CVV', 'UPI_PIN'];
-
-function toIntRect(rect: { x: number; y: number; width: number; height: number }): [number, number, number, number] {
-  return [Math.round(rect.x), Math.round(rect.y), Math.round(rect.width), Math.round(rect.height)];
 }
 
 /** Coarse page classification (Stage 2 Part F.4): a password field means a login screen; three or
@@ -118,66 +93,9 @@ export function classifyPageType(elements: RawElement[], categoryOf: (el: RawEle
   return identityFieldCount >= 3 ? 'form' : undefined;
 }
 
-export function buildPayload(input: BuildPayloadInput): DraftPayload {
-  const { observation } = input;
-
-  const elements: DraftElement[] = [];
-  for (const el of observation.elements) {
-    // Visible elements, plus hidden interactive ones (role + label only, so the planner can see
-    // that something interactive is there without it being treated as actionable).
-    if (!el.visible && !el.hiddenInteractive) continue;
-
-    const decision = input.elementDecisions.get(el.fp);
-    const category = decision?.category;
-    const suppressBucket = category !== undefined && NO_LENGTH_BUCKET_CATEGORIES.includes(category);
-    const isPasswordField = el.inputType === 'password';
-
-    const draft: DraftElement = {
-      mark_id: el.mark_id,
-      fp: el.fp,
-      role: el.role,
-      label: el.name || el.labelText,
-      bbox: toIntRect(el.bbox),
-      visible: el.visible,
-      enabled: !el.states.disabled,
-    };
-
-    if (el.inputType) draft.input_type = el.inputType;
-    if (el.hiddenInteractive) draft.hidden_interactive = true;
-
-    if (el.visible) {
-      draft.has_value = el.hasValue;
-      if (!suppressBucket && !isPasswordField && el.valueLenBucket) {
-        draft.value_len_bucket = el.valueLenBucket;
-      }
-      if (decision?.valueToken) draft.value_token = decision.valueToken;
-    }
-
-    elements.push(draft);
-  }
-
-  const payload: DraftPayload = {
-    session: input.session,
-    capture_id: observation.capture_id,
-    schema: 'aegis/1',
-    mode: input.mode,
-    task: input.task,
-    page: { url: input.url, title: input.title },
-    elements,
-    redactions: input.redactions,
-  };
-
-  const pageType = classifyPageType(observation.elements, (el) => input.elementDecisions.get(el.fp)?.category);
-  if (pageType) payload.page.type = pageType;
-
-  if (input.visualRegions.length > 0) payload.visual_regions = input.visualRegions;
-
-  if (input.texts.length > 0) {
-    payload.texts = capTextBudget(input.texts, AEGIS_CONFIG.TEXT_BUDGET_CHARS);
-  }
-
-  if (input.image) payload.image = input.image.dataUrl;
-
+export function buildPayload(input: OutboundDraft): DraftPayload {
+  const payload = structuredClone(input.payload);
+  if (payload.texts) payload.texts = capTextBudget(payload.texts, AEGIS_CONFIG.TEXT_BUDGET_CHARS);
   return payload;
 }
 

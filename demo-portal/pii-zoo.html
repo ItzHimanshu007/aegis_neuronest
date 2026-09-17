@@ -40,8 +40,8 @@
           <li>Aadhaar (valid, unspaced): <span data-gt="AADHAAR">345678901238</span></li>
           <li>Aadhaar (masked): <span data-gt="AADHAAR">XXXX XXXX 0124</span></li>
           <li>PAN: <span data-gt="PAN">ABCPE1234F</span></li>
-          <li>Card (Luhn-valid Visa test PAN): <span data-gt="CARD_NUMBER">4111 1111 1111 1111</span></li>
-          <li>Card (Luhn-valid Mastercard test PAN): <span data-gt="CARD_NUMBER">5555555555554444</span></li>
+          <li>Card number (synthetic Visa): <span data-gt="CARD_NUMBER">4111 1111 1111 1111</span></li>
+          <li>Card number (synthetic Mastercard): <span data-gt="CARD_NUMBER">5555555555554444</span></li>
           <li>Email: <span data-gt="EMAIL">asha.verma@example.com</span></li>
           <li>UPI ID (known PSP): <span data-gt="UPI_ID">asha@oksbi</span></li>
           <li>Phone: <span data-gt="PHONE">+91 98765 43210</span></li>
@@ -53,22 +53,71 @@
         </ul>
       </section>
 
-      <!-- ============ Near-miss negatives ============ -->
-      <section class="negatives">
-        <h2>Near-miss negatives (must NOT be detected)</h2>
-        <ul class="negatives">
-          <li>Aadhaar-shaped but checksum-invalid: <span data-gt="NONE">2345 6789 0128</span></li>
-          <li>Aadhaar-shaped but starts with 1: <span data-gt="NONE">1345 6789 0124</span></li>
-          <li>PAN-shaped with an invalid 4th char: <span data-gt="NONE">ABCXE1234F</span></li>
-          <li>Card-shaped but Luhn-invalid: <span data-gt="NONE">4111 1111 1111 1112</span></li>
-          <li>Luhn-valid but no card IIN: <span data-gt="NONE">1234567890123452</span></li>
-          <li>Email vs UPI: <span data-gt="EMAIL">user@oksbi.example.com</span> is an email, not a UPI id</li>
-          <li>IFSC-shaped without the literal 0: <span data-gt="NONE">HDFC1001234</span></li>
-          <li>Phone-shaped starting with 5: <span data-gt="NONE">5876543210</span></li>
-          <li>Price: <span data-gt="NONE">2026</span> / <span data-gt="NONE">v2.14.3</span> / <span data-gt="NONE">SKU-2024-991</span></li>
-          <li>Timestamp: <span data-gt="NONE">2026-09-17T12:34:56Z</span></li>
-          <li>High-entropy string with no key/secret label: <span data-gt="NONE">aB3xK9mQ2pL7vR4wZ8nY1tU6sD0</span></li>
+      <!-- Labelled typos are positives: labels remain evidence when checksums fail. -->
+      <section>
+        <h2>Labelled probable typos</h2>
+        <ul class="positives">
+          <li>Aadhaar: <span data-gt="AADHAAR">2345 6789 0128</span></li>
+          <li>Aadhaar: <span data-gt="AADHAAR">1345 6789 0124</span></li>
+          <li>PAN: <span data-gt="PAN">ABCXE1234F</span></li>
+          <li>Card number: <span data-gt="CARD_NUMBER">4111 1111 1111 1112</span></li>
+          <li>Card number: <span data-gt="CARD_NUMBER">1234567890123452</span></li>
+          <li>IFSC: <span data-gt="IFSC">HDFC1001234</span></li>
+          <li>Phone: <span data-gt="PHONE">5876543210</span></li>
+          <li>Email: <span data-gt="EMAIL">user@oksbi.example.com</span></li>
         </ul>
+      </section>
+      <section>
+        <h2>Additional labelled identifiers</h2>
+        <dl class="kv">
+          <dt>मतदाता पहचान पत्र</dt><dd data-gt="VOTER_ID">ABC1234567</dd>
+          <dt>पासपोर्ट</dt><dd data-gt="PASSPORT">A1234567</dd>
+          <dt>Driving licence</dt><dd data-gt="DRIVING_LICENCE">DL-1420110012345</dd>
+          <dt>ABHA</dt><dd data-gt="ABHA">12345678901234</dd>
+          <dt>UAN</dt><dd data-gt="UAN">234567890124</dd>
+          <dt>AWB</dt><dd data-gt="TRACKING_ID">AB123456789IN</dd>
+          <dt>Gift message</dt><dd data-gt="PRIVATE_GENERIC">Wishing you a wonderful celebration</dd>
+        </dl>
+      </section>
+      <!-- No sensitive-type labels on these 32 negatives. Independent of rule fixtures. -->
+      <section class="negatives">
+        <h2>Ordinary catalogue and prose</h2>
+        <ul>
+          <li><span data-gt="NONE">2345 6789 0128</span></li>
+          <li><span data-gt="NONE">1345 6789 0124</span></li>
+          <li><span data-gt="NONE">ABCXE1234F</span></li>
+          <li><span data-gt="NONE">4111 1111 1111 1112</span></li>
+          <li><span data-gt="NONE">HDFC1001234</span></li>
+          <li><span data-gt="NONE">5876543210</span></li>
+          <li><span data-gt="NONE">2026</span></li>
+          <li><span data-gt="NONE">v2.14.3</span></li>
+          <li><span data-gt="NONE">SKU-2024-991</span></li>
+          <li><span data-gt="NONE">2026-09-17T12:34:56Z</span></li>
+          <li><span data-gt="NONE">aB3xK9mQ2pL7vR4wZ8nY1tU6sD0</span></li>
+          <li><span data-gt="NONE">₹499.00</span></li>
+          <li><span data-gt="NONE">₹1,299.50</span></li>
+          <li><span data-gt="NONE">₹20,026.00</span></li>
+          <li><span data-gt="NONE">The museum opened on 17/09/2020.</span></li>
+          <li><span data-gt="NONE">The edition was released in March 1994.</span></li>
+          <li><span data-gt="NONE">The exhibition runs from 2026-09-17 to 2026-09-19.</span></li>
+          <li><span data-gt="NONE">ORD-2026-000001</span></li>
+          <li><span data-gt="NONE">ORD-2026-000002</span></li>
+          <li><span data-gt="NONE">INV-24680-X</span></li>
+          <li><span data-gt="NONE">CAT-AB1234</span></li>
+          <li><span data-gt="NONE">MODEL-ZX-2048</span></li>
+          <li><span data-gt="NONE">PART-ABCD12345</span></li>
+          <li><span data-gt="NONE">ABC1234567</span></li>
+          <li><span data-gt="NONE">A1234567</span></li>
+          <li><span data-gt="NONE">AB123456789IN</span></li>
+          <li><span data-gt="NONE">12345678901234</span></li>
+          <li><span data-gt="NONE">2.718281828459</span></li>
+        </ul>
+        <table class="zoo-table"><thead><tr><th>Batch</th><th>Count</th></tr></thead><tbody>
+          <tr><td>Alpha</td><td data-gt="NONE">100000000001</td></tr>
+          <tr><td>Beta</td><td data-gt="NONE">100000000002</td></tr>
+          <tr><td>Gamma</td><td data-gt="NONE">100000000003</td></tr>
+          <tr><td>Delta</td><td data-gt="NONE">100000000004</td></tr>
+        </tbody></table>
       </section>
 
       <!-- ============ Key/value pairs and Hindi labels ============ -->
@@ -194,7 +243,7 @@
             height="90"
             src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='90'%3E%3Crect width='200' height='90' fill='%23dfe6e9'/%3E%3Ctext x='12' y='50' font-family='sans-serif' font-size='13' fill='%232d3436'%3ESPECIMEN DOC%3C/text%3E%3C/svg%3E"
           />
-          <iframe id="zoo-frame" data-gt="UNSCANNED_MEDIA" title="cross-origin frame" src="http://localhost:5175/frame-form.html"></iframe>
+          <iframe id="zoo-frame" title="cross-origin frame" src="http://localhost:5175/frame-form.html"></iframe>
         </div>
       </section>
     </main>

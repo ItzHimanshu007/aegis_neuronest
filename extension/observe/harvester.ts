@@ -1,3 +1,4 @@
+import { isBeingTyped } from './typingState';
 /**
  * The Set-of-Marks harvester (Stage 1 Part C). Runs inside a single frame (top-level or child —
  * the content script calls this once per frame it's injected into; entrypoints/background.ts
@@ -32,7 +33,7 @@ export interface HarvestOptions {
 
 export interface FrameHarvestResult {
   frameId: number;
-  elements: Omit<RawElement, 'mark_id' | 'fpOrdinal'>[];
+  elements: Omit<RawElement, 'eid' | 'fpOrdinal'>[];
   media: RawMedia[];
   textBlocks: RawTextBlock[];
   dialogOpen: boolean;
@@ -175,8 +176,8 @@ function isSecretField(inputType: string | undefined, autocomplete: string | und
   const ac = (autocomplete ?? '').toLowerCase();
   if (ac.includes('one-time-code') || ac.includes('cc-csc')) return true;
   const labelForMatching = name || labelText;
-  if (ac.includes('cc-exp') && isSecretLabel(labelForMatching)) return true;
-  return isSecretLabel(labelForMatching);
+  if (ac.includes('cc-exp') && isSecretLabel(labelForMatching, autocomplete)) return true;
+  return isSecretLabel(labelForMatching, autocomplete);
 }
 
 function getInputType(el: Element): string | undefined {
@@ -244,7 +245,7 @@ export function harvestFrame(options: HarvestOptions): FrameHarvestResult {
     return { frameId: options.frameId, elements: [], media: [], textBlocks: [], dialogOpen: false };
   }
 
-  const elements: Omit<RawElement, 'mark_id' | 'fpOrdinal'>[] = [];
+  const elements: Omit<RawElement, 'eid' | 'fpOrdinal'>[] = [];
   const media: RawMedia[] = [];
   const capturedInteractive = new Set<Element>();
   let dialogOpen = false;
@@ -299,6 +300,15 @@ export function harvestFrame(options: HarvestOptions): FrameHarvestResult {
     );
 
     elements.push({
+      beingTyped: isBeingTyped(el),
+      nodeRef: localNodeRef(el),
+      inForm: Boolean(el.closest('form')),
+      formRef: el.closest('form') ? localNodeRef(el.closest('form')!) : undefined,
+      modalRef: el.closest('dialog, [role=dialog]') ? localNodeRef(el.closest('dialog, [role=dialog]')!) : undefined,
+      href: el.tagName === 'A' ? (el as HTMLAnchorElement).href : undefined,
+      download: el.hasAttribute('download'),
+      formAction: el.hasAttribute('formaction'),
+      buttonType: el.tagName === 'BUTTON' ? (el.getAttribute('type') ?? 'submit').toLowerCase() : undefined,
       fp,
       frameId: options.frameId,
       tag: el.tagName.toLowerCase(),
@@ -442,3 +452,10 @@ function getInheritedPrivacyAttrs(el: Element, root: Element): PrivacyAttr[] {
 }
 
 export { buildFingerprintKey };
+
+const nodeRefs = new WeakMap<Element, string>();
+function localNodeRef(el: Element): string {
+  let ref = nodeRefs.get(el);
+  if (!ref) { ref = crypto.randomUUID(); nodeRefs.set(el, ref); }
+  return ref;
+}

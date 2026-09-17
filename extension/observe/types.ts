@@ -71,7 +71,8 @@ export type PrivacyAttr =
 // ---------------------------------------------------------------------------------------------
 
 export interface RawElement {
-  mark_id: number;
+  /** Assigned only by the panel's session EIDRegistry after frame composition. */
+  eid?: import('../scene/registry').EID;
   fp: string;
   fpOrdinal: number;
   frameId: number;
@@ -88,6 +89,16 @@ export interface RawElement {
   /** RAW current value. Local only, never serialized to logs or the network. */
   value?: string;
   hasValue: boolean;
+  beingTyped?: boolean;
+  /** Local DOM handle; never projected outbound. */
+  nodeRef?: string;
+  inForm?: boolean;
+  formRef?: string;
+  modalRef?: string;
+  href?: string;
+  download?: boolean;
+  formAction?: boolean;
+  buttonType?: string;
   /** Omitted entirely for password fields — see Part B: "password: hasValue only". */
   valueLenBucket?: ValueLenBucket;
 
@@ -231,7 +242,7 @@ export function toDebugJSON(obs: Observation): unknown {
     counts: raw.counts,
     timings: raw.timings,
     elements: raw.elements.map((el) => ({
-      mark_id: el.mark_id,
+      eid: el.eid,
       fp: el.fp,
       fpOrdinal: el.fpOrdinal,
       frameId: el.frameId,

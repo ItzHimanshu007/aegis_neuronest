@@ -1,8 +1,8 @@
 import { defineConfig } from '@playwright/test';
 
 /**
- * Chromium only, per Stage 1 Part G.2 ("Firefox: automated e2e is optional" — see
- * docs/manual-test-firefox.md for the Firefox checklist instead). Requires the extension to
+ * Chromium harness. Firefox runs separately through pnpm e2e:firefox using
+ * Selenium and a temporary unmodified MV3 add-on (docs/manual-test-firefox.md). Requires the extension to
  * already be built (`pnpm build` inside extension/, or the top-level `pnpm e2e` which builds
  * first) and the demo portal running on :5174 (`pnpm portal`) and, for the frames test, :5175
  * (`pnpm portal:alt`).
@@ -18,6 +18,7 @@ export default defineConfig({
   reporter: [['list']],
   use: {
     baseURL: 'http://localhost:5174',
-    trace: 'retain-on-failure',
+    // Replay remains off; Stage 4 supplies explicit local Eval/Judge recording.
+    trace: 'off',
   },
 });

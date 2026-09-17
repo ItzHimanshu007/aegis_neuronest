@@ -20,6 +20,7 @@ export interface SanitizedPayload {
   /** Lowercase hex SHA-256 of `bytes`. */
   readonly digest: string;
   readonly capture_id: string;
+  readonly state_token: import('../scene/types').StateTokenId;
   readonly size: number;
 }
 

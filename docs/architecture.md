@@ -1,108 +1,89 @@
-# Aegis — Architecture
+# Aegis — Architecture v6
 
-**Aegis** is a privacy-preserving browser vision agent built for Smart India Hackathon,
-problem statement **SIH26171** (ISRO / Department of Space).
+Aegis is **a trusted local control plane around an untrusted remote agent**. It is a Chrome and
+Firefox MV3 extension plus a FastAPI server, built for SIH26171 (ISRO / Department of Space).
+The browser owns privacy, consent, identity, freshness and execution. The remote model proposes;
+it cannot grant itself authority or disclose information the local policy withheld.
 
-## Product summary
+## Modules and interfaces
 
-Aegis is a browser extension (Chrome + Firefox, both **MV3**) plus a **FastAPI** server.
+1. **Task Session** owns per-site, per-task consent, budgets and a minimal in-memory audit log; it creates and ends the panel's session and clears every grant and secret at task end.
+2. **Observation** captures DOM, marks and screenshot with local freshness metadata; it returns a `LocalOnly<Observation>` through a thin capture-only background router.
+3. **Adaptive Sensing Router** chooses reuse, privacy/UI detector and OCR work, detector resolution, server image size and element budget from screen change and local budgets, and keeps measured counters.
+4. **Privacy Perception** combines privacy tags, autocomplete, field context and rules/checksums plus previously vaulted values into local detections; later stages add vision, OCR and NER through explicit hooks.
+5. **Privacy Scene Graph** joins observations, detections and policy decisions under one session-local EID per element and one opaque state token per sealed observation; it exposes local and outbound projections.
+6. **Privacy Policy** decides treatment from sensitivity, necessity, linkability and origin; locked classes cannot be weakened and generated policy data is the single source of defaults.
+7. **Token Vault** maps HMAC tokens to local values using a non-extractable per-session key, and permits restoration only inside a matching `type` action on a consented origin.
+8. **Redactor** accepts local rectangles and decisions, solid-fills text and unscanned media, blurs faces only, and returns a verified redacted image.
+9. **Privacy Set-of-Marks** draws Scene Graph EIDs on sanitized pixels for remote grounding in Stage 3; it never invents another element identity.
+10. **Egress Firewall** validates the outbound draft, scans text/tokens and mask coverage/integrity, and seals immutable canonical bytes with a digest and runtime registry entry for the sole `network.send` path.
+11. **Remote Reasoning** uses an open-weight VLM behind an OpenAI-compatible API to return an initial short plan and batched actions echoing `state_token`, with the current image and sanitized text history only.
+12. **Action Authority Gate** classifies every proposed action L0–L5, checks consent locally and always asks the user for L5 commits; the classifier is pure in Stage 2.5 and wired in Stage 3.
+13. **Local Executor** reacquires by EID/fingerprint, rechecks current state and origin, narrowly restores tokens and executes only locally implemented structured actions.
+14. **Postcondition Verifier** checks a structured `expect` after every state-changing action and requires evidence for `done`, using sanitized text for text matches.
+15. **Recovery** aborts stale or failed batches, counts failures toward loop/stuck limits, re-observes and replans with a sanitized failure category, or asks the user.
+16. **Judge Mode** exposes sealed bytes, decisions and measured timings locally; only Judge/Eval mode may enable temporary local replay, off by default and auto-deleted.
 
-The browser does the seeing and all of the privacy work:
+```mermaid
+flowchart TD
+  User --> Session[Task Session / consent / budgets]
+  Session --> Observe[Observation: DOM + marks + screenshot]
+  Observe --> Router[Adaptive Sensing Router]
+  Router --> Detect[Privacy Perception]
+  Detect --> Scene[Privacy Scene Graph / EIDs]
+  Scene --> Policy[Privacy Policy / linkability]
+  Policy --> Vault[Token Vault]
+  Policy --> Redact[Redactor]
+  Vault --> Projection[Sanitized projection + Privacy SoM]
+  Redact --> Projection
+  Projection --> Seal[Egress Firewall / state token / digest]
+  Seal --> Remote[Untrusted Remote Reasoning]
+  Remote --> Validate[Schema + stale-plan checks]
+  Validate --> Gate[Action Authority Gate]
+  Gate -->|L5 or missing grant| User
+  Gate --> Execute[Local Executor / checkAction]
+  Execute --> Verify[Postcondition Verifier]
+  Verify -->|continue| Observe
+  Validate -->|reject| Recover[Recovery / re-observe / replan / ask]
+  Verify -->|failed| Recover
+  Recover --> Observe
+  Session -. categories and timings only .-> Judge[Audit / Judge Mode]
+```
 
-1. It observes the page — DOM, a Set-of-Marks overlay, and a screenshot.
-2. It runs a **local** vision model (WebGPU with a WASM fallback, via ONNX Runtime Web) to read the screen.
-3. It fuses vision output with the DOM, detects PII locally, tokenizes and redacts it,
-   verifies the result **fail-closed**, and only then sends a sanitized payload to the server.
+## Consent and recovery
 
-The server hosts an **open-weight VLM behind an OpenAI-compatible API**. It returns a batched plan of
-structured actions, or an `answer` / `extract` data response. It only ever sees **tokens and redacted
-pixels** — never raw text, values, cookies, storage, or page `id`/`class` names.
+Consent is per site and task: medium-risk types form one pre-checked group, each high-risk type has
+its own approval, and credentials have a separate row. All grants expire at task end. Every L5
+commit asks again. A re-hydration category/origin mismatch aborts the remaining batch: type nothing
+more, re-observe and replan with a sanitized failure note. Never skip ahead to a possible Submit.
+Unknown commit-like actions default to L5. Duplicate identity uncertainty blocks L3+ targeting.
 
-The extension then validates each proposed action, reacquires the target element, restores tokens
-locally, executes, checks the action's `expect` condition, and loops.
+The remote agent can request context with a reason and a kind, never hidden/redacted EIDs or region
+identifiers. Only the local router can choose a minimum policy-compliant expansion under budget.
 
-> The server **proposes**. The extension **decides, re-hydrates and acts**.
+## Runtime and trust boundary
 
-## Layers
+The privacy pipeline, vault and session live in the side panel/sidebar document, never in Chrome's
+terminable service worker. Background routes captures and retains no raw values or screenshots.
+Closing the panel ends the session. React is used for panel UI only; content scripts are plain TS.
+No remote code, runtime code generation, selectors from the server, or page ids/classes outbound.
+Schema v2 is JSON Schema draft 2020-12, generated TS plus tested Pydantic mirrors; validators are
+precompiled at build time to respect CSP. `send(SanitizedPayload)` is the only page-data network path;
+`GET /health` is the only exception and carries no page data.
 
-### 0 — Runtime
+## Three kinds of claims
 
-Built on **WXT**, producing MV3 builds for both Chrome (service-worker background) and Firefox
-(event-page background). The **side panel / sidebar** is the long-lived surface that hosts the ML
-workers, because a service worker can be evicted mid-inference. React is used for panel UI only;
-content scripts stay plain TypeScript to keep injection cost low.
+- **Architecture:** raw page values never leave the browser; only the local executor acts. These are invariants, enforced at the network and action boundaries.
+- **Implementation choices:** WXT MV3, in-memory HMAC, DOM rules, PNG export and the current size defaults describe this implementation; they are not comparative performance results.
+- **Evaluation methodology:** baseline v2 defines labelled typos as positives, unlabelled near-misses as negatives and states the corpus and conditions. Stage 4 adds three held-out splits, impossible tasks and false-success measurement. Recall on our own small page is not a generalization claim.
 
-### 1 — Observe
+## Separate knobs
 
-A Set-of-Marks harvester numbers every interactive element and records text rectangles, stable
-element fingerprints, and visibility. A screenshot is taken only when the screen actually changes.
-Side channels (title, URL, ARIA live regions, placeholders) are captured separately so they can be
-sanitized on their own terms. An input watch tracks what the user types so those values are never
-re-emitted.
+Local privacy-detector input size (candidate 640 fast / 1280 accurate) is independent of sanitized
+server image size (candidate ~768 wide balanced). The former controls local detection; the latter
+controls remote layout readability and egress cost. Current config defaults are implementation
+choices and must be measured before tuning. **Paper numbers are candidate operating points, never
+claims.** PNG is used now to keep mask verification lossless; WebP/encoding evaluation is Stage 8.
 
-### 2 — Perceive
-
-A single unified detector covers UI classes plus `face`, `id_document`, `card`, `signature` and `qr`.
-Detector boxes are fused with DOM rectangles by IoU, then occlusion-checked so a covered control is
-never treated as actionable. **OCR runs only on detector-only regions** — areas the DOM cannot
-explain — which keeps the cost bounded. The output is a screen-state JSON document. An image-only
-mode covers canvas, PDF and video surfaces where the DOM tells us nothing.
-
-### 3 — Detect PII
-
-Layered, cheapest first: privacy tags (`data-pii`, `autocomplete`, `type=password`) → regex plus
-checksums (**Luhn**, **Verhoeff** for Aadhaar, **PAN**, **IFSC**, **UPI**) → field-context label
-pairing, so a bare number next to "Account number" is treated as one → visual classes from the
-detector → lazily loaded NER for free-text names and addresses → OCR spans inside images.
-
-### 4 — Protect
-
-A **policy matrix** (`docs/policy.yaml`) maps each PII type to an action. An **HMAC token vault**
-holds the mapping in memory only, keyed by a non-extractable per-session Web Crypto key. The
-redactor applies **solid fill for text PII** and **irreversible blur for faces only** — text is never
-pixelated, because pixelation is reversible. A side-channel sanitizer cleans titles, URLs and ARIA
-text. Everything funnels through `firewall.seal()`, which is the only way to produce a
-`SanitizedPayload`.
-
-### 5 — Route
-
-A new screen sends the redacted image plus screen state plus a redaction manifest. The same screen
-sends only a text delta. A verdict cache avoids re-deciding identical regions. Three modes —
-**Fast / Balanced / Accurate** — trade latency against perception depth. **Judge Mode** exposes the
-exact bytes leaving the browser, side by side with the original, for evaluation.
-
-### 6 — Server
-
-**FastAPI + vLLM.** A static prompt prefix keeps the KV cache warm across requests. Output is
-constrained to the `plan.v1` JSON schema. Plans are batched and every action carries the element
-fingerprint it was planned against plus an `expect` post-condition.
-
-### 7 — Act
-
-A validator rejects malformed or out-of-policy actions, and an approval gate handles anything the
-policy marks as needing consent — collected **upfront**, not mid-flow. Reacquire re-finds the target
-and verifies its fingerprint, falling back to coordinates only when the fingerprint still matches.
-Re-hydration is **type-bound and origin-bound**: a token only expands inside a `type` action, into a
-field whose type matches the token type, on the origin the user consented to. The executor performs
-the action, then the `expect` check decides whether the loop continues.
-
-## Judging metrics
-
-| Weight | Metric |
-| -----: | ------ |
-| 25% | Visual context accuracy |
-| 20% | PII detection recall / precision |
-| 20% | Redaction precision |
-| 20% | Client resource use |
-| 15% | End-to-end latency |
-
-Every design decision in this document is meant to be defensible against that table: local-first
-perception protects the privacy metrics, batching and the verdict cache protect latency, and the
-Fast/Balanced/Accurate modes let us trade resource use against accuracy on demand.
-
-## Related documents
-
-- [`STAGES.md`](./STAGES.md) — build plan, stages 0–9.
-- [`threat_model.md`](./threat_model.md) — what Aegis defends against, and what it does not.
-- [`policy.yaml`](./policy.yaml) — the PII policy matrix (data only at this stage).
-- [`../AGENTS.md`](../AGENTS.md) — non-negotiable invariants.
+See [STAGES.md](STAGES.md) for scope, [policy.yaml](policy.yaml) for policy and authority defaults,
+[threat_model.md](threat_model.md) for threats, and [AGENTS.md](../AGENTS.md) for invariants.

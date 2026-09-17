@@ -1,5 +1,5 @@
 /**
- * Debug overlay (Stage 1 Part E.1). Draws each mark's bbox with its `mark_id`, coloured by kind,
+ * Debug overlay (Stage 1 Part E.1). Draws each mark's bbox with its registry-issued EID (once assigned), coloured by kind,
  * in a closed shadow root so page CSS/JS can't see or style it, with `pointer-events: none` so it
  * never intercepts clicks. It is local-only debug UI — nothing here is sent anywhere.
  *
@@ -14,10 +14,11 @@ import type { RawElement, RawMedia, RawTextBlock } from './types';
 const HOST_ATTR = 'data-aegis-overlay';
 const HOST_ID = 'aegis-observe-overlay-host';
 
+export type OverlayElement = Pick<RawElement, 'eid' | 'bbox' | 'visible' | 'hitOk'>;
+
 type MarkKind = 'interactive' | 'text' | 'media' | 'dialog';
 
 interface OverlayMark {
-  id: number;
   bbox: { x: number; y: number; width: number; height: number };
   kind: MarkKind;
   label: string;
@@ -53,29 +54,26 @@ export class DebugOverlay {
     return shadow;
   }
 
-  render(doc: Document, elements: RawElement[], media: RawMedia[], textBlocks: RawTextBlock[]): void {
+  render(doc: Document, elements: OverlayElement[], media: RawMedia[], textBlocks: RawTextBlock[]): void {
     const shadow = this.ensureHost(doc);
     shadow.replaceChildren();
 
     const marks: OverlayMark[] = [
       ...elements.map((el) => ({
-        id: el.mark_id,
         bbox: el.bbox,
         kind: 'interactive' as const,
-        label: `${el.mark_id}`,
+        label: el.eid ?? '',
         hidden: !el.visible,
         hitOk: el.hitOk,
       })),
-      ...media.map((m, i) => ({
-        id: 1_000_000 + i,
+      ...media.map((m) => ({
         bbox: m.bbox,
         kind: 'media' as const,
         label: m.kind,
         hidden: !m.visible,
         hitOk: undefined,
       })),
-      ...textBlocks.map((t, i) => ({
-        id: 2_000_000 + i,
+      ...textBlocks.map((t) => ({
         bbox: t.bbox,
         kind: 'text' as const,
         label: '',

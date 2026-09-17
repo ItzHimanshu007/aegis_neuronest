@@ -1,0 +1,111 @@
+{
+  "firefoxVersion": "156.0",
+  "complete": true,
+  "results": [
+    {
+      "item": "Sidebar page loads",
+      "status": "PASS",
+      "notes": "Firefox 156.0; unmodified MV3 manifest"
+    },
+    {
+      "item": "Manifest permissions and on-demand injection",
+      "status": "PASS",
+      "notes": "{\"initialAll\": false, \"mv\": 3, \"noContentScripts\": true}"
+    },
+    {
+      "item": "Scoped permission capture rejected",
+      "status": "PASS",
+      "notes": "Missing activeTab permission"
+    },
+    {
+      "item": "action.onClicked toggles sidebar",
+      "status": "PASS",
+      "notes": "Closed then opened by native toolbar clicks"
+    },
+    {
+      "item": "activeTab-only capture after toolbar click",
+      "status": "PASS",
+      "notes": "Succeeded without all_urls grant"
+    },
+    {
+      "item": "permissions.request from sidebar: Deny",
+      "status": "PASS",
+      "notes": "Native permission dialog; trusted Observe click"
+    },
+    {
+      "item": "permissions.request from sidebar: Allow; Observe KYC marks",
+      "status": "PASS",
+      "notes": "{\"noValueText\": true, \"passwordNotRead\": true, \"roles\": true}"
+    },
+    {
+      "item": "OffscreenCanvas export + non-extractable HMAC",
+      "status": "PASS",
+      "notes": "{\"nonExtractable\": true, \"png\": \"image/png\", \"signatureBytes\": 32, \"webp\": \"image/webp\"}"
+    },
+    {
+      "item": "Privacy Preview seals KYC with zero known raw values",
+      "status": "PASS",
+      "notes": "Exact sealed bytes inspected locally"
+    },
+    {
+      "item": "Sidebar lifetime",
+      "status": "PASS",
+      "notes": "Close/reopen destroys prior document and in-memory session result"
+    },
+    {
+      "item": "Element.openOrClosedShadowRoot",
+      "status": "PASS",
+      "notes": "1 closed-shadow controls found"
+    },
+    {
+      "item": "Frame mapping",
+      "status": "PASS",
+      "notes": "{\"framed\": 2, \"methods\": [\"top\", \"same-origin\", \"src-size-match\"], \"unmapped\": 0}"
+    },
+    {
+      "item": "Dynamic rerender and duplicate ordinals",
+      "status": "PASS",
+      "notes": "{\"duplicates\": true, \"eid\": true, \"fp\": true}"
+    },
+    {
+      "item": "Dynamic modal NEW_SCREEN",
+      "status": "PASS",
+      "notes": "dialog-appeared"
+    },
+    {
+      "item": "Hidden controls and covered button",
+      "status": "PASS",
+      "notes": "{\"all\": true, \"covered\": true, \"off\": true}"
+    },
+    {
+      "item": "Overlay capture hygiene",
+      "status": "PASS",
+      "notes": "{\"clean\": true, \"overlayRestored\": true}"
+    },
+    {
+      "item": "Rapid capture throttle",
+      "status": "PASS",
+      "notes": "4 concurrent Observe requests completed"
+    },
+    {
+      "item": "Screenshot alignment at 100%",
+      "status": "PASS",
+      "notes": "1 visible calibration squares"
+    },
+    {
+      "item": "Screenshot alignment at 125%",
+      "status": "PASS",
+      "notes": "1 visible calibration squares"
+    },
+    {
+      "item": "Screenshot alignment at 67%",
+      "status": "PASS",
+      "notes": "2 visible calibration squares"
+    },
+    {
+      "item": "Screenshot alignment at 100% scrolled",
+      "status": "PASS",
+      "notes": "1 visible calibration squares"
+    }
+  ]
+}

@@ -92,7 +92,7 @@ export interface SealResult {
  */
 function* walkStrings(value: unknown, path = '$'): Generator<{ path: string; value: string }> {
   if (typeof value === 'string') {
-    if (path === '$.image' || value.startsWith('data:')) return;
+    if (path === '$.image') return;
     yield { path, value };
   } else if (Array.isArray(value)) {
     for (const [i, item] of value.entries()) yield* walkStrings(item, `${path}[${i}]`);
@@ -170,7 +170,7 @@ export async function seal(draft: DraftPayload, ctx: SealContext): Promise<SealR
     const scannable = withoutTokens(value);
     for (const match of runRules(scannable, {})) {
       if (allowedCategories.has(match.category)) continue;
-      throw new SealError('rule-scan', { path, category: match.category, matched: match.matchedText.slice(0, 8) + '…' });
+      throw new SealError('rule-scan', { path, category: match.category });
     }
   }
   const ruleScanMs = performance.now() - t;
@@ -292,6 +292,7 @@ export async function seal(draft: DraftPayload, ctx: SealContext): Promise<SealR
     bytes,
     digest,
     capture_id: draft.capture_id,
+    state_token: draft.state_token,
     size: bytes.byteLength,
   } as SanitizedPayload;
 

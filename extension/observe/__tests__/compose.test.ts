@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { composeObservation, type FrameComposeInput } from '../compose';
 import type { RawElement, RawMedia, RawTextBlock } from '../types';
 
-function makeElement(overrides: Partial<Omit<RawElement, 'mark_id' | 'fpOrdinal'>>): Omit<RawElement, 'mark_id' | 'fpOrdinal'> {
+function makeElement(overrides: Partial<Omit<RawElement, 'eid' | 'fpOrdinal'>>): Omit<RawElement, 'eid' | 'fpOrdinal'> {
   return {
     fp: 'aaaaaaaa',
     frameId: 0,
@@ -24,21 +24,21 @@ function makeElement(overrides: Partial<Omit<RawElement, 'mark_id' | 'fpOrdinal'
 }
 
 describe('composeObservation', () => {
-  it('assigns sequential mark_ids in input order', () => {
+  it('composes observations without inventing element IDs', () => {
     const inputs: FrameComposeInput[] = [
       { frameId: 0, offsetChain: [], elements: [makeElement({ fp: 'a' }), makeElement({ fp: 'b' })], media: [], textBlocks: [] },
     ];
     const result = composeObservation(inputs);
-    expect(result.elements.map((e) => e.mark_id)).toEqual([0, 1]);
+    expect(result.elements.map((e) => e.eid)).toEqual([undefined, undefined]);
   });
 
-  it('assigns fpOrdinal across the whole composed list, not per frame', () => {
+  it('assigns fpOrdinal within each frame so other-frame insertions cannot change EIDs', () => {
     const inputs: FrameComposeInput[] = [
       { frameId: 0, offsetChain: [], elements: [makeElement({ fp: 'dup' })], media: [], textBlocks: [] },
       { frameId: 1, offsetChain: [{ x: 0, y: 0, scale: 1 }], elements: [makeElement({ fp: 'dup', frameId: 1 })], media: [], textBlocks: [] },
     ];
     const result = composeObservation(inputs);
-    expect(result.elements.map((e) => e.fpOrdinal)).toEqual([0, 1]);
+    expect(result.elements.map((e) => e.fpOrdinal)).toEqual([0, 0]);
   });
 
   it('offsets element, media and text block rects into top-level coordinates', () => {
@@ -63,5 +63,17 @@ describe('composeObservation', () => {
   it('handles an empty input list', () => {
     const result = composeObservation([]);
     expect(result).toEqual({ elements: [], media: [], textBlocks: [] });
+  });
+
+  it('remaps independently harvested child frame identities without colliding with the top frame', () => {
+    const inputs: FrameComposeInput[] = [0, 2].map(frameId => ({
+      frameId, offsetChain: [], elements: [makeElement({ fp: 'dup', frameId: 0 })],
+      media: [{ kind: 'img', bbox: { x: 0, y: 0, width: 1, height: 1 }, alt: '', title: '', srcFilename: '', visible: true, frameId: 0 }],
+      textBlocks: [{ blockRef: '0:0', text: '', lineRects: [], bbox: { x: 0, y: 0, width: 1, height: 1 }, role: 'generic', frameId: 0, privacyAttrs: [] }],
+    }));
+    const result = composeObservation(inputs);
+    expect(result.elements.map(el => [el.frameId, el.fpOrdinal])).toEqual([[0, 0], [2, 0]]);
+    expect(result.media.map(m => m.frameId)).toEqual([0, 2]);
+    expect(result.textBlocks.map(t => [t.frameId, t.blockRef])).toEqual([[0, '0:0'], [2, '2:0']]);
   });
 });

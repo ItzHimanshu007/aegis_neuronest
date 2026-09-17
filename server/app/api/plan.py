@@ -18,20 +18,25 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import ValidationError
 
 from app.config import Settings, get_settings
-from app.schemas.payload import PayloadV1
-from app.schemas.plan import PlanV1
+from app.schemas.payload import PayloadV2
+from app.schemas.plan import PlanV2
 from app.vlm.base import VLMAdapter
 
 router = APIRouter()
 logger = logging.getLogger("aegis.plan")
 
 
-@router.post("/v1/plan", response_model=PlanV1, response_model_by_alias=True)
+@router.post(
+    "/v1/plan",
+    response_model=PlanV2,
+    response_model_by_alias=True,
+    response_model_exclude_none=True,
+)
 async def plan(
     request: Request,
     x_aegis_digest: str | None = Header(default=None),
     settings: Settings = Depends(get_settings),
-) -> PlanV1:
+) -> PlanV2:
     raw_body = await request.body()
     computed = hashlib.sha256(raw_body).hexdigest()
 
@@ -50,7 +55,7 @@ async def plan(
     logger.info("plan request digest=%s size=%d", computed, len(raw_body))
 
     try:
-        payload = PayloadV1.model_validate(json.loads(raw_body))
+        payload = PayloadV2.model_validate(json.loads(raw_body))
     except (ValidationError, json.JSONDecodeError) as exc:
         raise HTTPException(status_code=422, detail=_safe_validation_detail(exc)) from exc
 

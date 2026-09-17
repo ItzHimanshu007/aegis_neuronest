@@ -1,3 +1,4 @@
+import { EIDRegistry } from '../../scene/registry';
 /**
  * The detection cascade (Stage 2 Part C). Runs the layers cheapest-first over one Observation:
  *
@@ -15,6 +16,8 @@
  * whole cascade unit-testable without any browser messaging.
  */
 
+import { findKnownValues, type KnownDetectionValue } from './knownValues';
+import { classifyFill } from './fillState';
 import { detectFromTags, GENERIC_PRIVACY_ATTRS } from './tags';
 import { detectFromAutocomplete } from './autocomplete';
 import { detectUnscannedMedia } from './unscannedMedia';
@@ -43,10 +46,14 @@ export interface CascadeInput {
   /** The user's task text, scanned for PII the same way page content is (Part F.1 tokenizes it
    * with `source: 'task'`). */
   task?: string;
+  registry?: EIDRegistry;
+  knownValues?: KnownDetectionValue[];
 }
 
 export function runDetectionCascade(input: CascadeInput): CascadeResult {
   const { observation, task } = input;
+  const registry = input.registry ?? new EIDRegistry();
+  registry.reconcile(observation);
   const captureId = observation.capture_id;
   let counter = 0;
   const idFor = (suffix: string) => `${captureId}-${counter++}-${suffix}`;
@@ -56,8 +63,11 @@ export function runDetectionCascade(input: CascadeInput): CascadeResult {
 
   // --- 1/2/3/4: per-element -------------------------------------------------------------------
   for (const el of observation.elements) {
-    raw.push(...detectFromTags(el, captureId, idFor));
-    raw.push(...detectFromAutocomplete(el, captureId, idFor));
+    // Empty fields contribute Scene Graph hints, never masks or vault values.
+    if (!el.hasValue) continue;
+    const eid = registry.identity(el).eid;
+    raw.push(...detectFromTags(el, captureId, idFor, eid));
+    raw.push(...detectFromAutocomplete(el, captureId, idFor, eid));
 
     const fieldCategory = getElementFieldContext(el);
     if (fieldCategory) {
@@ -69,7 +79,7 @@ export function runDetectionCascade(input: CascadeInput): CascadeResult {
         // A label alone is a hint, not proof — but it applies even to an EMPTY field, which is
         // exactly what later stages need for re-hydration checks.
         confidence: 0.7,
-        target: { kind: 'element', ref: el.fp },
+        target: { kind: 'element', ref: eid },
         rects: [el.bbox],
         rawValue: el.value !== undefined ? markLocalOnlyValue(el.value) : undefined,
       });
@@ -77,14 +87,14 @@ export function runDetectionCascade(input: CascadeInput): CascadeResult {
 
     // Rules over the element's own value (absent entirely for secret fields — see Part A1).
     if (el.value) {
-      for (const match of runRules(el.value, { fieldCategory })) {
+      for (const match of [...runRules(el.value, { fieldCategory }).map(m => ({ ...m, known: false })), ...findKnownValues(el.value, input.knownValues ?? []).map(m => ({ ...m, confidence: 1, known: true }))]) {
         raw.push({
           id: idFor(`rule-${match.category}`),
           capture_id: captureId,
-          source: 'rule',
+          source: match.known ? 'vault' : 'rule',
           category: match.category,
           confidence: match.confidence,
-          target: { kind: 'element', ref: el.fp },
+          target: { kind: 'element', ref: eid },
           span: { start: match.start, end: match.start + match.matchedText.length },
           rawValue: markLocalOnlyValue(match.matchedText),
           // An input's value occupies the whole control visually — masking the element's box is
@@ -103,14 +113,14 @@ export function runDetectionCascade(input: CascadeInput): CascadeResult {
     const blockCategory: Category | undefined =
       keyValue?.category ?? dtDdContext.get(block.blockRef) ?? findNearestLabelCategory(block.bbox, observation.textBlocks);
 
-    for (const match of runRules(block.text, { fieldCategory: blockCategory })) {
+    for (const match of [...runRules(block.text, { fieldCategory: blockCategory }).map(m => ({ ...m, known: false })), ...findKnownValues(block.text, input.knownValues ?? []).map(m => ({ ...m, confidence: 1, known: true }))]) {
       const id = idFor(`rule-${match.category}`);
       const start = match.start;
       const end = match.start + match.matchedText.length;
       raw.push({
         id,
         capture_id: captureId,
-        source: 'rule',
+        source: match.known ? 'vault' : 'rule',
         category: match.category,
         confidence: match.confidence,
         target: { kind: 'text_span', ref: block.blockRef },
@@ -215,7 +225,11 @@ export function runDetectionCascade(input: CascadeInput): CascadeResult {
   raw.push(...ocrDetect(observation, captureId));
 
   // --- 7: merge -------------------------------------------------------------------------------
-  return { detections: mergeDetections(raw), spanLookups };
+  const detections = mergeDetections(raw).map(d => {
+    const el = d.target.kind === 'element' ? observation.elements.find(e => registry.identity(e).eid === d.target.ref) : undefined;
+    return el ? { ...d, fill: classifyFill(el, d.category) } : d;
+  });
+  return { detections, spanLookups };
 }
 
 export interface SpanRectsResponse {

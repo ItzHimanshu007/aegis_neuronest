@@ -1,6 +1,6 @@
 /* eslint-disable */
 /**
- * Generated from payload.v1.schema.json by `pnpm gen:types`. Do not hand-edit.
+ * Generated from payload.v2.schema.json by `pnpm gen:types`. Do not hand-edit.
  */
 
 /**
@@ -8,10 +8,6 @@
  */
 export type Mode = 'fast' | 'balanced' | 'accurate';
 export type Element = {
-  /**
-   * Set-of-Marks number drawn on the image.
-   */
-  mark_id: number;
   /**
    * Stable element fingerprint used to reacquire the element before acting. Not a selector and not derived from page id/class names.
    */
@@ -44,6 +40,7 @@ export type Element = {
    * Token standing in for this field's value (Stage 2). Present only when policy decided TOKEN/TOKEN_WITH_APPROVAL for it; the raw value is never sent.
    */
   value_token?: string;
+  eid: string;
 };
 /**
  * Coarse length bucket. Never the value, never the exact length.
@@ -60,7 +57,7 @@ export type Bbox = [number, number, number, number];
 /**
  * Sanitized payload sent from the extension to the Aegis server. This object is the ONLY thing that crosses the network boundary. It may contain tokens ([[PII:TYPE:xxxxxxxx]]) and redacted pixels, never raw PII.
  */
-export interface PayloadV1 {
+export interface PayloadV2 {
   /**
    * Opaque per-session id. Not derived from user identity.
    */
@@ -72,7 +69,7 @@ export interface PayloadV1 {
   /**
    * Contract version marker.
    */
-  schema: 'aegis/1';
+  schema: 'aegis/2';
   mode: Mode;
   /**
    * The user's task, already tokenized. May contain tokens.
@@ -109,15 +106,15 @@ export interface PayloadV1 {
    */
   image?: string;
   /**
-   * Same-screen incremental update. TODO(stage-8): define the delta shape.
-   */
-  delta?: {
-    [k: string]: unknown;
-  };
-  /**
    * Sanitized visible text blocks, capped by TEXT_BUDGET_CHARS (see extension/shared/config.ts).
    */
   texts?: TextBlock[];
+  state_token: string;
+  field_hints?: {
+    eid: string;
+    category: string;
+    fill: 'empty';
+  }[];
 }
 export interface VisualRegion {
   /**
@@ -153,6 +150,7 @@ export interface Redaction {
    * When the masked value was tokenized, the token the server can correlate this masked region with.
    */
   token?: string;
+  eid?: string;
 }
 export interface TextBlock {
   /**

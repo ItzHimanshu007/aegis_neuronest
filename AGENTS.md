@@ -54,7 +54,7 @@ pixelation is reversible.
 ### 6. The server only proposes
 
 The extension validates, reacquires, re-hydrates and executes. **Never execute code or selectors sent
-by the server.** The `plan.v1` schema has no field that can carry either, and it must stay that way.
+by the server.** The `plan.v2` schema has no field that can carry either, and it must stay that way.
 
 ### 7. No remote code
 
@@ -90,6 +90,35 @@ STAGE REPORT — Stage N
 7. Known issues / warnings
 8. Questions for the next stage
 ```
+
+### 12. One element identity
+
+Every element anywhere in the pipeline is referred to by its Scene Graph **EID**. No downstream
+module invents its own element identifiers. The server sees only EIDs.
+
+### 13. State-bound plans
+
+Every sealed payload carries a `state_token`. Every plan echoes it. Reject non-current plans.
+
+### 14. Action authority
+
+Classify every action before execution. L5 commits always require the user. Unknown commit-like
+actions default to L5.
+
+### 15. Local context expansion
+
+The server may only request context with a reason. It cannot name hidden/redacted elements for
+disclosure; the local router chooses the minimum expansion under policy.
+
+### 16. Audit and replay
+
+Replay/trace recording is OFF by default, permitted only in Judge/Eval mode, local and auto-deleted.
+Runtime audit records contain no screenshots or text: only digests, categories, EIDs, actions,
+verdicts and timings.
+
+### 17. Measured claims
+
+Reports contain measured numbers only, with the corpus and conditions stated.
 
 ---
 

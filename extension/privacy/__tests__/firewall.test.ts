@@ -17,13 +17,13 @@ function makeDraft(overrides: Partial<DraftPayload> = {}): DraftPayload {
   return {
     session: 'sess-1',
     capture_id: 'cap-1',
-    schema: 'aegis/1',
+    schema: 'aegis/2', state_token: 'Sabcdefghij',
     mode: 'balanced',
     task: 'Fill in the form',
     page: { url: 'https://example.test/kyc', title: 'KYC' },
     elements: [
       {
-        mark_id: 0,
+        eid: 'E0',
         fp: 'fp-aaaa1111',
         role: 'textbox',
         label: 'Full name',
@@ -118,7 +118,7 @@ describe('seal: check 1 — schema', () => {
     const draft = makeDraft({
       elements: [
         {
-          mark_id: 0,
+          eid: 'E0',
           fp: 'fp-pw',
           role: 'textbox',
           label: 'Password',
@@ -138,7 +138,7 @@ describe('seal: check 1 — schema', () => {
 describe('seal: check 2 — rule scan', () => {
   it('rejects a raw email that survived into an element label', async () => {
     const draft = makeDraft({
-      elements: [{ mark_id: 0, fp: 'fp1', role: 'textbox', label: 'Contact asha@example.com', bbox: [0, 0, 1, 1], visible: true, enabled: true }],
+      elements: [{ eid: 'E0', fp: 'fp1', role: 'textbox', label: 'Contact asha@example.com', bbox: [0, 0, 1, 1], visible: true, enabled: true }],
     });
     await expect(seal(draft, makeContext())).rejects.toMatchObject({ reason: 'rule-scan' });
   });
@@ -161,7 +161,7 @@ describe('seal: check 2 — rule scan', () => {
 describe('seal: check 3 — known-value leak', () => {
   it('rejects a vault value that leaked into a label', async () => {
     const draft = makeDraft({
-      elements: [{ mark_id: 0, fp: 'fp1', role: 'textbox', label: 'Asha Verma', bbox: [0, 0, 1, 1], visible: true, enabled: true }],
+      elements: [{ eid: 'E0', fp: 'fp1', role: 'textbox', label: 'Asha Verma', bbox: [0, 0, 1, 1], visible: true, enabled: true }],
     });
     const ctx = makeContext({ vaultValues: [{ value: 'Asha Verma', normalized: 'asha verma', type: 'NAME' }] });
     await expect(seal(draft, ctx)).rejects.toMatchObject({ reason: 'known-value-leak' });
@@ -169,7 +169,7 @@ describe('seal: check 3 — known-value leak', () => {
 
   it('catches a leak that differs only in case', async () => {
     const draft = makeDraft({
-      elements: [{ mark_id: 0, fp: 'fp1', role: 'textbox', label: 'ASHA VERMA', bbox: [0, 0, 1, 1], visible: true, enabled: true }],
+      elements: [{ eid: 'E0', fp: 'fp1', role: 'textbox', label: 'ASHA VERMA', bbox: [0, 0, 1, 1], visible: true, enabled: true }],
     });
     const ctx = makeContext({ vaultValues: [{ value: 'Asha Verma', normalized: 'asha verma', type: 'NAME' }] });
     await expect(seal(draft, ctx)).rejects.toMatchObject({ reason: 'known-value-leak' });
@@ -177,7 +177,7 @@ describe('seal: check 3 — known-value leak', () => {
 
   it('catches a numeric leak in digits-only form despite different separators', async () => {
     const draft = makeDraft({
-      elements: [{ mark_id: 0, fp: 'fp1', role: 'textbox', label: 'ref 9876-543-210', bbox: [0, 0, 1, 1], visible: true, enabled: true }],
+      elements: [{ eid: 'E0', fp: 'fp1', role: 'textbox', label: 'ref 9876-543-210', bbox: [0, 0, 1, 1], visible: true, enabled: true }],
     });
     const ctx = makeContext({ observedRawValues: [{ value: '9876543210', category: 'PHONE' }] });
     await expect(seal(draft, ctx)).rejects.toMatchObject({ reason: 'known-value-leak' });
@@ -286,4 +286,9 @@ describe('seal: nothing is returned or registered on failure', () => {
     // Nothing to check the registry against — seal returned no object at all, which is the point.
     expect(isRegisteredSealed({})).toBe(false);
   });
+});
+
+it('a data: prefix outside image cannot bypass rule or known-value scanning', async () => {
+  await expect(seal(makeDraft({task:'data:text/plain,asha@example.com'}),makeContext())).rejects.toMatchObject({reason:'rule-scan'});
+  await expect(seal(makeDraft({task:'data:text/plain,Asha Verma'}),makeContext({observedRawValues:[{value:'Asha Verma',category:'NAME'}]}))).rejects.toMatchObject({reason:'known-value-leak'});
 });

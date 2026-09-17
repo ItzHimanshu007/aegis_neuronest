@@ -2,19 +2,34 @@
   "plan": [
     {
       "action": "type",
-      "target": { "mark_id": 12, "fp": "fp_a1b2c3d4e5f60718" },
+      "target": {
+        "fp": "fp_a1b2c3d4e5f60718",
+        "eid": "E12"
+      },
       "text": "[[PII:NAME:k4m2xq7b]]",
-      "expect": { "mark_id": 12, "has_value": true }
+      "expect": {
+        "has_value": true,
+        "eid": "E12"
+      }
     },
     {
       "action": "type",
-      "target": { "mark_id": 14, "fp": "fp_b2c3d4e5f6071829" },
+      "target": {
+        "fp": "fp_b2c3d4e5f6071829",
+        "eid": "E14"
+      },
       "text": "[[PII:EMAIL:t5z5n7vd]]",
-      "expect": { "mark_id": 14, "has_value": true, "enabled": true }
+      "expect": {
+        "has_value": true,
+        "enabled": true,
+        "eid": "E14"
+      }
     },
     {
       "action": "ask_user",
       "reason": "The Password field is marked never_automated. The user must enter it directly before the form can be submitted."
     }
-  ]
+  ],
+  "schema": "aegis/2",
+  "state_token": "Sabcdefghij"
 }

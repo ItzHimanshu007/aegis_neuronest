@@ -8,6 +8,7 @@
  * harvester.ts's job, and doing it here too would double the fingerprinting logic to keep in sync).
  */
 
+import { noteTyping } from './typingState';
 import { AEGIS_CONFIG } from '../shared/config';
 import { computeNameAndRole, getAssociatedLabelText } from './accessibleName';
 import { isSecretLabel } from '../privacy/detect/labels';
@@ -51,7 +52,7 @@ function isSecretElement(el: Element): boolean {
   }
   const { name } = computeNameAndRole(el);
   const labelText = getAssociatedLabelText(el);
-  return isSecretLabel(name || labelText);
+  return isSecretLabel(name || labelText, el.getAttribute('autocomplete') ?? undefined);
 }
 
 export class InputWatcher {
@@ -67,11 +68,15 @@ export class InputWatcher {
     const onEvent = (event: Event) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
+      noteTyping(target, event.type === 'input');
       this.scheduleReport(target);
     };
+    const onBlur = (event: Event) => { if (event.target instanceof Element) noteTyping(event.target, false); };
+    doc.addEventListener('blur', onBlur, true);
     doc.addEventListener('input', onEvent, true);
     doc.addEventListener('change', onEvent, true);
     return () => {
+      doc.removeEventListener('blur', onBlur, true);
       doc.removeEventListener('input', onEvent, true);
       doc.removeEventListener('change', onEvent, true);
     };

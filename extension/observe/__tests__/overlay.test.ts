@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { DebugOverlay } from '../overlay';
 import type { RawElement } from '../types';
 
-function makeEl(mark_id: number, visible = true, hitOk: boolean | undefined = true): RawElement {
+function makeEl(id: number, visible = true, hitOk: boolean | undefined = true): RawElement {
   return {
-    mark_id,
+    eid: `E${id}`,
     fp: 'a',
     fpOrdinal: 0,
     frameId: 0,

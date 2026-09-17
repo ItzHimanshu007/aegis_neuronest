@@ -37,8 +37,8 @@ export interface SiteAccessResult {
  * report which origin triggered the request, for the panel's messaging — it does not change what
  * is actually requested. Must be called synchronously from a user-gesture event handler (a click),
  * not after an intervening `await`. */
-export async function requestSiteAccess(tabUrl: string): Promise<SiteAccessResult> {
-  const origin = originPattern(tabUrl);
+export async function requestSiteAccess(tabUrl?: string): Promise<SiteAccessResult> {
+  const origin = tabUrl ? originPattern(tabUrl) : '';
   const granted = await browser.permissions.request({ origins: [CAPTURE_PERMISSION_PATTERN] });
   return { granted, origin };
 }

@@ -30,7 +30,8 @@
     "manifests": "node scripts/print-manifests.mjs",
     "gen:policy": "node scripts/gen-policy.mjs",
     "gen:validator": "node scripts/gen-validator.mjs",
-    "gen:all": "pnpm run gen:types && pnpm run gen:policy && pnpm run gen:validator"
+    "gen:all": "pnpm run gen:types && pnpm run gen:policy && pnpm run gen:validator",
+    "e2e:firefox": "pnpm --filter aegis-extension build:firefox && uv run scripts/firefox/e2e.py"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

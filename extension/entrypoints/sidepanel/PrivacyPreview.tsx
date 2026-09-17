@@ -48,6 +48,8 @@ export function PrivacyPreview({ result }: { result: ProcessResult }) {
               digest: preview.digest,
               bytes: preview.size,
               capture_id: payload.capture_id,
+              state_token: payload.state_token,
+              sensing: preview.sensingCounters,
               detections: preview.detections.length,
               masked: maskedCount,
               neutralizedTokenLikeStrings: preview.neutralizedCount,
@@ -112,7 +114,7 @@ export function PrivacyPreview({ result }: { result: ProcessResult }) {
               <span className="action">{d.action}</span>
               <br />
               <span className="meta">
-                {d.sources.join('+')} · conf {d.confidence.toFixed(2)} · {d.targetKind}
+                {d.targetKind === 'element' ? `${d.targetRef} · ` : ''}{d.sources.join('+')} · conf {d.confidence.toFixed(2)} · {d.targetKind}
                 {d.valueLength !== undefined ? ` · value length ${d.valueLength}` : ''} · {d.rectCount} rect(s)
               </span>
             </div>

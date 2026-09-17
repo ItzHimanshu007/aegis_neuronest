@@ -1,3 +1,4 @@
+import { TOKEN_PATTERN, isToken } from '../shared/schema/tokens';
 import { test, expect } from './fixtures/extension';
 import { openPages } from './fixtures/observe';
 import { digitsOnly, observeAndSanitize, readGroundTruth, sealedText } from './fixtures/sanitize';
@@ -68,9 +69,9 @@ test.describe('pii-zoo.html: nothing raw survives into the sealed payload', () =
 
     // Every token that IS present must be one the vault issued — seal() enforces this, so the
     // payload existing at all is the proof; this assertion documents it.
-    const tokens = sealed.match(/\[\[PII:[A-Z_]+:[a-z2-7]{8}\]\]/g) ?? [];
+    const tokens = sealed.match(new RegExp(TOKEN_PATTERN.source, 'g')) ?? [];
     for (const token of tokens) {
-      expect(token).toMatch(/^\[\[PII:[A-Z_]+:[a-z2-7]{8}\]\]$/);
+      expect(isToken(token)).toBe(true);
     }
   });
 

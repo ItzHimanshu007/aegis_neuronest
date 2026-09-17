@@ -1,0 +1,3365 @@
+[
+  {
+    "name": "plan valid",
+    "kind": "plan",
+    "valid": true,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "plan": [
+        {
+          "action": "type",
+          "target": {
+            "eid": "E1",
+            "fp": "fp"
+          },
+          "text": "[[PII:EMAIL:abcdefgh]]",
+          "expect": {
+            "eid": "E1",
+            "has_value": true
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "done structured evidence",
+    "kind": "plan",
+    "valid": true,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "plan": [
+        {
+          "action": "done",
+          "evidence": {
+            "text_present": "Completed",
+            "no_validation_error": true
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "answer variant",
+    "kind": "plan",
+    "valid": true,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "answer": {
+        "text": "Inspecting the form"
+      },
+      "plan_steps": [
+        "Inspect visible controls"
+      ]
+    }
+  },
+  {
+    "name": "extract variant",
+    "kind": "plan",
+    "valid": true,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "extract": {
+        "data": {
+          "count": 3,
+          "optional": null
+        }
+      }
+    }
+  },
+  {
+    "name": "context more_elements",
+    "kind": "plan",
+    "valid": true,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "request_context": {
+        "reason": "Need visible context",
+        "kind": "more_elements"
+      }
+    }
+  },
+  {
+    "name": "context scroll_region",
+    "kind": "plan",
+    "valid": true,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "request_context": {
+        "reason": "Need visible context",
+        "kind": "scroll_region"
+      }
+    }
+  },
+  {
+    "name": "context higher_resolution",
+    "kind": "plan",
+    "valid": true,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "request_context": {
+        "reason": "Need visible context",
+        "kind": "higher_resolution"
+      }
+    }
+  },
+  {
+    "name": "no variant",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij"
+    }
+  },
+  {
+    "name": "multiple variants",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "answer": {
+        "text": "a"
+      },
+      "extract": {
+        "data": {}
+      }
+    }
+  },
+  {
+    "name": "null variant",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "answer": {
+        "text": "a"
+      },
+      "plan": null
+    }
+  },
+  {
+    "name": "empty plan",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "plan": []
+    }
+  },
+  {
+    "name": "selector target",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "plan": [
+        {
+          "action": "click",
+          "target": {
+            "eid": "E1",
+            "fp": "fp",
+            "selector": "#private"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "legacy mark target",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "plan": [
+        {
+          "action": "click",
+          "target": {
+            "mark_id": 1,
+            "fp": "fp"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "missing evidence",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "plan": [
+        {
+          "action": "done"
+        }
+      ]
+    }
+  },
+  {
+    "name": "empty evidence",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "plan": [
+        {
+          "action": "done",
+          "evidence": {}
+        }
+      ]
+    }
+  },
+  {
+    "name": "text evidence",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "plan": [
+        {
+          "action": "done",
+          "evidence": "success"
+        }
+      ]
+    }
+  },
+  {
+    "name": "bad condition bool",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "plan": [
+        {
+          "action": "done",
+          "evidence": {
+            "has_value": "true"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "empty expect",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "plan": [
+        {
+          "action": "wait",
+          "ms": 1,
+          "expect": {}
+        }
+      ]
+    }
+  },
+  {
+    "name": "unrelated action text",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "plan": [
+        {
+          "action": "wait",
+          "ms": 1,
+          "text": "hidden"
+        }
+      ]
+    }
+  },
+  {
+    "name": "context eid",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "request_context": {
+        "reason": "need it",
+        "kind": "more_elements",
+        "eid": "E1"
+      }
+    }
+  },
+  {
+    "name": "context region id",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "request_context": {
+        "reason": "need it",
+        "kind": "scroll_region",
+        "region_id": "r1"
+      }
+    }
+  },
+  {
+    "name": "context empty reason",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "request_context": {
+        "reason": "",
+        "kind": "more_elements"
+      }
+    }
+  },
+  {
+    "name": "context unknown kind",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "request_context": {
+        "reason": "need it",
+        "kind": "unmask"
+      }
+    }
+  },
+  {
+    "name": "plan too long",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "answer": {
+        "text": "a"
+      },
+      "plan_steps": [
+        "step",
+        "step",
+        "step",
+        "step",
+        "step",
+        "step",
+        "step",
+        "step",
+        "step"
+      ]
+    }
+  },
+  {
+    "name": "step too long",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "answer": {
+        "text": "a"
+      },
+      "plan_steps": [
+        "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      ]
+    }
+  },
+  {
+    "name": "empty step",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "answer": {
+        "text": "a"
+      },
+      "plan_steps": [
+        ""
+      ]
+    }
+  },
+  {
+    "name": "wait negative",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "plan": [
+        {
+          "action": "wait",
+          "ms": -1
+        }
+      ]
+    }
+  },
+  {
+    "name": "target bad eid",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "plan": [
+        {
+          "action": "click",
+          "target": {
+            "eid": "E1000000",
+            "fp": "fp"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "target empty fp",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "plan": [
+        {
+          "action": "click",
+          "target": {
+            "eid": "E1",
+            "fp": ""
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "wrong state format",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "SABCDEFGHIJ",
+      "answer": {
+        "text": "a"
+      }
+    }
+  },
+  {
+    "name": "legacy version",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/1",
+      "state_token": "Sabcdefghij",
+      "answer": {
+        "text": "a"
+      }
+    }
+  },
+  {
+    "name": "missing click requirement",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "plan": [
+        {
+          "action": "click"
+        }
+      ]
+    }
+  },
+  {
+    "name": "missing type requirement",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "plan": [
+        {
+          "action": "type",
+          "target": {
+            "eid": "E1",
+            "fp": "fp"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "missing select requirement",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "plan": [
+        {
+          "action": "select",
+          "target": {
+            "eid": "E1",
+            "fp": "fp"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "missing scroll requirement",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "plan": [
+        {
+          "action": "scroll",
+          "direction": "down"
+        }
+      ]
+    }
+  },
+  {
+    "name": "missing key requirement",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "plan": [
+        {
+          "action": "key"
+        }
+      ]
+    }
+  },
+  {
+    "name": "missing wait requirement",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "plan": [
+        {
+          "action": "wait"
+        }
+      ]
+    }
+  },
+  {
+    "name": "missing navigate requirement",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "plan": [
+        {
+          "action": "navigate"
+        }
+      ]
+    }
+  },
+  {
+    "name": "missing ask_user requirement",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "plan": [
+        {
+          "action": "ask_user"
+        }
+      ]
+    }
+  },
+  {
+    "name": "missing fail requirement",
+    "kind": "plan",
+    "valid": false,
+    "value": {
+      "schema": "aegis/2",
+      "state_token": "Sabcdefghij",
+      "plan": [
+        {
+          "action": "fail"
+        }
+      ]
+    }
+  },
+  {
+    "name": "payload valid",
+    "kind": "payload",
+    "valid": true,
+    "value": {
+      "session": "s_7f3a9c1e",
+      "capture_id": "c_000412",
+      "schema": "aegis/2",
+      "mode": "balanced",
+      "task": "Complete the KYC form for [[PII:NAME:k4m2xq7b]] and submit it",
+      "page": {
+        "url": "http://localhost:5174/kyc.html",
+        "title": "Aegis Demo - KYC Verification",
+        "type": "kyc_form"
+      },
+      "elements": [
+        {
+          "fp": "fp_a1b2c3d4e5f60718",
+          "role": "textbox",
+          "label": "Full name",
+          "input_type": "text",
+          "has_value": true,
+          "value_len_bucket": "medium",
+          "bbox": [
+            240,
+            196,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "value_token": "[[PII:NAME:k4m2xq7b]]",
+          "eid": "E12"
+        },
+        {
+          "fp": "fp_b2c3d4e5f6071829",
+          "role": "textbox",
+          "label": "Email address",
+          "input_type": "email",
+          "has_value": false,
+          "value_len_bucket": "empty",
+          "bbox": [
+            240,
+            252,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E14"
+        },
+        {
+          "fp": "fp_c3d4e5f607182930",
+          "role": "textbox",
+          "label": "Password",
+          "input_type": "password",
+          "has_value": true,
+          "bbox": [
+            240,
+            420,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E18"
+        },
+        {
+          "fp": "fp_d4e5f60718293041",
+          "role": "button",
+          "label": "Submit verification",
+          "bbox": [
+            240,
+            520,
+            160,
+            44
+          ],
+          "visible": true,
+          "enabled": true,
+          "hidden_interactive": false,
+          "eid": "E22"
+        }
+      ],
+      "visual_regions": [
+        {
+          "rid": "r_face_01",
+          "class": "face",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ]
+        },
+        {
+          "rid": "r_doc_01",
+          "class": "id_document",
+          "bbox": [
+            600,
+            340,
+            280,
+            176
+          ],
+          "ocr": "Government of India [[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_media_01",
+          "class": "unscanned_media",
+          "bbox": [
+            600,
+            180,
+            160,
+            160
+          ]
+        }
+      ],
+      "redactions": [
+        {
+          "rid": "r_face_01",
+          "kind": "BLUR",
+          "type": "FACE",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ],
+          "reason": "biometric class detected by local vision model"
+        },
+        {
+          "rid": "r_aadhaar_01",
+          "kind": "LABELLED_FILL",
+          "type": "AADHAAR",
+          "bbox": [
+            244,
+            476,
+            312,
+            28
+          ],
+          "reason": "12-digit Verhoeff-valid identifier in a field labelled Aadhaar",
+          "token": "[[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_password_01",
+          "kind": "FILL",
+          "type": "PASSWORD",
+          "bbox": [
+            244,
+            424,
+            312,
+            28
+          ],
+          "reason": "input_type password is never automated and never transmitted"
+        }
+      ],
+      "texts": [
+        {
+          "tid": "t0",
+          "role": "heading",
+          "text": "KYC Verification",
+          "bbox": [
+            240,
+            120,
+            320,
+            32
+          ]
+        },
+        {
+          "tid": "t1",
+          "role": "cell",
+          "text": "Balance [REDACTED:FINANCIAL_VALUE]",
+          "bbox": [
+            600,
+            560,
+            280,
+            24
+          ]
+        }
+      ],
+      "state_token": "Sabcdefghij"
+    }
+  },
+  {
+    "name": "empty hint",
+    "kind": "payload",
+    "valid": true,
+    "value": {
+      "session": "s_7f3a9c1e",
+      "capture_id": "c_000412",
+      "schema": "aegis/2",
+      "mode": "balanced",
+      "task": "Complete the KYC form for [[PII:NAME:k4m2xq7b]] and submit it",
+      "page": {
+        "url": "http://localhost:5174/kyc.html",
+        "title": "Aegis Demo - KYC Verification",
+        "type": "kyc_form"
+      },
+      "elements": [
+        {
+          "fp": "fp_a1b2c3d4e5f60718",
+          "role": "textbox",
+          "label": "Full name",
+          "input_type": "text",
+          "has_value": true,
+          "value_len_bucket": "medium",
+          "bbox": [
+            240,
+            196,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "value_token": "[[PII:NAME:k4m2xq7b]]",
+          "eid": "E12"
+        },
+        {
+          "fp": "fp_b2c3d4e5f6071829",
+          "role": "textbox",
+          "label": "Email address",
+          "input_type": "email",
+          "has_value": false,
+          "value_len_bucket": "empty",
+          "bbox": [
+            240,
+            252,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E14"
+        },
+        {
+          "fp": "fp_c3d4e5f607182930",
+          "role": "textbox",
+          "label": "Password",
+          "input_type": "password",
+          "has_value": true,
+          "bbox": [
+            240,
+            420,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E18"
+        },
+        {
+          "fp": "fp_d4e5f60718293041",
+          "role": "button",
+          "label": "Submit verification",
+          "bbox": [
+            240,
+            520,
+            160,
+            44
+          ],
+          "visible": true,
+          "enabled": true,
+          "hidden_interactive": false,
+          "eid": "E22"
+        }
+      ],
+      "visual_regions": [
+        {
+          "rid": "r_face_01",
+          "class": "face",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ]
+        },
+        {
+          "rid": "r_doc_01",
+          "class": "id_document",
+          "bbox": [
+            600,
+            340,
+            280,
+            176
+          ],
+          "ocr": "Government of India [[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_media_01",
+          "class": "unscanned_media",
+          "bbox": [
+            600,
+            180,
+            160,
+            160
+          ]
+        }
+      ],
+      "redactions": [
+        {
+          "rid": "r_face_01",
+          "kind": "BLUR",
+          "type": "FACE",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ],
+          "reason": "biometric class detected by local vision model"
+        },
+        {
+          "rid": "r_aadhaar_01",
+          "kind": "LABELLED_FILL",
+          "type": "AADHAAR",
+          "bbox": [
+            244,
+            476,
+            312,
+            28
+          ],
+          "reason": "12-digit Verhoeff-valid identifier in a field labelled Aadhaar",
+          "token": "[[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_password_01",
+          "kind": "FILL",
+          "type": "PASSWORD",
+          "bbox": [
+            244,
+            424,
+            312,
+            28
+          ],
+          "reason": "input_type password is never automated and never transmitted"
+        }
+      ],
+      "texts": [
+        {
+          "tid": "t0",
+          "role": "heading",
+          "text": "KYC Verification",
+          "bbox": [
+            240,
+            120,
+            320,
+            32
+          ]
+        },
+        {
+          "tid": "t1",
+          "role": "cell",
+          "text": "Balance [REDACTED:FINANCIAL_VALUE]",
+          "bbox": [
+            600,
+            560,
+            280,
+            24
+          ]
+        }
+      ],
+      "state_token": "Sabcdefghij",
+      "field_hints": [
+        {
+          "eid": "E14",
+          "category": "EMAIL",
+          "fill": "empty"
+        }
+      ]
+    }
+  },
+  {
+    "name": "missing state",
+    "kind": "payload",
+    "valid": false,
+    "value": {
+      "session": "s_7f3a9c1e",
+      "capture_id": "c_000412",
+      "schema": "aegis/2",
+      "mode": "balanced",
+      "task": "Complete the KYC form for [[PII:NAME:k4m2xq7b]] and submit it",
+      "page": {
+        "url": "http://localhost:5174/kyc.html",
+        "title": "Aegis Demo - KYC Verification",
+        "type": "kyc_form"
+      },
+      "elements": [
+        {
+          "fp": "fp_a1b2c3d4e5f60718",
+          "role": "textbox",
+          "label": "Full name",
+          "input_type": "text",
+          "has_value": true,
+          "value_len_bucket": "medium",
+          "bbox": [
+            240,
+            196,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "value_token": "[[PII:NAME:k4m2xq7b]]",
+          "eid": "E12"
+        },
+        {
+          "fp": "fp_b2c3d4e5f6071829",
+          "role": "textbox",
+          "label": "Email address",
+          "input_type": "email",
+          "has_value": false,
+          "value_len_bucket": "empty",
+          "bbox": [
+            240,
+            252,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E14"
+        },
+        {
+          "fp": "fp_c3d4e5f607182930",
+          "role": "textbox",
+          "label": "Password",
+          "input_type": "password",
+          "has_value": true,
+          "bbox": [
+            240,
+            420,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E18"
+        },
+        {
+          "fp": "fp_d4e5f60718293041",
+          "role": "button",
+          "label": "Submit verification",
+          "bbox": [
+            240,
+            520,
+            160,
+            44
+          ],
+          "visible": true,
+          "enabled": true,
+          "hidden_interactive": false,
+          "eid": "E22"
+        }
+      ],
+      "visual_regions": [
+        {
+          "rid": "r_face_01",
+          "class": "face",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ]
+        },
+        {
+          "rid": "r_doc_01",
+          "class": "id_document",
+          "bbox": [
+            600,
+            340,
+            280,
+            176
+          ],
+          "ocr": "Government of India [[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_media_01",
+          "class": "unscanned_media",
+          "bbox": [
+            600,
+            180,
+            160,
+            160
+          ]
+        }
+      ],
+      "redactions": [
+        {
+          "rid": "r_face_01",
+          "kind": "BLUR",
+          "type": "FACE",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ],
+          "reason": "biometric class detected by local vision model"
+        },
+        {
+          "rid": "r_aadhaar_01",
+          "kind": "LABELLED_FILL",
+          "type": "AADHAAR",
+          "bbox": [
+            244,
+            476,
+            312,
+            28
+          ],
+          "reason": "12-digit Verhoeff-valid identifier in a field labelled Aadhaar",
+          "token": "[[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_password_01",
+          "kind": "FILL",
+          "type": "PASSWORD",
+          "bbox": [
+            244,
+            424,
+            312,
+            28
+          ],
+          "reason": "input_type password is never automated and never transmitted"
+        }
+      ],
+      "texts": [
+        {
+          "tid": "t0",
+          "role": "heading",
+          "text": "KYC Verification",
+          "bbox": [
+            240,
+            120,
+            320,
+            32
+          ]
+        },
+        {
+          "tid": "t1",
+          "role": "cell",
+          "text": "Balance [REDACTED:FINANCIAL_VALUE]",
+          "bbox": [
+            600,
+            560,
+            280,
+            24
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "legacy payload version",
+    "kind": "payload",
+    "valid": false,
+    "value": {
+      "session": "s_7f3a9c1e",
+      "capture_id": "c_000412",
+      "schema": "aegis/1",
+      "mode": "balanced",
+      "task": "Complete the KYC form for [[PII:NAME:k4m2xq7b]] and submit it",
+      "page": {
+        "url": "http://localhost:5174/kyc.html",
+        "title": "Aegis Demo - KYC Verification",
+        "type": "kyc_form"
+      },
+      "elements": [
+        {
+          "fp": "fp_a1b2c3d4e5f60718",
+          "role": "textbox",
+          "label": "Full name",
+          "input_type": "text",
+          "has_value": true,
+          "value_len_bucket": "medium",
+          "bbox": [
+            240,
+            196,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "value_token": "[[PII:NAME:k4m2xq7b]]",
+          "eid": "E12"
+        },
+        {
+          "fp": "fp_b2c3d4e5f6071829",
+          "role": "textbox",
+          "label": "Email address",
+          "input_type": "email",
+          "has_value": false,
+          "value_len_bucket": "empty",
+          "bbox": [
+            240,
+            252,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E14"
+        },
+        {
+          "fp": "fp_c3d4e5f607182930",
+          "role": "textbox",
+          "label": "Password",
+          "input_type": "password",
+          "has_value": true,
+          "bbox": [
+            240,
+            420,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E18"
+        },
+        {
+          "fp": "fp_d4e5f60718293041",
+          "role": "button",
+          "label": "Submit verification",
+          "bbox": [
+            240,
+            520,
+            160,
+            44
+          ],
+          "visible": true,
+          "enabled": true,
+          "hidden_interactive": false,
+          "eid": "E22"
+        }
+      ],
+      "visual_regions": [
+        {
+          "rid": "r_face_01",
+          "class": "face",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ]
+        },
+        {
+          "rid": "r_doc_01",
+          "class": "id_document",
+          "bbox": [
+            600,
+            340,
+            280,
+            176
+          ],
+          "ocr": "Government of India [[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_media_01",
+          "class": "unscanned_media",
+          "bbox": [
+            600,
+            180,
+            160,
+            160
+          ]
+        }
+      ],
+      "redactions": [
+        {
+          "rid": "r_face_01",
+          "kind": "BLUR",
+          "type": "FACE",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ],
+          "reason": "biometric class detected by local vision model"
+        },
+        {
+          "rid": "r_aadhaar_01",
+          "kind": "LABELLED_FILL",
+          "type": "AADHAAR",
+          "bbox": [
+            244,
+            476,
+            312,
+            28
+          ],
+          "reason": "12-digit Verhoeff-valid identifier in a field labelled Aadhaar",
+          "token": "[[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_password_01",
+          "kind": "FILL",
+          "type": "PASSWORD",
+          "bbox": [
+            244,
+            424,
+            312,
+            28
+          ],
+          "reason": "input_type password is never automated and never transmitted"
+        }
+      ],
+      "texts": [
+        {
+          "tid": "t0",
+          "role": "heading",
+          "text": "KYC Verification",
+          "bbox": [
+            240,
+            120,
+            320,
+            32
+          ]
+        },
+        {
+          "tid": "t1",
+          "role": "cell",
+          "text": "Balance [REDACTED:FINANCIAL_VALUE]",
+          "bbox": [
+            600,
+            560,
+            280,
+            24
+          ]
+        }
+      ],
+      "state_token": "Sabcdefghij"
+    }
+  },
+  {
+    "name": "legacy element mark",
+    "kind": "payload",
+    "valid": false,
+    "value": {
+      "session": "s_7f3a9c1e",
+      "capture_id": "c_000412",
+      "schema": "aegis/2",
+      "mode": "balanced",
+      "task": "Complete the KYC form for [[PII:NAME:k4m2xq7b]] and submit it",
+      "page": {
+        "url": "http://localhost:5174/kyc.html",
+        "title": "Aegis Demo - KYC Verification",
+        "type": "kyc_form"
+      },
+      "elements": [
+        {
+          "fp": "fp_a1b2c3d4e5f60718",
+          "role": "textbox",
+          "label": "Full name",
+          "input_type": "text",
+          "has_value": true,
+          "value_len_bucket": "medium",
+          "bbox": [
+            240,
+            196,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "value_token": "[[PII:NAME:k4m2xq7b]]",
+          "eid": "E12",
+          "mark_id": 12
+        },
+        {
+          "fp": "fp_b2c3d4e5f6071829",
+          "role": "textbox",
+          "label": "Email address",
+          "input_type": "email",
+          "has_value": false,
+          "value_len_bucket": "empty",
+          "bbox": [
+            240,
+            252,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E14"
+        },
+        {
+          "fp": "fp_c3d4e5f607182930",
+          "role": "textbox",
+          "label": "Password",
+          "input_type": "password",
+          "has_value": true,
+          "bbox": [
+            240,
+            420,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E18"
+        },
+        {
+          "fp": "fp_d4e5f60718293041",
+          "role": "button",
+          "label": "Submit verification",
+          "bbox": [
+            240,
+            520,
+            160,
+            44
+          ],
+          "visible": true,
+          "enabled": true,
+          "hidden_interactive": false,
+          "eid": "E22"
+        }
+      ],
+      "visual_regions": [
+        {
+          "rid": "r_face_01",
+          "class": "face",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ]
+        },
+        {
+          "rid": "r_doc_01",
+          "class": "id_document",
+          "bbox": [
+            600,
+            340,
+            280,
+            176
+          ],
+          "ocr": "Government of India [[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_media_01",
+          "class": "unscanned_media",
+          "bbox": [
+            600,
+            180,
+            160,
+            160
+          ]
+        }
+      ],
+      "redactions": [
+        {
+          "rid": "r_face_01",
+          "kind": "BLUR",
+          "type": "FACE",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ],
+          "reason": "biometric class detected by local vision model"
+        },
+        {
+          "rid": "r_aadhaar_01",
+          "kind": "LABELLED_FILL",
+          "type": "AADHAAR",
+          "bbox": [
+            244,
+            476,
+            312,
+            28
+          ],
+          "reason": "12-digit Verhoeff-valid identifier in a field labelled Aadhaar",
+          "token": "[[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_password_01",
+          "kind": "FILL",
+          "type": "PASSWORD",
+          "bbox": [
+            244,
+            424,
+            312,
+            28
+          ],
+          "reason": "input_type password is never automated and never transmitted"
+        }
+      ],
+      "texts": [
+        {
+          "tid": "t0",
+          "role": "heading",
+          "text": "KYC Verification",
+          "bbox": [
+            240,
+            120,
+            320,
+            32
+          ]
+        },
+        {
+          "tid": "t1",
+          "role": "cell",
+          "text": "Balance [REDACTED:FINANCIAL_VALUE]",
+          "bbox": [
+            600,
+            560,
+            280,
+            24
+          ]
+        }
+      ],
+      "state_token": "Sabcdefghij"
+    }
+  },
+  {
+    "name": "unknown raw slot",
+    "kind": "payload",
+    "valid": false,
+    "value": {
+      "session": "s_7f3a9c1e",
+      "capture_id": "c_000412",
+      "schema": "aegis/2",
+      "mode": "balanced",
+      "task": "Complete the KYC form for [[PII:NAME:k4m2xq7b]] and submit it",
+      "page": {
+        "url": "http://localhost:5174/kyc.html",
+        "title": "Aegis Demo - KYC Verification",
+        "type": "kyc_form"
+      },
+      "elements": [
+        {
+          "fp": "fp_a1b2c3d4e5f60718",
+          "role": "textbox",
+          "label": "Full name",
+          "input_type": "text",
+          "has_value": true,
+          "value_len_bucket": "medium",
+          "bbox": [
+            240,
+            196,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "value_token": "[[PII:NAME:k4m2xq7b]]",
+          "eid": "E12"
+        },
+        {
+          "fp": "fp_b2c3d4e5f6071829",
+          "role": "textbox",
+          "label": "Email address",
+          "input_type": "email",
+          "has_value": false,
+          "value_len_bucket": "empty",
+          "bbox": [
+            240,
+            252,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E14"
+        },
+        {
+          "fp": "fp_c3d4e5f607182930",
+          "role": "textbox",
+          "label": "Password",
+          "input_type": "password",
+          "has_value": true,
+          "bbox": [
+            240,
+            420,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E18"
+        },
+        {
+          "fp": "fp_d4e5f60718293041",
+          "role": "button",
+          "label": "Submit verification",
+          "bbox": [
+            240,
+            520,
+            160,
+            44
+          ],
+          "visible": true,
+          "enabled": true,
+          "hidden_interactive": false,
+          "eid": "E22"
+        }
+      ],
+      "visual_regions": [
+        {
+          "rid": "r_face_01",
+          "class": "face",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ]
+        },
+        {
+          "rid": "r_doc_01",
+          "class": "id_document",
+          "bbox": [
+            600,
+            340,
+            280,
+            176
+          ],
+          "ocr": "Government of India [[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_media_01",
+          "class": "unscanned_media",
+          "bbox": [
+            600,
+            180,
+            160,
+            160
+          ]
+        }
+      ],
+      "redactions": [
+        {
+          "rid": "r_face_01",
+          "kind": "BLUR",
+          "type": "FACE",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ],
+          "reason": "biometric class detected by local vision model"
+        },
+        {
+          "rid": "r_aadhaar_01",
+          "kind": "LABELLED_FILL",
+          "type": "AADHAAR",
+          "bbox": [
+            244,
+            476,
+            312,
+            28
+          ],
+          "reason": "12-digit Verhoeff-valid identifier in a field labelled Aadhaar",
+          "token": "[[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_password_01",
+          "kind": "FILL",
+          "type": "PASSWORD",
+          "bbox": [
+            244,
+            424,
+            312,
+            28
+          ],
+          "reason": "input_type password is never automated and never transmitted"
+        }
+      ],
+      "texts": [
+        {
+          "tid": "t0",
+          "role": "heading",
+          "text": "KYC Verification",
+          "bbox": [
+            240,
+            120,
+            320,
+            32
+          ]
+        },
+        {
+          "tid": "t1",
+          "role": "cell",
+          "text": "Balance [REDACTED:FINANCIAL_VALUE]",
+          "bbox": [
+            600,
+            560,
+            280,
+            24
+          ]
+        }
+      ],
+      "state_token": "Sabcdefghij",
+      "raw_text": "secret"
+    }
+  },
+  {
+    "name": "null image",
+    "kind": "payload",
+    "valid": false,
+    "value": {
+      "session": "s_7f3a9c1e",
+      "capture_id": "c_000412",
+      "schema": "aegis/2",
+      "mode": "balanced",
+      "task": "Complete the KYC form for [[PII:NAME:k4m2xq7b]] and submit it",
+      "page": {
+        "url": "http://localhost:5174/kyc.html",
+        "title": "Aegis Demo - KYC Verification",
+        "type": "kyc_form"
+      },
+      "elements": [
+        {
+          "fp": "fp_a1b2c3d4e5f60718",
+          "role": "textbox",
+          "label": "Full name",
+          "input_type": "text",
+          "has_value": true,
+          "value_len_bucket": "medium",
+          "bbox": [
+            240,
+            196,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "value_token": "[[PII:NAME:k4m2xq7b]]",
+          "eid": "E12"
+        },
+        {
+          "fp": "fp_b2c3d4e5f6071829",
+          "role": "textbox",
+          "label": "Email address",
+          "input_type": "email",
+          "has_value": false,
+          "value_len_bucket": "empty",
+          "bbox": [
+            240,
+            252,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E14"
+        },
+        {
+          "fp": "fp_c3d4e5f607182930",
+          "role": "textbox",
+          "label": "Password",
+          "input_type": "password",
+          "has_value": true,
+          "bbox": [
+            240,
+            420,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E18"
+        },
+        {
+          "fp": "fp_d4e5f60718293041",
+          "role": "button",
+          "label": "Submit verification",
+          "bbox": [
+            240,
+            520,
+            160,
+            44
+          ],
+          "visible": true,
+          "enabled": true,
+          "hidden_interactive": false,
+          "eid": "E22"
+        }
+      ],
+      "visual_regions": [
+        {
+          "rid": "r_face_01",
+          "class": "face",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ]
+        },
+        {
+          "rid": "r_doc_01",
+          "class": "id_document",
+          "bbox": [
+            600,
+            340,
+            280,
+            176
+          ],
+          "ocr": "Government of India [[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_media_01",
+          "class": "unscanned_media",
+          "bbox": [
+            600,
+            180,
+            160,
+            160
+          ]
+        }
+      ],
+      "redactions": [
+        {
+          "rid": "r_face_01",
+          "kind": "BLUR",
+          "type": "FACE",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ],
+          "reason": "biometric class detected by local vision model"
+        },
+        {
+          "rid": "r_aadhaar_01",
+          "kind": "LABELLED_FILL",
+          "type": "AADHAAR",
+          "bbox": [
+            244,
+            476,
+            312,
+            28
+          ],
+          "reason": "12-digit Verhoeff-valid identifier in a field labelled Aadhaar",
+          "token": "[[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_password_01",
+          "kind": "FILL",
+          "type": "PASSWORD",
+          "bbox": [
+            244,
+            424,
+            312,
+            28
+          ],
+          "reason": "input_type password is never automated and never transmitted"
+        }
+      ],
+      "texts": [
+        {
+          "tid": "t0",
+          "role": "heading",
+          "text": "KYC Verification",
+          "bbox": [
+            240,
+            120,
+            320,
+            32
+          ]
+        },
+        {
+          "tid": "t1",
+          "role": "cell",
+          "text": "Balance [REDACTED:FINANCIAL_VALUE]",
+          "bbox": [
+            600,
+            560,
+            280,
+            24
+          ]
+        }
+      ],
+      "state_token": "Sabcdefghij",
+      "image": null
+    }
+  },
+  {
+    "name": "unstructured delta",
+    "kind": "payload",
+    "valid": false,
+    "value": {
+      "session": "s_7f3a9c1e",
+      "capture_id": "c_000412",
+      "schema": "aegis/2",
+      "mode": "balanced",
+      "task": "Complete the KYC form for [[PII:NAME:k4m2xq7b]] and submit it",
+      "page": {
+        "url": "http://localhost:5174/kyc.html",
+        "title": "Aegis Demo - KYC Verification",
+        "type": "kyc_form"
+      },
+      "elements": [
+        {
+          "fp": "fp_a1b2c3d4e5f60718",
+          "role": "textbox",
+          "label": "Full name",
+          "input_type": "text",
+          "has_value": true,
+          "value_len_bucket": "medium",
+          "bbox": [
+            240,
+            196,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "value_token": "[[PII:NAME:k4m2xq7b]]",
+          "eid": "E12"
+        },
+        {
+          "fp": "fp_b2c3d4e5f6071829",
+          "role": "textbox",
+          "label": "Email address",
+          "input_type": "email",
+          "has_value": false,
+          "value_len_bucket": "empty",
+          "bbox": [
+            240,
+            252,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E14"
+        },
+        {
+          "fp": "fp_c3d4e5f607182930",
+          "role": "textbox",
+          "label": "Password",
+          "input_type": "password",
+          "has_value": true,
+          "bbox": [
+            240,
+            420,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E18"
+        },
+        {
+          "fp": "fp_d4e5f60718293041",
+          "role": "button",
+          "label": "Submit verification",
+          "bbox": [
+            240,
+            520,
+            160,
+            44
+          ],
+          "visible": true,
+          "enabled": true,
+          "hidden_interactive": false,
+          "eid": "E22"
+        }
+      ],
+      "visual_regions": [
+        {
+          "rid": "r_face_01",
+          "class": "face",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ]
+        },
+        {
+          "rid": "r_doc_01",
+          "class": "id_document",
+          "bbox": [
+            600,
+            340,
+            280,
+            176
+          ],
+          "ocr": "Government of India [[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_media_01",
+          "class": "unscanned_media",
+          "bbox": [
+            600,
+            180,
+            160,
+            160
+          ]
+        }
+      ],
+      "redactions": [
+        {
+          "rid": "r_face_01",
+          "kind": "BLUR",
+          "type": "FACE",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ],
+          "reason": "biometric class detected by local vision model"
+        },
+        {
+          "rid": "r_aadhaar_01",
+          "kind": "LABELLED_FILL",
+          "type": "AADHAAR",
+          "bbox": [
+            244,
+            476,
+            312,
+            28
+          ],
+          "reason": "12-digit Verhoeff-valid identifier in a field labelled Aadhaar",
+          "token": "[[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_password_01",
+          "kind": "FILL",
+          "type": "PASSWORD",
+          "bbox": [
+            244,
+            424,
+            312,
+            28
+          ],
+          "reason": "input_type password is never automated and never transmitted"
+        }
+      ],
+      "texts": [
+        {
+          "tid": "t0",
+          "role": "heading",
+          "text": "KYC Verification",
+          "bbox": [
+            240,
+            120,
+            320,
+            32
+          ]
+        },
+        {
+          "tid": "t1",
+          "role": "cell",
+          "text": "Balance [REDACTED:FINANCIAL_VALUE]",
+          "bbox": [
+            600,
+            560,
+            280,
+            24
+          ]
+        }
+      ],
+      "state_token": "Sabcdefghij",
+      "delta": {
+        "raw": "secret"
+      }
+    }
+  },
+  {
+    "name": "hint contains value",
+    "kind": "payload",
+    "valid": false,
+    "value": {
+      "session": "s_7f3a9c1e",
+      "capture_id": "c_000412",
+      "schema": "aegis/2",
+      "mode": "balanced",
+      "task": "Complete the KYC form for [[PII:NAME:k4m2xq7b]] and submit it",
+      "page": {
+        "url": "http://localhost:5174/kyc.html",
+        "title": "Aegis Demo - KYC Verification",
+        "type": "kyc_form"
+      },
+      "elements": [
+        {
+          "fp": "fp_a1b2c3d4e5f60718",
+          "role": "textbox",
+          "label": "Full name",
+          "input_type": "text",
+          "has_value": true,
+          "value_len_bucket": "medium",
+          "bbox": [
+            240,
+            196,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "value_token": "[[PII:NAME:k4m2xq7b]]",
+          "eid": "E12"
+        },
+        {
+          "fp": "fp_b2c3d4e5f6071829",
+          "role": "textbox",
+          "label": "Email address",
+          "input_type": "email",
+          "has_value": false,
+          "value_len_bucket": "empty",
+          "bbox": [
+            240,
+            252,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E14"
+        },
+        {
+          "fp": "fp_c3d4e5f607182930",
+          "role": "textbox",
+          "label": "Password",
+          "input_type": "password",
+          "has_value": true,
+          "bbox": [
+            240,
+            420,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E18"
+        },
+        {
+          "fp": "fp_d4e5f60718293041",
+          "role": "button",
+          "label": "Submit verification",
+          "bbox": [
+            240,
+            520,
+            160,
+            44
+          ],
+          "visible": true,
+          "enabled": true,
+          "hidden_interactive": false,
+          "eid": "E22"
+        }
+      ],
+      "visual_regions": [
+        {
+          "rid": "r_face_01",
+          "class": "face",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ]
+        },
+        {
+          "rid": "r_doc_01",
+          "class": "id_document",
+          "bbox": [
+            600,
+            340,
+            280,
+            176
+          ],
+          "ocr": "Government of India [[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_media_01",
+          "class": "unscanned_media",
+          "bbox": [
+            600,
+            180,
+            160,
+            160
+          ]
+        }
+      ],
+      "redactions": [
+        {
+          "rid": "r_face_01",
+          "kind": "BLUR",
+          "type": "FACE",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ],
+          "reason": "biometric class detected by local vision model"
+        },
+        {
+          "rid": "r_aadhaar_01",
+          "kind": "LABELLED_FILL",
+          "type": "AADHAAR",
+          "bbox": [
+            244,
+            476,
+            312,
+            28
+          ],
+          "reason": "12-digit Verhoeff-valid identifier in a field labelled Aadhaar",
+          "token": "[[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_password_01",
+          "kind": "FILL",
+          "type": "PASSWORD",
+          "bbox": [
+            244,
+            424,
+            312,
+            28
+          ],
+          "reason": "input_type password is never automated and never transmitted"
+        }
+      ],
+      "texts": [
+        {
+          "tid": "t0",
+          "role": "heading",
+          "text": "KYC Verification",
+          "bbox": [
+            240,
+            120,
+            320,
+            32
+          ]
+        },
+        {
+          "tid": "t1",
+          "role": "cell",
+          "text": "Balance [REDACTED:FINANCIAL_VALUE]",
+          "bbox": [
+            600,
+            560,
+            280,
+            24
+          ]
+        }
+      ],
+      "state_token": "Sabcdefghij",
+      "field_hints": [
+        {
+          "eid": "E14",
+          "category": "EMAIL",
+          "fill": "empty",
+          "value": "raw"
+        }
+      ]
+    }
+  },
+  {
+    "name": "hint nonempty fill",
+    "kind": "payload",
+    "valid": false,
+    "value": {
+      "session": "s_7f3a9c1e",
+      "capture_id": "c_000412",
+      "schema": "aegis/2",
+      "mode": "balanced",
+      "task": "Complete the KYC form for [[PII:NAME:k4m2xq7b]] and submit it",
+      "page": {
+        "url": "http://localhost:5174/kyc.html",
+        "title": "Aegis Demo - KYC Verification",
+        "type": "kyc_form"
+      },
+      "elements": [
+        {
+          "fp": "fp_a1b2c3d4e5f60718",
+          "role": "textbox",
+          "label": "Full name",
+          "input_type": "text",
+          "has_value": true,
+          "value_len_bucket": "medium",
+          "bbox": [
+            240,
+            196,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "value_token": "[[PII:NAME:k4m2xq7b]]",
+          "eid": "E12"
+        },
+        {
+          "fp": "fp_b2c3d4e5f6071829",
+          "role": "textbox",
+          "label": "Email address",
+          "input_type": "email",
+          "has_value": false,
+          "value_len_bucket": "empty",
+          "bbox": [
+            240,
+            252,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E14"
+        },
+        {
+          "fp": "fp_c3d4e5f607182930",
+          "role": "textbox",
+          "label": "Password",
+          "input_type": "password",
+          "has_value": true,
+          "bbox": [
+            240,
+            420,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E18"
+        },
+        {
+          "fp": "fp_d4e5f60718293041",
+          "role": "button",
+          "label": "Submit verification",
+          "bbox": [
+            240,
+            520,
+            160,
+            44
+          ],
+          "visible": true,
+          "enabled": true,
+          "hidden_interactive": false,
+          "eid": "E22"
+        }
+      ],
+      "visual_regions": [
+        {
+          "rid": "r_face_01",
+          "class": "face",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ]
+        },
+        {
+          "rid": "r_doc_01",
+          "class": "id_document",
+          "bbox": [
+            600,
+            340,
+            280,
+            176
+          ],
+          "ocr": "Government of India [[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_media_01",
+          "class": "unscanned_media",
+          "bbox": [
+            600,
+            180,
+            160,
+            160
+          ]
+        }
+      ],
+      "redactions": [
+        {
+          "rid": "r_face_01",
+          "kind": "BLUR",
+          "type": "FACE",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ],
+          "reason": "biometric class detected by local vision model"
+        },
+        {
+          "rid": "r_aadhaar_01",
+          "kind": "LABELLED_FILL",
+          "type": "AADHAAR",
+          "bbox": [
+            244,
+            476,
+            312,
+            28
+          ],
+          "reason": "12-digit Verhoeff-valid identifier in a field labelled Aadhaar",
+          "token": "[[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_password_01",
+          "kind": "FILL",
+          "type": "PASSWORD",
+          "bbox": [
+            244,
+            424,
+            312,
+            28
+          ],
+          "reason": "input_type password is never automated and never transmitted"
+        }
+      ],
+      "texts": [
+        {
+          "tid": "t0",
+          "role": "heading",
+          "text": "KYC Verification",
+          "bbox": [
+            240,
+            120,
+            320,
+            32
+          ]
+        },
+        {
+          "tid": "t1",
+          "role": "cell",
+          "text": "Balance [REDACTED:FINANCIAL_VALUE]",
+          "bbox": [
+            600,
+            560,
+            280,
+            24
+          ]
+        }
+      ],
+      "state_token": "Sabcdefghij",
+      "field_hints": [
+        {
+          "eid": "E14",
+          "category": "EMAIL",
+          "fill": "filled"
+        }
+      ]
+    }
+  },
+  {
+    "name": "password length",
+    "kind": "payload",
+    "valid": false,
+    "value": {
+      "session": "s_7f3a9c1e",
+      "capture_id": "c_000412",
+      "schema": "aegis/2",
+      "mode": "balanced",
+      "task": "Complete the KYC form for [[PII:NAME:k4m2xq7b]] and submit it",
+      "page": {
+        "url": "http://localhost:5174/kyc.html",
+        "title": "Aegis Demo - KYC Verification",
+        "type": "kyc_form"
+      },
+      "elements": [
+        {
+          "fp": "fp_a1b2c3d4e5f60718",
+          "role": "textbox",
+          "label": "Full name",
+          "input_type": "text",
+          "has_value": true,
+          "value_len_bucket": "medium",
+          "bbox": [
+            240,
+            196,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "value_token": "[[PII:NAME:k4m2xq7b]]",
+          "eid": "E12"
+        },
+        {
+          "fp": "fp_b2c3d4e5f6071829",
+          "role": "textbox",
+          "label": "Email address",
+          "input_type": "email",
+          "has_value": false,
+          "value_len_bucket": "empty",
+          "bbox": [
+            240,
+            252,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E14"
+        },
+        {
+          "fp": "fp_c3d4e5f607182930",
+          "role": "textbox",
+          "label": "Password",
+          "input_type": "password",
+          "has_value": true,
+          "bbox": [
+            240,
+            420,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E18",
+          "value_len_bucket": "short"
+        },
+        {
+          "fp": "fp_d4e5f60718293041",
+          "role": "button",
+          "label": "Submit verification",
+          "bbox": [
+            240,
+            520,
+            160,
+            44
+          ],
+          "visible": true,
+          "enabled": true,
+          "hidden_interactive": false,
+          "eid": "E22"
+        }
+      ],
+      "visual_regions": [
+        {
+          "rid": "r_face_01",
+          "class": "face",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ]
+        },
+        {
+          "rid": "r_doc_01",
+          "class": "id_document",
+          "bbox": [
+            600,
+            340,
+            280,
+            176
+          ],
+          "ocr": "Government of India [[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_media_01",
+          "class": "unscanned_media",
+          "bbox": [
+            600,
+            180,
+            160,
+            160
+          ]
+        }
+      ],
+      "redactions": [
+        {
+          "rid": "r_face_01",
+          "kind": "BLUR",
+          "type": "FACE",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ],
+          "reason": "biometric class detected by local vision model"
+        },
+        {
+          "rid": "r_aadhaar_01",
+          "kind": "LABELLED_FILL",
+          "type": "AADHAAR",
+          "bbox": [
+            244,
+            476,
+            312,
+            28
+          ],
+          "reason": "12-digit Verhoeff-valid identifier in a field labelled Aadhaar",
+          "token": "[[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_password_01",
+          "kind": "FILL",
+          "type": "PASSWORD",
+          "bbox": [
+            244,
+            424,
+            312,
+            28
+          ],
+          "reason": "input_type password is never automated and never transmitted"
+        }
+      ],
+      "texts": [
+        {
+          "tid": "t0",
+          "role": "heading",
+          "text": "KYC Verification",
+          "bbox": [
+            240,
+            120,
+            320,
+            32
+          ]
+        },
+        {
+          "tid": "t1",
+          "role": "cell",
+          "text": "Balance [REDACTED:FINANCIAL_VALUE]",
+          "bbox": [
+            600,
+            560,
+            280,
+            24
+          ]
+        }
+      ],
+      "state_token": "Sabcdefghij"
+    }
+  },
+  {
+    "name": "token has prefix",
+    "kind": "payload",
+    "valid": false,
+    "value": {
+      "session": "s_7f3a9c1e",
+      "capture_id": "c_000412",
+      "schema": "aegis/2",
+      "mode": "balanced",
+      "task": "Complete the KYC form for [[PII:NAME:k4m2xq7b]] and submit it",
+      "page": {
+        "url": "http://localhost:5174/kyc.html",
+        "title": "Aegis Demo - KYC Verification",
+        "type": "kyc_form"
+      },
+      "elements": [
+        {
+          "fp": "fp_a1b2c3d4e5f60718",
+          "role": "textbox",
+          "label": "Full name",
+          "input_type": "text",
+          "has_value": true,
+          "value_len_bucket": "medium",
+          "bbox": [
+            240,
+            196,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "value_token": "prefix[[PII:NAME:k4m2xq7b]]",
+          "eid": "E12"
+        },
+        {
+          "fp": "fp_b2c3d4e5f6071829",
+          "role": "textbox",
+          "label": "Email address",
+          "input_type": "email",
+          "has_value": false,
+          "value_len_bucket": "empty",
+          "bbox": [
+            240,
+            252,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E14"
+        },
+        {
+          "fp": "fp_c3d4e5f607182930",
+          "role": "textbox",
+          "label": "Password",
+          "input_type": "password",
+          "has_value": true,
+          "bbox": [
+            240,
+            420,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E18"
+        },
+        {
+          "fp": "fp_d4e5f60718293041",
+          "role": "button",
+          "label": "Submit verification",
+          "bbox": [
+            240,
+            520,
+            160,
+            44
+          ],
+          "visible": true,
+          "enabled": true,
+          "hidden_interactive": false,
+          "eid": "E22"
+        }
+      ],
+      "visual_regions": [
+        {
+          "rid": "r_face_01",
+          "class": "face",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ]
+        },
+        {
+          "rid": "r_doc_01",
+          "class": "id_document",
+          "bbox": [
+            600,
+            340,
+            280,
+            176
+          ],
+          "ocr": "Government of India [[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_media_01",
+          "class": "unscanned_media",
+          "bbox": [
+            600,
+            180,
+            160,
+            160
+          ]
+        }
+      ],
+      "redactions": [
+        {
+          "rid": "r_face_01",
+          "kind": "BLUR",
+          "type": "FACE",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ],
+          "reason": "biometric class detected by local vision model"
+        },
+        {
+          "rid": "r_aadhaar_01",
+          "kind": "LABELLED_FILL",
+          "type": "AADHAAR",
+          "bbox": [
+            244,
+            476,
+            312,
+            28
+          ],
+          "reason": "12-digit Verhoeff-valid identifier in a field labelled Aadhaar",
+          "token": "[[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_password_01",
+          "kind": "FILL",
+          "type": "PASSWORD",
+          "bbox": [
+            244,
+            424,
+            312,
+            28
+          ],
+          "reason": "input_type password is never automated and never transmitted"
+        }
+      ],
+      "texts": [
+        {
+          "tid": "t0",
+          "role": "heading",
+          "text": "KYC Verification",
+          "bbox": [
+            240,
+            120,
+            320,
+            32
+          ]
+        },
+        {
+          "tid": "t1",
+          "role": "cell",
+          "text": "Balance [REDACTED:FINANCIAL_VALUE]",
+          "bbox": [
+            600,
+            560,
+            280,
+            24
+          ]
+        }
+      ],
+      "state_token": "Sabcdefghij"
+    }
+  },
+  {
+    "name": "token has suffix",
+    "kind": "payload",
+    "valid": false,
+    "value": {
+      "session": "s_7f3a9c1e",
+      "capture_id": "c_000412",
+      "schema": "aegis/2",
+      "mode": "balanced",
+      "task": "Complete the KYC form for [[PII:NAME:k4m2xq7b]] and submit it",
+      "page": {
+        "url": "http://localhost:5174/kyc.html",
+        "title": "Aegis Demo - KYC Verification",
+        "type": "kyc_form"
+      },
+      "elements": [
+        {
+          "fp": "fp_a1b2c3d4e5f60718",
+          "role": "textbox",
+          "label": "Full name",
+          "input_type": "text",
+          "has_value": true,
+          "value_len_bucket": "medium",
+          "bbox": [
+            240,
+            196,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "value_token": "[[PII:NAME:k4m2xq7b]]suffix",
+          "eid": "E12"
+        },
+        {
+          "fp": "fp_b2c3d4e5f6071829",
+          "role": "textbox",
+          "label": "Email address",
+          "input_type": "email",
+          "has_value": false,
+          "value_len_bucket": "empty",
+          "bbox": [
+            240,
+            252,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E14"
+        },
+        {
+          "fp": "fp_c3d4e5f607182930",
+          "role": "textbox",
+          "label": "Password",
+          "input_type": "password",
+          "has_value": true,
+          "bbox": [
+            240,
+            420,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E18"
+        },
+        {
+          "fp": "fp_d4e5f60718293041",
+          "role": "button",
+          "label": "Submit verification",
+          "bbox": [
+            240,
+            520,
+            160,
+            44
+          ],
+          "visible": true,
+          "enabled": true,
+          "hidden_interactive": false,
+          "eid": "E22"
+        }
+      ],
+      "visual_regions": [
+        {
+          "rid": "r_face_01",
+          "class": "face",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ]
+        },
+        {
+          "rid": "r_doc_01",
+          "class": "id_document",
+          "bbox": [
+            600,
+            340,
+            280,
+            176
+          ],
+          "ocr": "Government of India [[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_media_01",
+          "class": "unscanned_media",
+          "bbox": [
+            600,
+            180,
+            160,
+            160
+          ]
+        }
+      ],
+      "redactions": [
+        {
+          "rid": "r_face_01",
+          "kind": "BLUR",
+          "type": "FACE",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ],
+          "reason": "biometric class detected by local vision model"
+        },
+        {
+          "rid": "r_aadhaar_01",
+          "kind": "LABELLED_FILL",
+          "type": "AADHAAR",
+          "bbox": [
+            244,
+            476,
+            312,
+            28
+          ],
+          "reason": "12-digit Verhoeff-valid identifier in a field labelled Aadhaar",
+          "token": "[[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_password_01",
+          "kind": "FILL",
+          "type": "PASSWORD",
+          "bbox": [
+            244,
+            424,
+            312,
+            28
+          ],
+          "reason": "input_type password is never automated and never transmitted"
+        }
+      ],
+      "texts": [
+        {
+          "tid": "t0",
+          "role": "heading",
+          "text": "KYC Verification",
+          "bbox": [
+            240,
+            120,
+            320,
+            32
+          ]
+        },
+        {
+          "tid": "t1",
+          "role": "cell",
+          "text": "Balance [REDACTED:FINANCIAL_VALUE]",
+          "bbox": [
+            600,
+            560,
+            280,
+            24
+          ]
+        }
+      ],
+      "state_token": "Sabcdefghij"
+    }
+  },
+  {
+    "name": "raw image string",
+    "kind": "payload",
+    "valid": false,
+    "value": {
+      "session": "s_7f3a9c1e",
+      "capture_id": "c_000412",
+      "schema": "aegis/2",
+      "mode": "balanced",
+      "task": "Complete the KYC form for [[PII:NAME:k4m2xq7b]] and submit it",
+      "page": {
+        "url": "http://localhost:5174/kyc.html",
+        "title": "Aegis Demo - KYC Verification",
+        "type": "kyc_form"
+      },
+      "elements": [
+        {
+          "fp": "fp_a1b2c3d4e5f60718",
+          "role": "textbox",
+          "label": "Full name",
+          "input_type": "text",
+          "has_value": true,
+          "value_len_bucket": "medium",
+          "bbox": [
+            240,
+            196,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "value_token": "[[PII:NAME:k4m2xq7b]]",
+          "eid": "E12"
+        },
+        {
+          "fp": "fp_b2c3d4e5f6071829",
+          "role": "textbox",
+          "label": "Email address",
+          "input_type": "email",
+          "has_value": false,
+          "value_len_bucket": "empty",
+          "bbox": [
+            240,
+            252,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E14"
+        },
+        {
+          "fp": "fp_c3d4e5f607182930",
+          "role": "textbox",
+          "label": "Password",
+          "input_type": "password",
+          "has_value": true,
+          "bbox": [
+            240,
+            420,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E18"
+        },
+        {
+          "fp": "fp_d4e5f60718293041",
+          "role": "button",
+          "label": "Submit verification",
+          "bbox": [
+            240,
+            520,
+            160,
+            44
+          ],
+          "visible": true,
+          "enabled": true,
+          "hidden_interactive": false,
+          "eid": "E22"
+        }
+      ],
+      "visual_regions": [
+        {
+          "rid": "r_face_01",
+          "class": "face",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ]
+        },
+        {
+          "rid": "r_doc_01",
+          "class": "id_document",
+          "bbox": [
+            600,
+            340,
+            280,
+            176
+          ],
+          "ocr": "Government of India [[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_media_01",
+          "class": "unscanned_media",
+          "bbox": [
+            600,
+            180,
+            160,
+            160
+          ]
+        }
+      ],
+      "redactions": [
+        {
+          "rid": "r_face_01",
+          "kind": "BLUR",
+          "type": "FACE",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ],
+          "reason": "biometric class detected by local vision model"
+        },
+        {
+          "rid": "r_aadhaar_01",
+          "kind": "LABELLED_FILL",
+          "type": "AADHAAR",
+          "bbox": [
+            244,
+            476,
+            312,
+            28
+          ],
+          "reason": "12-digit Verhoeff-valid identifier in a field labelled Aadhaar",
+          "token": "[[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_password_01",
+          "kind": "FILL",
+          "type": "PASSWORD",
+          "bbox": [
+            244,
+            424,
+            312,
+            28
+          ],
+          "reason": "input_type password is never automated and never transmitted"
+        }
+      ],
+      "texts": [
+        {
+          "tid": "t0",
+          "role": "heading",
+          "text": "KYC Verification",
+          "bbox": [
+            240,
+            120,
+            320,
+            32
+          ]
+        },
+        {
+          "tid": "t1",
+          "role": "cell",
+          "text": "Balance [REDACTED:FINANCIAL_VALUE]",
+          "bbox": [
+            600,
+            560,
+            280,
+            24
+          ]
+        }
+      ],
+      "state_token": "Sabcdefghij",
+      "image": "data:text/plain,private"
+    }
+  },
+  {
+    "name": "nonintegral bbox",
+    "kind": "payload",
+    "valid": false,
+    "value": {
+      "session": "s_7f3a9c1e",
+      "capture_id": "c_000412",
+      "schema": "aegis/2",
+      "mode": "balanced",
+      "task": "Complete the KYC form for [[PII:NAME:k4m2xq7b]] and submit it",
+      "page": {
+        "url": "http://localhost:5174/kyc.html",
+        "title": "Aegis Demo - KYC Verification",
+        "type": "kyc_form"
+      },
+      "elements": [
+        {
+          "fp": "fp_a1b2c3d4e5f60718",
+          "role": "textbox",
+          "label": "Full name",
+          "input_type": "text",
+          "has_value": true,
+          "value_len_bucket": "medium",
+          "bbox": [
+            1.5,
+            2,
+            3,
+            4
+          ],
+          "visible": true,
+          "enabled": true,
+          "value_token": "[[PII:NAME:k4m2xq7b]]",
+          "eid": "E12"
+        },
+        {
+          "fp": "fp_b2c3d4e5f6071829",
+          "role": "textbox",
+          "label": "Email address",
+          "input_type": "email",
+          "has_value": false,
+          "value_len_bucket": "empty",
+          "bbox": [
+            240,
+            252,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E14"
+        },
+        {
+          "fp": "fp_c3d4e5f607182930",
+          "role": "textbox",
+          "label": "Password",
+          "input_type": "password",
+          "has_value": true,
+          "bbox": [
+            240,
+            420,
+            320,
+            36
+          ],
+          "visible": true,
+          "enabled": true,
+          "eid": "E18"
+        },
+        {
+          "fp": "fp_d4e5f60718293041",
+          "role": "button",
+          "label": "Submit verification",
+          "bbox": [
+            240,
+            520,
+            160,
+            44
+          ],
+          "visible": true,
+          "enabled": true,
+          "hidden_interactive": false,
+          "eid": "E22"
+        }
+      ],
+      "visual_regions": [
+        {
+          "rid": "r_face_01",
+          "class": "face",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ]
+        },
+        {
+          "rid": "r_doc_01",
+          "class": "id_document",
+          "bbox": [
+            600,
+            340,
+            280,
+            176
+          ],
+          "ocr": "Government of India [[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_media_01",
+          "class": "unscanned_media",
+          "bbox": [
+            600,
+            180,
+            160,
+            160
+          ]
+        }
+      ],
+      "redactions": [
+        {
+          "rid": "r_face_01",
+          "kind": "BLUR",
+          "type": "FACE",
+          "bbox": [
+            612,
+            180,
+            128,
+            128
+          ],
+          "reason": "biometric class detected by local vision model"
+        },
+        {
+          "rid": "r_aadhaar_01",
+          "kind": "LABELLED_FILL",
+          "type": "AADHAAR",
+          "bbox": [
+            244,
+            476,
+            312,
+            28
+          ],
+          "reason": "12-digit Verhoeff-valid identifier in a field labelled Aadhaar",
+          "token": "[[PII:AADHAAR:h4r3k2wq]]"
+        },
+        {
+          "rid": "r_password_01",
+          "kind": "FILL",
+          "type": "PASSWORD",
+          "bbox": [
+            244,
+            424,
+            312,
+            28
+          ],
+          "reason": "input_type password is never automated and never transmitted"
+        }
+      ],
+      "texts": [
+        {
+          "tid": "t0",
+          "role": "heading",
+          "text": "KYC Verification",
+          "bbox": [
+            240,
+            120,
+            320,
+            32
+          ]
+        },
+        {
+          "tid": "t1",
+          "role": "cell",
+          "text": "Balance [REDACTED:FINANCIAL_VALUE]",
+          "bbox": [
+            600,
+            560,
+            280,
+            24
+          ]
+        }
+      ],
+      "state_token": "Sabcdefghij"
+    }
+  }
+]

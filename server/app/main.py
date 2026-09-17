@@ -1,6 +1,6 @@
 """Aegis FastAPI server.
 
-Only ever receives a PayloadV1 — tokens and redacted pixels, never raw page data (AGENTS.md
+Only ever receives a PayloadV2 — tokens and redacted pixels, never raw page data (AGENTS.md
 invariant 1). Request-body logging is intentionally not enabled anywhere in this app.
 """
 

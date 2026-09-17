@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://aegis.local/schema/payload.v1.schema.json",
-  "title": "PayloadV1",
+  "$id": "https://aegis.local/schema/payload.v2.schema.json",
+  "title": "PayloadV2",
   "description": "Sanitized payload sent from the extension to the Aegis server. This object is the ONLY thing that crosses the network boundary. It may contain tokens ([[PII:TYPE:xxxxxxxx]]) and redacted pixels, never raw PII.",
   "type": "object",
   "additionalProperties": false,
@@ -13,7 +13,8 @@
     "task",
     "page",
     "elements",
-    "redactions"
+    "redactions",
+    "state_token"
   ],
   "properties": {
     "session": {
@@ -27,7 +28,7 @@
       "description": "Identifies one observation of one screen state."
     },
     "schema": {
-      "const": "aegis/1",
+      "const": "aegis/2",
       "description": "Contract version marker."
     },
     "mode": {
@@ -84,16 +85,40 @@
       "$ref": "#/$defs/dataUrlImage",
       "description": "Redacted screenshot as a data URL. Omitted in image-only-off or text-delta routing."
     },
-    "delta": {
-      "type": "object",
-      "description": "Same-screen incremental update. TODO(stage-8): define the delta shape.",
-      "additionalProperties": true
-    },
     "texts": {
       "type": "array",
       "description": "Sanitized visible text blocks, capped by TEXT_BUDGET_CHARS (see extension/shared/config.ts).",
       "items": {
         "$ref": "#/$defs/textBlock"
+      }
+    },
+    "state_token": {
+      "type": "string",
+      "pattern": "^S[a-z2-7]{10}$"
+    },
+    "field_hints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "eid",
+          "category",
+          "fill"
+        ],
+        "properties": {
+          "eid": {
+            "type": "string",
+            "pattern": "^E[0-9]{1,6}$"
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1
+          },
+          "fill": {
+            "const": "empty"
+          }
+        }
       }
     }
   },
@@ -130,7 +155,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "mark_id",
+        "eid",
         "fp",
         "role",
         "label",
@@ -139,11 +164,6 @@
         "enabled"
       ],
       "properties": {
-        "mark_id": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "Set-of-Marks number drawn on the image."
-        },
         "fp": {
           "type": "string",
           "minLength": 1,
@@ -184,6 +204,10 @@
         "value_token": {
           "$ref": "#/$defs/piiToken",
           "description": "Token standing in for this field's value (Stage 2). Present only when policy decided TOKEN/TOKEN_WITH_APPROVAL for it; the raw value is never sent."
+        },
+        "eid": {
+          "type": "string",
+          "pattern": "^E[0-9]{1,6}$"
         }
       },
       "allOf": [
@@ -273,12 +297,16 @@
         "token": {
           "$ref": "#/$defs/piiToken",
           "description": "When the masked value was tokenized, the token the server can correlate this masked region with."
+        },
+        "eid": {
+          "type": "string",
+          "pattern": "^E[0-9]{1,6}$"
         }
       }
     },
     "dataUrlImage": {
       "type": "string",
-      "pattern": "^data:image/(webp|jpeg);base64,[A-Za-z0-9+/]+={0,2}$"
+      "pattern": "^data:image/(png|webp|jpeg);base64,[A-Za-z0-9+/]+={0,2}$"
     },
     "piiToken": {
       "type": "string",

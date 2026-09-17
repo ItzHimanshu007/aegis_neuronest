@@ -12,7 +12,7 @@
 
 import { CATEGORY_TO_CLASS, IDENTITY_CATEGORIES, LOCKED_CLASSES, POLICY_CLASSES } from './policyData';
 import { AEGIS_CONFIG } from '../shared/config';
-import type { Action, Category, PolicyClass } from './categoryTypes';
+import { ALL_ACTIONS, type Action, type Category, type PolicyClass } from './categoryTypes';
 import type { Detection } from './detect/types';
 
 export type Necessity = 'needed' | 'not_needed';
@@ -20,6 +20,7 @@ export type Necessity = 'needed' | 'not_needed';
 export interface DecideContext {
   necessity: Necessity;
   identitySeenOnOrigin: boolean;
+  linkabilityActive?: boolean;
   userOverrides: Partial<Record<Category, Action>>;
 }
 
@@ -47,16 +48,16 @@ export function decide(det: Detection, ctx: DecideContext): Action {
   let resolved: Action;
   if (baseAction === 'TOKEN_IF_IDENTITY_PRESENT') {
     const conditional = classData.conditional;
-    resolved = ctx.identitySeenOnOrigin ? (conditional?.then ?? 'TOKEN') : (conditional?.else ?? 'ALLOW');
+    resolved = (ctx.identitySeenOnOrigin || ctx.linkabilityActive) ? (conditional?.then ?? 'TOKEN') : (conditional?.else ?? 'ALLOW');
   } else {
     resolved = baseAction;
   }
 
   const override = ctx.userOverrides[category];
-  if (override && !isLockedCategory(category)) {
-    return override;
+  if (override && ALL_ACTIONS.includes(override) && !isLockedCategory(category)) {
+    return det.source === 'vault' && override === 'ALLOW' ? 'FILL' : override;
   }
-  return resolved;
+  return det.source === 'vault' && resolved === 'ALLOW' ? 'FILL' : resolved;
 }
 
 /**
@@ -70,6 +71,7 @@ export function decide(det: Detection, ctx: DecideContext): Action {
  */
 export class SessionPrivacyState {
   private readonly identitySeenOrigins = new Set<string>();
+  private readonly quasiByOrigin = new Map<string, Set<Category>>();
 
   /** Call once per capture, BEFORE deciding any detection in it. Marks the origin if any identity
    * category was detected with at least `IDENTITY_MIN_CONF` confidence. */
@@ -77,10 +79,19 @@ export class SessionPrivacyState {
     for (const det of detections) {
       if (isIdentityCategory(det.category) && det.confidence >= AEGIS_CONFIG.IDENTITY_MIN_CONF) {
         this.identitySeenOrigins.add(origin);
-        return;
+      }
+      if (classOf(det.category) === 'quasi' && det.confidence >= AEGIS_CONFIG.IDENTITY_MIN_CONF && det.fill !== 'empty') {
+        const categories = this.quasiByOrigin.get(origin) ?? new Set<Category>();
+        categories.add(det.category); this.quasiByOrigin.set(origin, categories);
       }
     }
   }
+
+  hasLinkability(origin: string, threshold: number = AEGIS_CONFIG.LINKABILITY_QUASI_K): boolean {
+    return (this.quasiByOrigin.get(origin)?.size ?? 0) >= threshold;
+  }
+
+  distinctQuasi(origin: string): number { return this.quasiByOrigin.get(origin)?.size ?? 0; }
 
   hasIdentitySeen(origin: string): boolean {
     return this.identitySeenOrigins.has(origin);
@@ -89,6 +100,7 @@ export class SessionPrivacyState {
   /** Cleared when the task ends (or the panel closes and the whole host context goes away). */
   clear(): void {
     this.identitySeenOrigins.clear();
+    this.quasiByOrigin.clear();
   }
 }
 
@@ -133,7 +145,7 @@ export function determineNecessity(input: NecessityInput): Necessity {
 }
 
 /** Page-sourced values for these categories are NEVER tokenized — see the module docblock. */
-const NEVER_TOKENIZE_FROM_PAGE: Category[] = ['PASSWORD', 'OTP', 'CVV', 'UPI_PIN'];
+const NEVER_TOKENIZE_FROM_PAGE: Category[] = ['PASSWORD', 'OTP', 'CVV', 'UPI_PIN', 'SECRET'];
 
 export function canTokenizeFromPage(category: Category): boolean {
   return !NEVER_TOKENIZE_FROM_PAGE.includes(category);

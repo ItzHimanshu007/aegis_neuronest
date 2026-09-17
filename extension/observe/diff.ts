@@ -4,9 +4,8 @@
  * changed mark is weighted 1 (a simplification over a more elaborate size/role-based weighting —
  * documented in the Stage 1 report).
  *
- * Elements are matched by `fp` + `fpOrdinal` (the same identity `expect` checks will use in later
- * stages) rather than `mark_id`, because `mark_id` is reassigned every capture and isn't stable
- * across observations on its own.
+ * Before the panel assigns EIDs, structural summaries compare frameId + fp + fpOrdinal.
+ * These are observation attributes; this module never allocates element IDs.
  */
 
 import type { RawElement } from './types';
@@ -24,18 +23,18 @@ export interface MutationDiffResult {
  * visibility) rather than retaining full elements with raw names/values across captures. See
  * AGENTS.md invariant 1 and the Stage 2 Part A2 hardening note in background.ts.
  */
-export type MarkIdentity = Pick<RawElement, 'fp' | 'fpOrdinal' | 'visible'>;
+export type MarkIdentity = Pick<RawElement, 'frameId' | 'fp' | 'fpOrdinal' | 'visible'>;
 
 /** The one sanctioned way to build a MarkIdentity[] from a full elements array — used by
  * background.ts before storing "previous capture" state, so that operation is a single,
  * independently-testable function rather than an inline object literal that could silently grow
  * extra (PII-carrying) fields over time. */
 export function toMarkIdentity(elements: RawElement[]): MarkIdentity[] {
-  return elements.map((e) => ({ fp: e.fp, fpOrdinal: e.fpOrdinal, visible: e.visible }));
+  return elements.map((e) => ({ frameId: e.frameId, fp: e.fp, fpOrdinal: e.fpOrdinal, visible: e.visible }));
 }
 
 function markKey(el: MarkIdentity): string {
-  return `${el.fp}:${el.fpOrdinal}`;
+  return `${el.frameId}:${el.fp}:${el.fpOrdinal}`;
 }
 
 export function computeMutationDiff(previous: MarkIdentity[] | null, current: MarkIdentity[]): MutationDiffResult {

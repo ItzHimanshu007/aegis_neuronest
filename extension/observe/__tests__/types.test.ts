@@ -11,8 +11,7 @@ function makeObservation(overrides: Partial<RawObservation> = {}): RawObservatio
     frames: [{ frameId: 0, parentFrameId: null, url: 'http://localhost:5174/kyc.html', mapping: 'top' }],
     elements: [
       {
-        mark_id: 0,
-        fp: 'abcd1234',
+            fp: 'abcd1234',
         fpOrdinal: 0,
         frameId: 0,
         tag: 'input',

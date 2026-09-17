@@ -1,4 +1,4 @@
-"""Pydantic v2 mirror of shared/schema/payload.v1.schema.json.
+"""Pydantic v2 mirror of shared/schema/payload.v2.schema.json.
 
 The JSON Schema is the single source of truth (AGENTS.md). This mirror is proven to agree with it
 by server/tests/test_schema_agreement.py, which validates the same fixtures against both.
@@ -8,33 +8,36 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field, model_validator
+
+from app.schemas.common import EID, StateTokenId, StrictObject
+from app.schemas.tokens import TOKEN_PATTERN
 
 Mode = Literal["fast", "balanced", "accurate"]
 ValueLenBucket = Literal["empty", "short", "medium", "long"]
 RedactionKind = Literal["FILL", "LABELLED_FILL", "BLUR", "FILL_REGION"]
 # An HMAC token minted by the extension vault — see AGENTS.md invariant 3 and
 # app/schemas/tokens.py, which holds the single mirrored TOKEN_PATTERN.
-PiiToken = Annotated[str, Field(pattern=r"^\[\[PII:[A-Z_]+:[a-z2-7]{8}\]\]$")]
+PiiToken = Annotated[str, Field(pattern=rf"^{TOKEN_PATTERN}$")]
 
 BBox = Annotated[list[int], Field(min_length=4, max_length=4)]
 DataUrlImage = Annotated[
-    str, Field(pattern=r"^data:image/(webp|jpeg);base64,[A-Za-z0-9+/]+={0,2}$")
+    str, Field(pattern=r"^data:image/(png|webp|jpeg);base64,[A-Za-z0-9+/]+={0,2}$")
 ]
 
 
-class Page(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class Page(StrictObject):
+    model_config = ConfigDict(extra="forbid", strict=True)
 
     url: str
     title: str
     type: str | None = None
 
 
-class Element(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class Element(StrictObject):
+    model_config = ConfigDict(extra="forbid", strict=True)
 
-    mark_id: int = Field(ge=0)
+    eid: EID
     fp: str = Field(min_length=1)
     role: str
     label: str
@@ -47,9 +50,15 @@ class Element(BaseModel):
     enabled: bool
     hidden_interactive: bool | None = None
 
+    @model_validator(mode="after")
+    def password_has_no_length(self):
+        if self.input_type == "password" and self.value_len_bucket is not None:
+            raise ValueError("password length must not be included")
+        return self
 
-class VisualRegion(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+
+class VisualRegion(StrictObject):
+    model_config = ConfigDict(extra="forbid", strict=True)
 
     rid: str = Field(min_length=1)
     class_: str = Field(alias="class")
@@ -57,8 +66,9 @@ class VisualRegion(BaseModel):
     ocr: str | None = None
 
 
-class Redaction(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class Redaction(StrictObject):
+    eid: EID | None = None
+    model_config = ConfigDict(extra="forbid", strict=True)
 
     rid: str = Field(min_length=1)
     kind: RedactionKind
@@ -68,10 +78,10 @@ class Redaction(BaseModel):
     token: PiiToken | None = None
 
 
-class TextBlock(BaseModel):
+class TextBlock(StrictObject):
     """Sanitized visible text block (Stage 2 Part F.3). `text` may contain tokens, never raw PII."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", strict=True)
 
     tid: str = Field(min_length=1)
     role: str
@@ -79,7 +89,13 @@ class TextBlock(BaseModel):
     bbox: BBox
 
 
-class PayloadV1(BaseModel):
+class FieldHint(StrictObject):
+    eid: EID
+    category: str = Field(min_length=1)
+    fill: Literal["empty"]
+
+
+class PayloadV2(StrictObject):
     """Sanitized payload sent from the extension to the server. See AGENTS.md invariant 1: this is
     the only shape of data the server is ever allowed to see."""
 
@@ -87,7 +103,8 @@ class PayloadV1(BaseModel):
 
     session: str = Field(min_length=1)
     capture_id: str = Field(min_length=1)
-    schema_: Literal["aegis/1"] = Field(alias="schema")
+    state_token: StateTokenId
+    schema_: Literal["aegis/2"] = Field(alias="schema")
     mode: Mode
     task: str
     page: Page
@@ -96,4 +113,4 @@ class PayloadV1(BaseModel):
     texts: list[TextBlock] = Field(default_factory=list)
     redactions: list[Redaction]
     image: DataUrlImage | None = None
-    delta: dict | None = None  # TODO(stage-8): define the delta shape
+    field_hints: list[FieldHint] = Field(default_factory=list)

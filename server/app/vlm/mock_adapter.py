@@ -7,41 +7,45 @@ full request/response shape before a real model is wired in (Stage 3).
 
 from __future__ import annotations
 
-from app.schemas.payload import PayloadV1
-from app.schemas.plan import Action, PlanV1, Target
+from app.schemas.payload import PayloadV2
+from app.schemas.plan import Action, Expect, PlanV2, Target
 
 
 class MockAdapter:
-    async def plan(self, payload: PayloadV1) -> PlanV1:
+    async def plan(self, payload: PayloadV2) -> PlanV2:
         if payload.page.type == "kyc_form":
             name_el = next((e for e in payload.elements if e.input_type == "text"), None)
             email_el = next((e for e in payload.elements if e.input_type == "email"), None)
             actions: list[Action] = []
-            if name_el is not None:
+            if name_el is not None and name_el.value_token is not None:
                 actions.append(
                     Action(
                         action="type",
-                        target=Target(mark_id=name_el.mark_id, fp=name_el.fp),
-                        text="[[PII:NAME:k4m2xq7b]]",
+                        target=Target(eid=name_el.eid, fp=name_el.fp),
+                        text=name_el.value_token,
                     )
                 )
-            if email_el is not None:
+            if email_el is not None and email_el.value_token is not None:
                 actions.append(
                     Action(
                         action="type",
-                        target=Target(mark_id=email_el.mark_id, fp=email_el.fp),
-                        text="[[PII:EMAIL:t5z5n7vd]]",
+                        target=Target(eid=email_el.eid, fp=email_el.fp),
+                        text=email_el.value_token,
                     )
                 )
             actions.append(
                 Action(
                     action="ask_user",
                     reason=(
-                        "The Password field is marked never_automated. "
-                        "The user must enter it directly."
+                        "Mock preview only. Credentials require explicit user consent "
+                        "and entry in the Aegis panel in Stage 3."
                     ),
                 )
             )
-            return PlanV1(plan=actions)
+            return PlanV2(schema="aegis/2", state_token=payload.state_token, plan=actions)
 
-        return PlanV1(plan=[Action(action="done", reason="mock")])
+        return PlanV2(
+            schema="aegis/2",
+            state_token=payload.state_token,
+            plan=[Action(action="done", evidence=Expect(url_path_prefix="/"))],
+        )

@@ -11,8 +11,8 @@ const schemaDir = path.join(rootDir, 'shared', 'schema');
 const outDir = path.join(rootDir, 'extension', 'shared', 'schema');
 
 const targets = [
-  { schema: 'payload.v1.schema.json', out: 'payload.v1.d.ts', name: 'PayloadV1' },
-  { schema: 'plan.v1.schema.json', out: 'plan.v1.d.ts', name: 'PlanV1' },
+  { schema: 'payload.v2.schema.json', out: 'payload.v2.d.ts', name: 'PayloadV2' },
+  { schema: 'plan.v2.schema.json', out: 'plan.v2.d.ts', name: 'PlanV2' },
 ];
 
 await mkdir(outDir, { recursive: true });

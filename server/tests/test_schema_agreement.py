@@ -11,8 +11,8 @@ from pathlib import Path
 import jsonschema
 import pytest
 
-from app.schemas.payload import PayloadV1
-from app.schemas.plan import PlanV1
+from app.schemas.payload import PayloadV2
+from app.schemas.plan import PlanV2
 from app.schemas.tokens import TOKEN_PATTERN as PY_TOKEN_PATTERN
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -31,8 +31,8 @@ def _load_example(name: str) -> dict:
 @pytest.mark.parametrize(
     ("schema_file", "example_file", "model"),
     [
-        ("payload.v1.schema.json", "payload.kyc.json", PayloadV1),
-        ("plan.v1.schema.json", "plan.kyc.json", PlanV1),
+        ("payload.v2.schema.json", "payload.kyc.json", PayloadV2),
+        ("plan.v2.schema.json", "plan.kyc.json", PlanV2),
     ],
 )
 def test_fixture_matches_json_schema_and_pydantic(schema_file, example_file, model):
@@ -60,3 +60,19 @@ def test_token_pattern_matches_typescript_source():
         "server/app/schemas/tokens.py TOKEN_PATTERN has drifted from "
         "extension/shared/schema/tokens.ts — see AGENTS.md invariant 3"
     )
+
+
+@pytest.mark.parametrize("fixture", _load("agreement-cases.json"), ids=lambda f: f["name"])
+def test_v2_agreement_matrix(fixture):
+    schema = _load(f"{fixture['kind']}.v2.schema.json")
+    validator = jsonschema.Draft202012Validator(schema)
+    assert validator.is_valid(fixture["value"]) is fixture["valid"]
+    model = PayloadV2 if fixture["kind"] == "payload" else PlanV2
+    if fixture["valid"]:
+        result = model.model_validate(fixture["value"])
+        validator.validate(json.loads(result.model_dump_json(by_alias=True, exclude_none=True)))
+    else:
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            model.model_validate(fixture["value"])

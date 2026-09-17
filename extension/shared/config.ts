@@ -83,23 +83,30 @@ export const AEGIS_CONFIG = {
    * category's identity-accumulation rule (docs/policy.yaml). */
   IDENTITY_MIN_CONF: 0.6,
 
-  /** Redacted screenshot long-edge size (px) per mode, before WebP/JPEG export. Balances payload
+  /** Redacted screenshot long-edge size (px) per mode, before lossless PNG export (WebP evaluation is Stage 8). Balances payload
    * size against the server's ability to read layout — Fast trades detail for latency, Accurate
    * keeps the most. */
-  IMAGE_MAX_SIDE_FAST: 960,
-  IMAGE_MAX_SIDE_BALANCED: 1280,
-  IMAGE_MAX_SIDE_ACCURATE: 1600,
+  SERVER_IMAGE_MAX_SIDE_FAST: 960,
+  SERVER_IMAGE_MAX_SIDE_BALANCED: 1280,
+  SERVER_IMAGE_MAX_SIDE_ACCURATE: 1600,
 
   /** Minimum length (characters, and separately digits-only) a string must reach before
    * firewall.seal()'s known-value leak check compares it against vault/detection values — below
    * this, short common substrings (e.g. a 2-3 digit area code) would false-positive constantly. */
   LEAK_MIN_LEN: 4,
+  /** Independent local detector sizes; unused until Stage 5. Candidate settings, not results. */
+  DETECTOR_INPUT_FAST: 640,
+  DETECTOR_INPUT_ACCURATE: 1280,
+  CONTEXT_EXPANSION_BUDGET: 3,
+  LINKABILITY_QUASI_K: 3,
+  REPLAY_RECORDING: false,
+  AUDIT_CAPACITY: 256,
   /** Separate, stricter floor for the digits-only form of the leak check. Short digit runs (a
    * 4-digit masked-card tail, a year, a port number) collide by coincidence in any numeric-heavy
    * string, so comparing them flags noise instead of leaks. */
   LEAK_MIN_DIGITS: 7,
 
-  /** Cap on total characters sent in payload.v1's `texts[]` (Stage 2 Part F.3) — bounds payload
+  /** Cap on total characters sent in payload.v2's `texts[]` (Stage 2 Part F.3) — bounds payload
    * size on text-heavy pages; text blocks beyond the budget are simply omitted, fail-closed
    * (never truncated mid-token, which could split a token pattern and make it unparseable). */
   TEXT_BUDGET_CHARS: 4000,

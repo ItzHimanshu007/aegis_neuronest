@@ -1,4 +1,4 @@
-"""Pydantic v2 mirror of shared/schema/plan.v1.schema.json.
+"""Pydantic v2 mirror of shared/schema/plan.v2.schema.json.
 
 The JSON Schema is the single source of truth (AGENTS.md). This mirror is proven to agree with it
 by server/tests/test_schema_agreement.py.
@@ -8,7 +8,9 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import Field, model_validator
+
+from app.schemas.common import EID, StateTokenId, StrictObject
 
 ActionName = Literal[
     "click",
@@ -28,32 +30,34 @@ ActionName = Literal[
 _REQUIRES_TARGET = {"click", "type", "select", "check", "hover"}
 
 
-class Target(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    mark_id: int = Field(ge=0)
+class Target(StrictObject):
+    eid: EID
     fp: str = Field(min_length=1)
 
 
-class Expect(BaseModel):
+class Expect(StrictObject):
     """Post-condition checked locally after the action. All fields optional."""
 
-    model_config = ConfigDict(extra="forbid")
-
-    mark_id: int | None = Field(default=None, ge=0)
+    eid: EID | None = None
     has_value: bool | None = None
     visible: bool | None = None
     enabled: bool | None = None
     modal_open: bool | None = None
     url_path_prefix: str | None = None
+    no_validation_error: bool | None = None
+    text_present: str | None = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def nonempty(self):
+        if not self.model_fields_set:
+            raise ValueError("evidence or expect must contain a condition")
+        return self
 
 
-class Action(BaseModel):
+class Action(StrictObject):
     """One proposed action. The server only proposes — see AGENTS.md invariant 6. Nothing here can
-    carry code or a selector; `target` is only ever a (mark_id, fp) pair the extension must
+    carry code or a selector; `target` is only ever a (eid, fp) pair the extension must
     reacquire and verify before acting."""
-
-    model_config = ConfigDict(extra="forbid")
 
     action: ActionName
     target: Target | None = None
@@ -66,6 +70,7 @@ class Action(BaseModel):
     url: str | None = None
     reason: str | None = None
     expect: Expect | None = None
+    evidence: Expect | None = None
 
     @model_validator(mode="after")
     def _check_action_specific_fields(self) -> Action:
@@ -85,33 +90,58 @@ class Action(BaseModel):
             raise ValueError("action 'navigate' requires 'url'")
         if self.action in ("ask_user", "fail") and self.reason is None:
             raise ValueError(f"action '{self.action}' requires 'reason'")
+        if self.action == "done" and self.evidence is None:
+            raise ValueError("done requires evidence")
+        allowed = {
+            "click": {"target"},
+            "type": {"target", "text"},
+            "select": {"target", "value"},
+            "check": {"target"},
+            "scroll": {"direction", "amount"},
+            "hover": {"target"},
+            "key": {"target", "key"},
+            "wait": {"ms"},
+            "navigate": {"url"},
+            "ask_user": {"reason"},
+            "done": {"evidence"},
+            "fail": {"reason"},
+        }[self.action] | {"action", "expect"}
+        if self.model_fields_set - allowed:
+            raise ValueError("properties not allowed for this action")
         return self
 
 
-class Answer(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
+class Answer(StrictObject):
     text: str
 
 
-class Extract(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
+class Extract(StrictObject):
     data: dict
 
 
-class PlanV1(BaseModel):
+class ContextRequest(StrictObject):
+    reason: str = Field(min_length=1, max_length=300)
+    kind: Literal["more_elements", "scroll_region", "higher_resolution"]
+
+
+class PlanV2(StrictObject):
     """Server response. Exactly one of plan / answer / extract is present."""
 
-    model_config = ConfigDict(extra="forbid")
-
+    schema_: Literal["aegis/2"] = Field(alias="schema")
+    state_token: StateTokenId
+    plan_steps: list[Annotated[str, Field(min_length=1, max_length=200)]] | None = Field(
+        default=None, min_length=1, max_length=8
+    )
+    request_context: ContextRequest | None = None
     plan: Annotated[list[Action], Field(min_length=1)] | None = None
     answer: Answer | None = None
     extract: Extract | None = None
 
     @model_validator(mode="after")
-    def _exactly_one_variant(self) -> PlanV1:
-        present = [v is not None for v in (self.plan, self.answer, self.extract)]
+    def _exactly_one_variant(self) -> PlanV2:
+        present = [
+            v is not None for v in (self.plan, self.answer, self.extract, self.request_context)
+        ]
         if sum(present) != 1:
             raise ValueError("exactly one of plan, answer, extract must be set")
         return self

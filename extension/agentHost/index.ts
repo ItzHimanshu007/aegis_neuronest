@@ -1,3 +1,5 @@
+import { decideSensing, countSensing, type SensingCounters } from '../sensing';
+import { buildScene, toLocalView, toOutboundDraft, type EID, type SceneGraph } from '../scene';
 /**
  * The agentHost (Stage 2 Part A2): the privacy pipeline, running inside the side panel document.
  *
@@ -17,8 +19,8 @@
 import { applySpanRects, runDetectionCascade, type SpanRectsResponse } from '../privacy/detect';
 import { canTokenizeFromPage, decide, determineNecessity } from '../privacy/policy';
 import { getElementFieldContext } from '../privacy/detect/fieldContext';
-import { maskKindForAction, redact, type MaskRequest, type Mode, type RedactResult } from '../privacy/redactor';
-import { buildPayload, type DraftRedaction, type DraftVisualRegion, type ElementDecision, type SanitizedTextBlock } from '../privacy/payloadBuilder';
+import { redact, type Mode, type RedactResult } from '../privacy/redactor';
+import { buildPayload, type ElementDecision, type SanitizedTextBlock } from '../privacy/payloadBuilder';
 import { sanitizeText, sanitizeTask, sanitizeTitle, sanitizeUrl, type KnownValue } from '../privacy/sideChannels';
 import { normalizeValue } from '../privacy/vault';
 import { seal, type SanitizedPayload, type SealTimings } from '../privacy/firewall';
@@ -39,6 +41,7 @@ export interface ProcessOptions {
    * still matches, so passing anything else silently degrades every text detection to a
    * whole-block mask. */
   stateToken: StateToken;
+  screen?: SceneGraph['screen'];
 }
 
 export interface PreviewDetection {
@@ -52,12 +55,15 @@ export interface PreviewDetection {
   /** Length only — the Privacy Preview never shows a value (Stage 2 Part G). */
   valueLength?: number;
   rectCount: number;
+  /** Local geometry/offsets for exact synthetic evaluation; no value text. */
+  span?: { start: number; end: number };
 }
 
 export interface ProcessResult {
   payload: SanitizedPayload;
   preview: {
     detections: PreviewDetection[];
+    sensingCounters: SensingCounters;
     redactedImageDataUrl?: string;
     rawImageDataUrl: string;
     neutralizedCount: number;
@@ -87,7 +93,7 @@ export async function processObservation(options: ProcessOptions): Promise<Proce
 
   // --- detect ---------------------------------------------------------------------------------
   const detectStart = performance.now();
-  const cascade = runDetectionCascade({ observation, task });
+  const cascade = runDetectionCascade({ observation, task, registry: session.registry, knownValues: session.vault.knownValues() });
 
   // One batched SPAN_RECTS call per capture (Stage 2 Part C.7).
   let detections: MergedDetection[] = cascade.detections;
@@ -114,13 +120,14 @@ export async function processObservation(options: ProcessOptions): Promise<Proce
   const policyStart = performance.now();
   session.privacyState.observeDetections(origin, detections);
   const identitySeenOnOrigin = session.privacyState.hasIdentitySeen(origin);
+  const linkabilityActive = session.privacyState.hasLinkability(origin);
 
-  const elementByFp = new Map(observation.elements.map((el) => [el.fp, el]));
+  const elementByEid = new Map(observation.elements.map((el) => [session.registry.identity(el).eid, el]));
   const vaultNormalizedValues = new Set(session.vault.knownValues().map((v) => v.normalized));
 
   const decisions: Array<{ detection: MergedDetection; action: Action }> = [];
   for (const detection of detections) {
-    const element = detection.target.kind === 'element' ? elementByFp.get(detection.target.ref) : undefined;
+    const element = detection.target.kind === 'element' ? elementByEid.get(detection.target.ref as EID) : undefined;
     const targetFieldCategory = element ? getElementFieldContext(element) : undefined;
     const necessity = determineNecessity({
       det: detection,
@@ -130,13 +137,13 @@ export async function processObservation(options: ProcessOptions): Promise<Proce
       targetFieldCategory,
       normalize: normalizeValue,
     });
-    const action = decide(detection, { necessity, identitySeenOnOrigin, userOverrides: session.userOverrides });
+    const action = decide(detection, { necessity, identitySeenOnOrigin, linkabilityActive, userOverrides: session.userOverrides });
     decisions.push({ detection, action });
   }
   const policyMs = performance.now() - policyStart;
 
   // --- tokenize -------------------------------------------------------------------------------
-  const elementDecisions = new Map<string, ElementDecision>();
+  const elementDecisions = new Map<EID, ElementDecision>();
   const tokensByDetection = new Map<string, string>();
 
   for (const { detection, action } of decisions) {
@@ -147,16 +154,17 @@ export async function processObservation(options: ProcessOptions): Promise<Proce
     const token = await session.vault.tokenize(detection.category, rawValue, { origin, source: 'page' });
     tokensByDetection.set(detection.id, token);
     if (detection.target.kind === 'element') {
-      elementDecisions.set(detection.target.ref, { valueToken: token, action, category: detection.category });
+      elementDecisions.set(detection.target.ref as EID, { valueToken: token, action, category: detection.category });
     }
   }
 
   // Elements with a field-context category but no token still record the category, so the payload
   // builder can suppress length buckets for secret fields.
   for (const el of observation.elements) {
-    if (elementDecisions.has(el.fp)) continue;
+    const eid = session.registry.identity(el).eid;
+    if (elementDecisions.has(eid)) continue;
     const category = getElementFieldContext(el);
-    if (category) elementDecisions.set(el.fp, { category });
+    if (category) elementDecisions.set(eid, { category });
   }
 
   // --- sanitize side channels -----------------------------------------------------------------
@@ -164,7 +172,7 @@ export async function processObservation(options: ProcessOptions): Promise<Proce
     decideFor: (category: Category, value: string) =>
       decide(
         { id: 'side', capture_id: observation.capture_id, source: 'rule', category, confidence: 0.9, target: { kind: 'side_channel', ref: 'side' }, rects: [], rawValue: value as never },
-        { necessity: 'not_needed' as const, identitySeenOnOrigin, userOverrides: session.userOverrides },
+        { necessity: 'not_needed' as const, identitySeenOnOrigin, linkabilityActive, userOverrides: session.userOverrides },
       ),
     tokenize: (category: Category, value: string) => session.vault.tokenize(category, value, { origin, source: 'page' }),
   };
@@ -206,26 +214,18 @@ export async function processObservation(options: ProcessOptions): Promise<Proce
 
   // --- redact ---------------------------------------------------------------------------------
   const redactStart = performance.now();
-  const maskRequests: MaskRequest[] = [];
-  const draftRedactions: DraftRedaction[] = [];
-  for (const { detection, action } of decisions) {
-    const token = tokensByDetection.get(detection.id);
-    const kind = maskKindForAction(action, Boolean(token));
-    if (!kind) continue;
-    for (const [index, rect] of detection.rects.entries()) {
-      const rid = `${detection.id}-${index}`;
-      maskRequests.push({ rid, kind, type: detection.category, rect, token });
-      draftRedactions.push({
-        rid,
-        kind,
-        type: detection.category,
-        bbox: [Math.round(rect.x), Math.round(rect.y), Math.round(rect.width), Math.round(rect.height)],
-        reason: `${detection.sources.join('+')} -> ${action}`,
-        token,
-      });
-    }
+  const labels = new Map<EID, string>();
+  for (const el of observation.elements) {
+    labels.set(session.registry.identity(el).eid, (await sanitizeText(el.name || el.labelText, { ...sanitizeOptions, knownValues })).text);
   }
-
+  const screen = options.screen ?? { decision: 'NEW_SCREEN' as const, reason: 'conservative-default' };
+  const scene = buildScene(observation, detections, decisions, session.registry, {
+    sessionId: session.sessionId, stateTokenId: session.stateTokens.mint(), stateToken: options.stateToken,
+    screen, screenEpoch: (session.scene?.screenEpoch ?? 0) + (screen.decision === 'NEW_SCREEN' ? 1 : 0),
+    mode, url: sanitizedUrl.text, title: sanitizedTitle.text, task: sanitizedTask.text,
+    labels, texts, elementDecisions, tokensByDetection,
+  });
+  const localView = toLocalView(scene);
   let redactResult: RedactResult | undefined;
   if (observation.screenshot.dataUrl) {
     redactResult = await redact({
@@ -233,34 +233,16 @@ export async function processObservation(options: ProcessOptions): Promise<Proce
       capture_id: observation.capture_id,
       scaleX: observation.screenshot.scaleX,
       scaleY: observation.screenshot.scaleY,
-      masks: maskRequests,
+      masks: localView.local.masks,
       mode,
     });
   }
   const redactMs = performance.now() - redactStart;
 
   // --- build + seal ---------------------------------------------------------------------------
-  const visualRegions: DraftVisualRegion[] = observation.media
-    .filter((m) => m.visible)
-    .map((m, index) => ({
-      rid: `media-${index}`,
-      class: 'unscanned_media',
-      bbox: [Math.round(m.bbox.x), Math.round(m.bbox.y), Math.round(m.bbox.width), Math.round(m.bbox.height)] as [number, number, number, number],
-    }));
-
-  const draft = buildPayload({
-    observation,
-    task: sanitizedTask.text,
-    url: sanitizedUrl.text,
-    title: sanitizedTitle.text,
-    mode,
-    session: session.sessionId,
-    image: redactResult?.image,
-    elementDecisions,
-    texts,
-    redactions: draftRedactions,
-    visualRegions,
-  });
+  const sensing = decideSensing(session.scene, { screen, captureId: scene.capture_id }, mode, { elements: scene.elements.size });
+  scene.image = sensing.serverImage === 'none' ? undefined : redactResult?.image;
+  const draft = buildPayload(toOutboundDraft(scene));
 
   const sealStart = performance.now();
   const { payload, timings: sealTimings } = await seal(draft, {
@@ -274,12 +256,19 @@ export async function processObservation(options: ProcessOptions): Promise<Proce
       .filter((v) => v.value.length > 0),
   });
   const sealMs = performance.now() - sealStart;
+  session.stateTokens.commit(scene);
+  session.scene = scene;
+  session.sensingCounters = countSensing(session.sensingCounters, sensing);
+  const categoryCounts: Partial<Record<Category, number>> = {};
+  for (const d of detections) categoryCounts[d.category] = (categoryCounts[d.category] ?? 0) + 1;
+  session.audit.append({ ts: Date.now(), digest: payload.digest, categoryCounts, eids: [...scene.elements.keys()], action: 'observe', level: 'L0', verdict: 'SEALED', timings: { detectMs, policyMs, redactMs, sealMs } });
 
   const neutralizedCount = sanitizedUrl.neutralizedCount + sanitizedTitle.neutralizedCount + sanitizedTask.neutralizedCount;
 
   return {
     payload,
     preview: {
+      sensingCounters: { ...session.sensingCounters },
       detections: decisions.map(({ detection, action }) => ({
         id: detection.id,
         category: detection.category,
@@ -290,6 +279,7 @@ export async function processObservation(options: ProcessOptions): Promise<Proce
         targetRef: detection.target.ref,
         valueLength: detection.rawValue ? (detection.rawValue as unknown as string).length : undefined,
         rectCount: detection.rects.length,
+        span: detection.span,
       })),
       redactedImageDataUrl: redactResult?.image.dataUrl,
       rawImageDataUrl: observation.screenshot.dataUrl,

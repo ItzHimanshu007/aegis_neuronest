@@ -19,6 +19,7 @@ import type { Category } from './categoryTypes';
 export type MaskKind = 'FILL' | 'LABELLED_FILL' | 'BLUR' | 'FILL_REGION';
 
 export interface MaskRequest {
+  eid?: import('../scene/registry').EID;
   rid: string;
   kind: MaskKind;
   type: Category;
@@ -92,11 +93,11 @@ export function maskKindForAction(action: Action, hasToken: boolean): MaskKind |
 function maxSideForMode(mode: Mode): number {
   switch (mode) {
     case 'fast':
-      return AEGIS_CONFIG.IMAGE_MAX_SIDE_FAST;
+      return AEGIS_CONFIG.SERVER_IMAGE_MAX_SIDE_FAST;
     case 'accurate':
-      return AEGIS_CONFIG.IMAGE_MAX_SIDE_ACCURATE;
+      return AEGIS_CONFIG.SERVER_IMAGE_MAX_SIDE_ACCURATE;
     default:
-      return AEGIS_CONFIG.IMAGE_MAX_SIDE_BALANCED;
+      return AEGIS_CONFIG.SERVER_IMAGE_MAX_SIDE_BALANCED;
   }
 }
 
@@ -233,12 +234,8 @@ export async function redact(options: RedactOptions): Promise<RedactResult> {
 }
 
 async function canvasToDataUrl(canvas: OffscreenCanvas): Promise<string> {
-  let blob: Blob;
-  try {
-    blob = await canvas.convertToBlob({ type: 'image/webp', quality: 0.85 });
-  } catch {
-    blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.85 });
-  }
+  // Lossless PNG now; compare WebP only in Stage 8 after mask verification.
+  const blob = await canvas.convertToBlob({ type: 'image/png' });
   const buffer = await blob.arrayBuffer();
   const bytes = new Uint8Array(buffer);
   let binary = '';

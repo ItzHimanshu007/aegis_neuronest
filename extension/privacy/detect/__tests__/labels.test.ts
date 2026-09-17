@@ -84,8 +84,8 @@ describe('isSecretLabel (Stage 2 Part A1)', () => {
     expect(isSecretLabel('MPIN')).toBe(true);
   });
 
-  it('does not flag PASSWORD (handled separately via input type, not via this guard)', () => {
-    expect(isSecretLabel('Password')).toBe(false);
+  it('flags a password label even if the page mislabels its input type', () => {
+    expect(isSecretLabel('Password')).toBe(true);
   });
 
   it('does not flag ordinary labels', () => {
