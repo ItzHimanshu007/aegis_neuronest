@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aegis Demo &mdash; Search vs commit forms</title>
+    <link rel="stylesheet" href="/src/style.css" />
+    <style>
+      .row { margin-bottom: 12px; }
+      /* The two forms are styled identically on purpose: the authority classifier must tell them
+         apart from their semantics, never from how they look. */
+      .lookalike { display: flex; gap: 8px; align-items: center; max-width: 520px; }
+      .lookalike input { flex: 1; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p class="badge">DEMO &mdash; SYNTHETIC DATA. Every value below is fabricated.</p>
+    </header>
+
+    <main>
+      <h1>Search vs commit</h1>
+      <p><a href="/">&larr; back</a></p>
+      <p>
+        Pressing Enter in a form submits it, so Aegis treats Enter as a commit (L5) by default.
+        A search box is the one exception &mdash; but only when the whole form has earned it.
+        These four cases are what <code>extension/authority</code> has to separate.
+      </p>
+
+      <section>
+        <h2>1. Plain search form &mdash; Enter should be L2</h2>
+        <form id="search-form" class="lookalike" action="/search.html" method="get">
+          <label for="q">Search products</label>
+          <input id="q" name="q" type="search" placeholder="e.g. water bottle" />
+          <button type="submit">Go</button>
+        </form>
+      </section>
+
+      <section>
+        <h2>2. Search landmark, no form &mdash; Enter should be L2</h2>
+        <div role="search" class="lookalike">
+          <label for="q2">Search help articles</label>
+          <input id="q2" name="q2" type="text" placeholder="e.g. refund policy" />
+        </div>
+      </section>
+
+      <section>
+        <h2>3. Look-alike form that is not a search &mdash; Enter must stay L5</h2>
+        <!-- Same layout, same "Go" button, but this one transfers money. -->
+        <form id="transfer-form" class="lookalike" action="/search.html" method="post">
+          <label for="upi">Recipient UPI ID</label>
+          <input id="upi" name="upi" type="text" value="asha@oksbi" data-gt="UPI_ID" />
+          <button type="submit">Go</button>
+        </form>
+      </section>
+
+      <section>
+        <h2>4. Search box sharing a form with a sensitive field &mdash; Enter must stay L5</h2>
+        <!-- The search input qualifies on its own; the account number next to it disqualifies
+             the form, because Enter here submits both. -->
+        <form id="mixed-form" action="/search.html" method="post">
+          <div class="row">
+            <label for="q3">Search transactions</label>
+            <input id="q3" name="q3" type="search" placeholder="e.g. groceries" />
+          </div>
+          <div class="row">
+            <label for="acct">Account number</label>
+            <input id="acct" name="acct" type="text" value="123456789012" data-gt="BANK_ACCOUNT" />
+          </div>
+          <button type="submit">Go</button>
+        </form>
+      </section>
+
+      <section>
+        <h2>5. Search form posting cross-origin &mdash; Enter must stay L5</h2>
+        <form id="offsite-form" class="lookalike" action="http://localhost:5175/search.html" method="get">
+          <label for="q4">Search partner catalogue</label>
+          <input id="q4" name="q4" type="search" placeholder="e.g. spare parts" />
+          <button type="submit">Go</button>
+        </form>
+      </section>
+    </main>
+  </body>
+</html>

@@ -41,6 +41,14 @@ export type Element = {
    */
   value_token?: string;
   eid: string;
+  /**
+   * On screen but covered by something else. The planner should clear the obstacle before acting on this element.
+   */
+  occluded?: boolean;
+  /**
+   * EID of the element covering this one, when that element is itself in this payload.
+   */
+  covered_by?: string;
 };
 /**
  * Coarse length bucket. Never the value, never the exact length.

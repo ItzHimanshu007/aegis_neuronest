@@ -211,6 +211,25 @@ export class TokenVault {
     return this.byToken.get(token)!.value;
   }
 
+  /**
+   * Resolves a token for display inside the Aegis panel only (AGENTS.md invariant 4's one
+   * exception, added in Stage 3A). An `answer`/`extract` result is useless to the user if it still
+   * reads `[[PII:NAME:...]]`, but that value must not travel any further than the pixels of our
+   * own UI.
+   *
+   * The return type is deliberately NOT a string: `DisplayOnlyText` is an opaque wrapper, so it
+   * cannot be handed to `sendMessage`, a network call or the page by accident. Getting a string
+   * back out takes `unwrapForPanelRender()`, which a guard test confines to the panel.
+   *
+   * Unlike `resolve()` this does not take a `RehydrateContext` — there is no origin and no target
+   * field involved, because nothing is being written anywhere.
+   */
+  resolveForDisplay(token: string): DisplayOnlyText {
+    const entry = this.byToken.get(token);
+    if (!entry) throw new Error(`Unknown token: cannot display ${token}`);
+    return { text: entry.value } as DisplayOnlyText;
+  }
+
   /** Ends the session: drops every entry and the key reference. */
   clear(): void {
     this.byToken.clear();
@@ -222,6 +241,28 @@ export class TokenVault {
 // ---------------------------------------------------------------------------------------------
 // Token-like string neutralization (AGENTS.md invariant 3)
 // ---------------------------------------------------------------------------------------------
+
+declare const DISPLAY_ONLY: unique symbol;
+
+/**
+ * A real PII value that may be rendered in the Aegis panel and nowhere else. It is an object, not
+ * a branded string, so no amount of structural typing lets it slip into a `string` parameter.
+ */
+export interface DisplayOnlyText {
+  /** Phantom field: type-only, never present at runtime. It exists so the wrapper is structurally
+   * incompatible with `string` and with any plain `{ text: string }` a caller might construct. */
+  readonly [DISPLAY_ONLY]: 'display-only';
+  readonly text: string;
+}
+
+/**
+ * The single sanctioned way to turn a `DisplayOnlyText` back into a string, for rendering it into
+ * the panel's own DOM. `privacy/__tests__/displayOnly.guard.test.ts` fails the build if this is
+ * called anywhere outside the panel UI.
+ */
+export function unwrapForPanelRender(value: DisplayOnlyText): string {
+  return value.text;
+}
 
 export const BLOCKED_TOKENLIKE = '[[BLOCKED_TOKENLIKE]]';
 

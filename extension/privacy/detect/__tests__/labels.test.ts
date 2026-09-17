@@ -97,3 +97,19 @@ describe('isSecretLabel (Stage 2 Part A1)', () => {
     expect(isSecretLabel('Photographer')).toBe(false); // contains no OTP/CVV/UPI PIN word
   });
 });
+
+describe('labels that name a person rather than the thing they belong to', () => {
+  // The Stage 2.5 baseline's single false negative: a <th>Account holder</th><td>Asha Verma</td>
+  // row matched no label at all, so its value was never classified (Stage 3A Part A4).
+  it.each(['Account holder', 'Account Holder Name', 'Cardholder', 'Card holder name', 'Beneficiary name', 'खाताधारक'])(
+    '%s names a NAME',
+    (label) => expect(matchLabelCategories(label)).toContain('NAME'),
+  );
+
+  it.each(['Account number', 'Bank account', 'खाता संख्या'])('%s is still the account itself', (label) =>
+    expect(matchLabelCategories(label)).toContain('BANK_ACCOUNT'));
+
+  it('does not let the account-holder phrases claim a plain account label', () => {
+    expect(matchLabelCategories('Account number')).not.toContain('NAME');
+  });
+});

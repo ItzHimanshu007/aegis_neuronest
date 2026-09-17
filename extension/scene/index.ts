@@ -20,6 +20,8 @@ export interface SceneSessionState {
 }
 export function buildScene(observation: Observation, detections: MergedDetection[], decisions: Array<{ detection: MergedDetection; action: Action }>, registry: EIDRegistry, state: SceneSessionState): SceneGraph {
   registry.reconcile(observation);
+  const eidByNodeRef = new Map<string, EID>();
+  for (const el of observation.elements) if (el.nodeRef) eidByNodeRef.set(el.nodeRef, registry.identity(el).eid);
   const elements = new Map<EID, SceneElement>();
   const relations: SceneGraph['relations'] = { labelOf: new Map(), inForm: new Map(), inModal: new Map(), inFrame: new Map() };
   for (const el of observation.elements) {
@@ -34,6 +36,10 @@ export function buildScene(observation: Observation, detections: MergedDetection
       role: el.role, labelSanitized: label, inputType: el.inputType, fieldCategory: category,
       fill: category ? classifyFill(el, category) : undefined,
       states: { ...el.states }, bbox: { ...el.bbox }, visible: el.visible, hitOk: el.hitOk === true,
+      occluded: el.visible && el.hitOk === false,
+      searchFormSafe: false, // a second pass fills this in; it needs every element's category
+
+      coveredBy: el.coveredByRef ? eidByNodeRef.get(el.coveredByRef) : undefined,
       hiddenInteractive: el.hiddenInteractive, detectionIds: ds.map(d => d.id),
       decision: decision?.action ?? decisions.find(d => d.detection.target.ref === eid)?.action,
       token: decision?.valueToken, sources: [...new Set(ds.flatMap(d => d.sources))],
@@ -46,6 +52,8 @@ export function buildScene(observation: Observation, detections: MergedDetection
     if (el.formRef) relations.inForm.set(eid, el.formRef);
     if (el.modalRef) relations.inModal.set(eid, el.modalRef);
   }
+  markSearchSafeForms(observation, elements, registry);
+
   const masks: MaskRequest[] = [], redactions: DraftRedaction[] = [];
   for (const { detection, action } of decisions) {
     const token = state.tokensByDetection.get(detection.id);
@@ -70,6 +78,45 @@ export function buildScene(observation: Observation, detections: MergedDetection
     local: { observation, stateToken: state.stateToken, masks, detections } as SceneGraph['local'],
   };
 }
+/**
+ * Marks fields where pressing Enter is a search rather than a commit (Stage 3A Part A2).
+ *
+ * Enter inside a form is L5 by default because it submits, and a search box would otherwise make
+ * every query ask for approval. The exception has to be earned by the WHOLE form, not the field:
+ * one sensitive or password field anywhere in it, or a cross-origin action, and Enter stays a
+ * commit. A search field outside any form has nothing to submit, so it qualifies on its own.
+ */
+function markSearchSafeForms(observation: Observation, elements: Map<EID, SceneElement>, registry: EIDRegistry): void {
+  const SENSITIVE_BLOCKS_SEARCH = (el: SceneElement): boolean =>
+    el.inputType === 'password' || el.fieldCategory !== undefined;
+
+  const byForm = new Map<string, SceneElement[]>();
+  const formOrigin = new Map<string, string | undefined>();
+  for (const raw of observation.elements) {
+    if (!raw.formRef) continue;
+    const el = elements.get(registry.identity(raw).eid);
+    if (!el) continue;
+    const list = byForm.get(raw.formRef) ?? [];
+    list.push(el);
+    byForm.set(raw.formRef, list);
+    if (raw.formActionOrigin) formOrigin.set(raw.formRef, raw.formActionOrigin);
+  }
+
+  const pageOrigin = new URL(observation.url).origin;
+  for (const raw of observation.elements) {
+    if (!raw.inSearchScope) continue;
+    const el = elements.get(registry.identity(raw).eid);
+    if (!el) continue;
+    if (!raw.formRef) {
+      el.searchFormSafe = true; // no form, so Enter cannot submit anything
+      continue;
+    }
+    const action = formOrigin.get(raw.formRef);
+    if (action !== undefined && action !== pageOrigin) continue;
+    el.searchFormSafe = !(byForm.get(raw.formRef) ?? []).some(SENSITIVE_BLOCKS_SEARCH);
+  }
+}
+
 function intRect(r: { x: number; y: number; width: number; height: number }): [number, number, number, number] {
   return [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)];
 }
@@ -78,6 +125,10 @@ export function toLocalView(scene: SceneGraph): SceneGraph { return scene; }
 declare const OUTBOUND_DRAFT: unique symbol;
 export type OutboundDraft = { readonly payload: DraftPayload; readonly [OUTBOUND_DRAFT]: true };
 /** The only projection that payloadBuilder accepts. Enumerate fields; never spread raw/local data. */
+function isOutbound(el: SceneElement | undefined): boolean {
+  return el !== undefined && (el.visible || el.hiddenInteractive);
+}
+
 export function toOutboundDraft(scene: SceneGraph): OutboundDraft {
   const elements: DraftPayload['elements'] = [];
   const fieldHints: NonNullable<DraftPayload['field_hints']> = [];
@@ -89,6 +140,11 @@ export function toOutboundDraft(scene: SceneGraph): OutboundDraft {
     };
     if (el.visible) {
       draft.input_type = el.inputType; draft.has_value = el.hasValue;
+      if (el.occluded) {
+        draft.occluded = true;
+        // Only name a cover the server can actually act on — an EID it never receives is noise.
+        if (el.coveredBy && isOutbound(scene.elements.get(el.coveredBy))) draft.covered_by = el.coveredBy;
+      }
       if (!['PASSWORD', 'OTP', 'CVV', 'UPI_PIN', 'SECRET'].includes(el.fieldCategory ?? '') && el.inputType !== 'password') draft.value_len_bucket = el.valueLenBucket;
       if (el.token) draft.value_token = el.token;
       if (el.fieldCategory && el.fill === 'empty') fieldHints.push({ eid: el.eid, category: el.fieldCategory, fill: 'empty' });

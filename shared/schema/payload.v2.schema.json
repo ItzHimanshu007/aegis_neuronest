@@ -208,6 +208,15 @@
         "eid": {
           "type": "string",
           "pattern": "^E[0-9]{1,6}$"
+        },
+        "occluded": {
+          "type": "boolean",
+          "description": "On screen but covered by something else. The planner should clear the obstacle before acting on this element."
+        },
+        "covered_by": {
+          "type": "string",
+          "pattern": "^E[0-9]{1,6}$",
+          "description": "EID of the element covering this one, when that element is itself in this payload."
         }
       },
       "allOf": [

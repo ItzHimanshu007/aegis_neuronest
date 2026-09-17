@@ -22,7 +22,11 @@ export interface LabelEntry {
 }
 
 export const LABEL_DICTIONARY: LabelEntry[] = [
-  { category: 'NAME', phrases: ['name', 'full name', "father's name", 'नाम', 'पिता का नाम'] },
+  // "account holder" and friends name a PERSON, not an account. Without them a
+  // `<th>Account holder</th><td>Asha Verma</td>` row carries no category at all, so the
+  // labelled-value fallback never fires and the name goes out in the clear — the one false
+  // negative in the Stage 2.5 baseline (Stage 3A Part A4).
+  { category: 'NAME', phrases: ['name', 'full name', "father's name", 'account holder', 'accountholder', 'cardholder', 'card holder', 'beneficiary', 'नाम', 'पिता का नाम', 'खाताधारक'] },
   { category: 'EMAIL', phrases: ['email', 'e-mail', 'email address', 'ई-मेल', 'ईमेल'] },
   { category: 'PHONE', phrases: ['mobile', 'phone', 'phone number', 'contact number', 'मोबाइल', 'फ़ोन', 'फोन'] },
   { category: 'DOB', phrases: ['date of birth', 'dob', 'birth date', 'जन्म तिथि'] },

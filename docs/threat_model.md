@@ -36,7 +36,10 @@ The page is fully attacker-controlled and wants the agent to act against the use
   a token will be echoed back into a `type` action and re-hydrated into an attacker-visible field.
   *Defence.* Token-like strings found in page text are **neutralized before sealing**. Re-hydration
   is bound to the token type, the field type, and the consented origin, and happens only inside a
-  `type` action — never in URLs, navigation, keys, or anything else.
+  `type` action — never in URLs, navigation, keys, or anything else. Tokens may additionally be
+  resolved for **display in the Aegis panel** (`vault.resolveForDisplay`), which writes nothing
+  anywhere: the result is an opaque value the type system will not let through a `string`
+  parameter, and a guard test keeps the unwrap inside the panel UI.
 - **Hidden text and hidden interactives.** Off-screen or zero-opacity elements try to steer the model
   or receive a click.
   *Defence.* Visibility and occlusion are computed from geometry, not from the DOM's own claims.

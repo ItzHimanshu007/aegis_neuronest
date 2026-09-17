@@ -19,6 +19,7 @@ export default defineConfig({
         dynamic: resolve(rootDir, 'dynamic.html'),
         hidden: resolve(rootDir, 'hidden.html'),
         piiZoo: resolve(rootDir, 'pii-zoo.html'),
+        search: resolve(rootDir, 'search.html'),
       },
     },
   },

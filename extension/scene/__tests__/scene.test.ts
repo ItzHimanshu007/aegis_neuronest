@@ -99,3 +99,55 @@ it('inserting a duplicate in another frame preserves a persistent EID', () => {
   };
   expect(read(false,'cap1')).toBe(read(true,'cap2'));
 });
+
+describe('occlusion and search-safe forms', () => {
+  it('reports an element as occluded and names the cover when the cover is also a scene element', () => {
+    const covered = element({ fp: 'fp-submit', nodeRef: 'node-submit', role: 'button', name: 'Submit', hitOk: false, coveredByRef: 'node-banner' });
+    const cover = element({ fp: 'fp-banner', nodeRef: 'node-banner', role: 'button', name: 'Accept cookies', inputType: undefined });
+    const s = scene([covered, cover]);
+    const target = [...s.elements.values()].find((e) => e.fp === 'fp-submit')!;
+    const banner = [...s.elements.values()].find((e) => e.fp === 'fp-banner')!;
+    expect(target.occluded).toBe(true);
+    expect(target.coveredBy).toBe(banner.eid);
+  });
+
+  it('leaves coveredBy unset when the cover is not a scene element', () => {
+    const covered = element({ hitOk: false, coveredByRef: 'node-styling-div' });
+    const target = [...scene([covered]).elements.values()][0]!;
+    expect(target.occluded).toBe(true);
+    expect(target.coveredBy).toBeUndefined();
+  });
+
+  it('does not call a hidden element occluded — occlusion is about things the user can see', () => {
+    const hidden = element({ visible: false, hiddenInteractive: true, hitOk: false });
+    expect([...scene([hidden]).elements.values()][0]!.occluded).toBe(false);
+  });
+
+  it('marks a search field in a clean same-origin form as search-safe', () => {
+    const search = element({ fp: 'fp-q', nodeRef: 'node-q', inputType: 'search', name: 'Search', labelText: 'Search products', inSearchScope: true, formRef: 'form-1' });
+    const button = element({ fp: 'fp-go', nodeRef: 'node-go', role: 'button', name: 'Go', labelText: 'Go', inputType: undefined, formRef: 'form-1' });
+    const s = scene([search, button]);
+    expect([...s.elements.values()].find((e) => e.fp === 'fp-q')!.searchFormSafe).toBe(true);
+  });
+
+  it('refuses the exception when a sensitive field shares the form', () => {
+    const search = element({ fp: 'fp-q', nodeRef: 'node-q', inputType: 'search', name: 'Search', labelText: 'Search products', inSearchScope: true, formRef: 'form-1' });
+    const account = element({ fp: 'fp-acct', nodeRef: 'node-acct', inputType: 'text', name: 'Account number', labelText: 'Account number', formRef: 'form-1' });
+    const s = scene([search, account]);
+    expect([...s.elements.values()].find((e) => e.fp === 'fp-q')!.searchFormSafe).toBe(false);
+  });
+
+  it('refuses the exception when the form posts cross-origin', () => {
+    const search = element({ fp: 'fp-q', nodeRef: 'node-q', inputType: 'search', name: 'Search', labelText: 'Search products', inSearchScope: true, formRef: 'form-1', formActionOrigin: 'https://other.test' });
+    expect([...scene([search]).elements.values()][0]!.searchFormSafe).toBe(false);
+  });
+
+  it('allows a search box that belongs to no form at all', () => {
+    const search = element({ fp: 'fp-q', nodeRef: 'node-q', inputType: 'text', name: 'Search', labelText: 'Search products', inSearchScope: true });
+    expect([...scene([search]).elements.values()][0]!.searchFormSafe).toBe(true);
+  });
+
+  it('leaves ordinary fields outside search scope alone', () => {
+    expect([...scene([element({ formRef: 'form-1' })]).elements.values()][0]!.searchFormSafe).toBe(false);
+  });
+});

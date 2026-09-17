@@ -36,7 +36,13 @@ export function classifyAction(action: Action, element: SceneElement | undefined
     }
     if (element.inForm && element.role === 'button' && (element.ambiguous || !element.labelSanitized.trim())) return verdict(AUTHORITY_DEFAULTS.ambiguous_form_button_level, 'AMBIGUOUS_FORM_BUTTON', true);
   }
-  if (kind === 'key' && (action.key ?? '').toLowerCase() === 'enter') return verdict('L5', element?.inForm ? 'FORM_ENTER' : 'POSSIBLE_COMMIT_ENTER', true);
+  if (kind === 'key' && (action.key ?? '').toLowerCase() === 'enter') {
+    // Enter submits, so it is a commit by default. The one exception is a search box whose whole
+    // form is free of sensitive fields and posts same-origin — otherwise every search would need
+    // an approval click. See scene/index.ts's markSearchSafeForms for how that is earned.
+    if (element?.searchFormSafe) return verdict('L2', 'SEARCH_ENTER');
+    return verdict('L5', element?.inForm ? 'FORM_ENTER' : 'POSSIBLE_COMMIT_ENTER', true);
+  }
   const categories = tokenCategories(`${action.text ?? ''} ${action.value ?? ''}`);
   if (element?.fieldCategory) categories.push(element.fieldCategory);
   if (element?.inputType === 'password' || categories.includes('PASSWORD')) return verdict('L4', 'CREDENTIAL', AUTHORITY_DEFAULTS.password_requires_user);

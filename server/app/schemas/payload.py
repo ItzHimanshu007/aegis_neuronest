@@ -49,6 +49,8 @@ class Element(StrictObject):
     visible: bool
     enabled: bool
     hidden_interactive: bool | None = None
+    occluded: bool | None = None
+    covered_by: EID | None = None
 
     @model_validator(mode="after")
     def password_has_no_length(self):

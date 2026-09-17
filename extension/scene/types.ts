@@ -13,6 +13,12 @@ export interface SceneElement {
   role: string; labelSanitized: string; inputType?: string;
   fieldCategory?: Category; fill?: FillState;
   states: ElementStates; bbox: CssRect; visible: boolean; hitOk: boolean; hiddenInteractive: boolean;
+  /** On screen but something is on top of it. `coveredBy` is set only when the cover is itself a
+   * scene element, so the planner can be told what to clear first. */
+  occluded: boolean; coveredBy?: EID;
+  /** Enter here is an ordinary search, not a commit: the field is in search scope, and its whole
+   * form is free of sensitive fields, password fields and cross-origin actions. */
+  searchFormSafe: boolean;
   detectionIds: string[]; decision?: Action; token?: string; sources: string[]; confidence?: number;
   local: LocalOnly<{ lineRects: CssRect[]; rawRef: unknown }>;
   /** Authority metadata is local only, never projected into the remote contract. */

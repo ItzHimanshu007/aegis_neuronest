@@ -56,6 +56,11 @@ Consent is per site and task: medium-risk types form one pre-checked group, each
 its own approval, and credentials have a separate row. All grants expire at task end. Every L5
 commit asks again. A re-hydration category/origin mismatch aborts the remaining batch: type nothing
 more, re-observe and replan with a sanitized failure note. Never skip ahead to a possible Submit.
+
+Answers are the one place a token is resolved without being written anywhere. An `answer` or
+`extract` result reaches the user through `vault.resolveForDisplay()`, which returns an opaque
+`DisplayOnlyText` rather than a string, so the value can be rendered in the panel and cannot be
+handed to the page, a URL, storage or the network.
 Unknown commit-like actions default to L5. Duplicate identity uncertainty blocks L3+ targeting.
 
 The remote agent can request context with a reason and a kind, never hidden/redacted EIDs or region

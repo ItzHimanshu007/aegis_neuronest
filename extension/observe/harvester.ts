@@ -13,11 +13,15 @@ import { getAssociatedLabelText, computeNameAndRole } from './accessibleName';
 import { findBlockAncestor } from './blockAncestor';
 import { classifyMedia, getPrivacyAttrs, isCandidate, isDialogElement, isLandmarkOrForm, isSkippable } from './classify';
 import { buildFingerprintKey, computeFingerprint } from './fingerprint';
-import { computeHitOk, computeVisibility, domStyleReader } from './visibility';
+import { computeHitTarget, computeVisibility, domStyleReader } from './visibility';
 import { isSecretLabel } from '../privacy/detect/labels';
 import { getTextParts } from './spanRects';
 import type { CssRect, ElementStates, PrivacyAttr, RawElement, RawMedia, RawTextBlock, ValueLenBucket } from './types';
 import { AEGIS_CONFIG } from '../shared/config';
+
+/** An element as the harvester produces it: `fpOrdinal` is assigned by frame composition and `eid`
+ * by the panel's session registry, so neither exists yet at harvest time. */
+type HarvestedElement = Omit<RawElement, 'eid' | 'fpOrdinal'>;
 
 export interface HarvestOptions {
   salt: string;
@@ -33,7 +37,7 @@ export interface HarvestOptions {
 
 export interface FrameHarvestResult {
   frameId: number;
-  elements: Omit<RawElement, 'eid' | 'fpOrdinal'>[];
+  elements: HarvestedElement[];
   media: RawMedia[];
   textBlocks: RawTextBlock[];
   dialogOpen: boolean;
@@ -245,9 +249,10 @@ export function harvestFrame(options: HarvestOptions): FrameHarvestResult {
     return { frameId: options.frameId, elements: [], media: [], textBlocks: [], dialogOpen: false };
   }
 
-  const elements: Omit<RawElement, 'eid' | 'fpOrdinal'>[] = [];
+  const elements: HarvestedElement[] = [];
   const media: RawMedia[] = [];
   const capturedInteractive = new Set<Element>();
+  const coveringNodes = new Map<HarvestedElement, Element>();
   let dialogOpen = false;
 
   const getCursor = (el: Element) => {
@@ -283,6 +288,7 @@ export function harvestFrame(options: HarvestOptions): FrameHarvestResult {
     capturedInteractive.add(el);
     const visibility = computeVisibility(el, { reader: domStyleReader });
     const rect = rectFromDomRect(el.getBoundingClientRect());
+    const hit = visibility.visible ? computeHitTarget(el, rect, doc) : { hitOk: undefined, hitNode: null };
     const { name, role } = computeNameAndRole(el);
     const labelText = getAssociatedLabelText(el, doc);
     const inputType = getInputType(el);
@@ -304,6 +310,8 @@ export function harvestFrame(options: HarvestOptions): FrameHarvestResult {
       nodeRef: localNodeRef(el),
       inForm: Boolean(el.closest('form')),
       formRef: el.closest('form') ? localNodeRef(el.closest('form')!) : undefined,
+      inSearchScope: inputType === 'search' || Boolean(el.closest('search, [role=search]')),
+      formActionOrigin: formActionOrigin(el),
       modalRef: el.closest('dialog, [role=dialog]') ? localNodeRef(el.closest('dialog, [role=dialog]')!) : undefined,
       href: el.tagName === 'A' ? (el as HTMLAnchorElement).href : undefined,
       download: el.hasAttribute('download'),
@@ -327,15 +335,31 @@ export function harvestFrame(options: HarvestOptions): FrameHarvestResult {
       visible: visibility.visible,
       visibilityReason: visibility.reason,
       hiddenInteractive: !visibility.visible,
-      hitOk: visibility.visible ? computeHitOk(el, rect, doc) : undefined,
+      hitOk: hit.hitOk,
       privacyAttrs: getPrivacyAttrs(el),
       inShadow,
     });
+    if (hit.hitNode) coveringNodes.set(elements[elements.length - 1]!, hit.hitNode);
   }
+
+  resolveCoveredBy(elements, coveringNodes, capturedInteractive);
 
   const textBlocks = harvestTextBlocks(root, options.frameId, capturedInteractive, win, options.blockRefMap);
 
   return { frameId: options.frameId, elements, media, textBlocks, dialogOpen };
+}
+
+/** Absolute origin a form would post to, or undefined when there is no form or no action
+ * attribute (a form with no action submits to its own URL, which is same-origin by definition). */
+function formActionOrigin(el: Element): string | undefined {
+  const form = el.closest('form');
+  const action = form?.getAttribute('action');
+  if (!form || !action) return undefined;
+  try {
+    return new URL(action, (el.ownerDocument ?? document).baseURI).origin;
+  } catch {
+    return undefined;
+  }
 }
 
 function extractSrcFilename(el: Element): string {
@@ -436,6 +460,27 @@ function harvestTextBlocks(
     });
   }
   return blocks;
+}
+
+/**
+ * Turns "something covers this element" into "EID X covers this element", by walking the covering
+ * node up to the nearest captured candidate. This runs AFTER the harvest loop because the covering
+ * element is often captured later in document order than the element it covers.
+ *
+ * A cover that is not itself a candidate (a bare styling <div>) leaves `coveredByRef` unset: the
+ * planner is told the element is occluded, but not given an obstacle it could not act on anyway.
+ */
+function resolveCoveredBy(
+  elements: HarvestedElement[],
+  coveringNodes: Map<HarvestedElement, Element>,
+  captured: Set<Element>,
+): void {
+  if (coveringNodes.size === 0) return;
+  for (const [record, hitNode] of coveringNodes) {
+    let node: Element | null = hitNode;
+    while (node && !captured.has(node)) node = node.parentElement;
+    if (node) record.coveredByRef = localNodeRef(node);
+  }
 }
 
 /** Privacy markers on `el` or any ancestor up to and including `root`. Site authors put

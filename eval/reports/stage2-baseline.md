@@ -2,7 +2,7 @@
 
 **Definition:** a value labelled with a sensitive type is positive even when its checksum fails (probable typo). Unlabelled near-misses are negatives.
 
-Measured 2026-09-17T12:48:55.876Z on Chromium 153.0.8010.12, balanced mode, DOM-only cascade: 93 annotations (59 positives, 34 negatives), 12 overlapping viewport captures of the synthetic pii-zoo.html. No vision, OCR or NER.
+Measured 2026-09-17T12:58:27.085Z on Chromium 153.0.8010.12, balanced mode, DOM-only cascade: 93 annotations (59 positives, 34 negatives), 12 overlapping viewport captures of the synthetic pii-zoo.html. No vision, OCR or NER.
 
 Matching uses target EID geometry for fields/media, and block geometry plus exact normalized span/value containment for text. Each (annotation index, category) is counted once across captures. A wrong category is both an FP for that category and an FN for the expected one; detections outside annotated regions are excluded. Side channels are tested separately by leakage tests. There is no category-count TP proxy.
 
@@ -22,7 +22,7 @@ Matching uses target EID geometry for fields/media, and block geometry plus exac
 | FINANCIAL_VALUE | 1 | 0 | 0 | 1.000 | 1.000 |
 | HEALTH | 1 | 0 | 0 | 1.000 | 1.000 |
 | IFSC | 3 | 1 | 0 | 0.750 | 1.000 |
-| NAME | 3 | 0 | 1 | 1.000 | 0.750 |
+| NAME | 4 | 0 | 0 | 1.000 | 1.000 |
 | OTP | 1 | 0 | 0 | 1.000 | 1.000 |
 | PAN | 2 | 0 | 0 | 1.000 | 1.000 |
 | PASSPORT | 1 | 0 | 0 | 1.000 | 1.000 |
@@ -37,7 +37,7 @@ Matching uses target EID geometry for fields/media, and block geometry plus exac
 | UPI_ID | 1 | 0 | 0 | 1.000 | 1.000 |
 | VEHICLE_REG | 2 | 0 | 0 | 1.000 | 1.000 |
 | VOTER_ID | 1 | 0 | 0 | 1.000 | 1.000 |
-| **Overall** | 58 | 3 | 1 | 0.951 | 0.983 |
+| **Overall** | 59 | 3 | 0 | 0.952 | 1.000 |
 
 ## Linkability ablation
 
@@ -45,8 +45,8 @@ The identical measured detection stream is replayed through the pure policy with
 
 | Rule | Detection precision | Protection TP | Protection FP | Protection FN | Protection precision |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Without linkability | 0.951 | 58 | 3 | 1 | 0.951 |
-| With linkability (K=3) | 0.951 | 58 | 3 | 1 | 0.951 |
+| Without linkability | 0.952 | 59 | 3 | 0 | 0.952 |
+| With linkability (K=3) | 0.952 | 59 | 3 | 0 | 0.952 |
 
 0 per-capture policy decisions changed. This corpus exposes identity data before the quasi categories, so the existing identity rule already protects them. The quasi-only threshold, origin isolation and session reset are covered separately by unit tests; this ablation does not claim an improvement where none was measured.
 
@@ -55,8 +55,7 @@ The identical measured detection stream is replayed through the pure policy with
 - Annotation 33: expected NONE; detected IFSC.
 - Annotation 54: expected NONE; detected TRACKING_ID.
 - Annotation 55: expected NONE; detected TRACKING_ID.
-- Annotation 71: expected NAME; detected none.
 
-Negative-region IFSC/tracking detections arise from earlier vaulted strings or their numeric substrings reappearing in unlabelled catalogue values. The session conservatively protects these known values; the annotation rule still counts them as false positives. Any additional category within an annotated value, including CITY within ADDRESS, also counts as an FP under this single-category ground truth. The NAME miss is reported as measured, not hidden by capping counts. A separate centered-field browser test verifies that this filled name field does receive an EID mask; this viewport-run miss is not evidence of unmasked egress.
+Negative-region IFSC/tracking detections arise from earlier vaulted strings or their numeric substrings reappearing in unlabelled catalogue values. The session conservatively protects these known values; the annotation rule still counts them as false positives. Any additional category within an annotated value, including CITY within ADDRESS, also counts as an FP under this single-category ground truth. The Stage 2.5 run carried one false negative, a `<th>Account holder</th><td>Asha Verma</td>` row. Stage 3A traced it to the label dictionary rather than to the viewport: "account holder" matched no phrase at all, so the row header supplied no category and the labelled-value fallback never fired. Adding the account-holder/cardholder/beneficiary phrases to NAME closed it.
 
 The mapped iframe container has no UNSCANNED_MEDIA annotation: its contents are observed separately. Canvas and image are annotated as unscanned media. This authored-page result is not a generalization claim and must not be used as a deck benchmark; Stage 4 introduces held-out splits. Off-annotation false positives and free-prose names/addresses remain outside this measurement.

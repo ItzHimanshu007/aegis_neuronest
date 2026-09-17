@@ -94,6 +94,10 @@ export interface RawElement {
   nodeRef?: string;
   inForm?: boolean;
   formRef?: string;
+  /** Field is type=search, or sits inside <search> / role=search. */
+  inSearchScope?: boolean;
+  /** Origin of the enclosing form's `action`, when it has one. */
+  formActionOrigin?: string;
   modalRef?: string;
   href?: string;
   download?: boolean;
@@ -112,6 +116,9 @@ export interface RawElement {
   hiddenInteractive: boolean;
   /** undefined when elementFromPoint isn't available in this environment (see observe/visibility.ts). */
   hitOk?: boolean;
+  /** `nodeRef` of the nearest captured candidate covering this element, when `hitOk` is false.
+   * Resolved to an EID by the Scene Graph. */
+  coveredByRef?: string;
 
   privacyAttrs: PrivacyAttr[];
   inShadow: 'open' | 'closed' | 'none';

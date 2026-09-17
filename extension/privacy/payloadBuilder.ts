@@ -60,6 +60,8 @@ export interface DraftElement {
   visible: boolean;
   enabled: boolean;
   hidden_interactive?: boolean;
+  occluded?: boolean;
+  covered_by?: EID;
 }
 
 export interface DraftPayload {

@@ -46,6 +46,13 @@ A token is restored to its real value **only**:
 
 Never in URLs, never in navigation, never in keys, never anywhere else.
 
+**The one exception (Stage 3A): display inside the Aegis panel.** An `answer` or `extract` result
+the user cannot read is worthless, so `vault.resolveForDisplay()` may resolve a token for rendering
+in our own UI. That value must never be written to the page, a URL, storage, a log, or the network.
+It is returned as an opaque `DisplayOnlyText`, not a string, so it cannot be passed to a `string`
+parameter; `unwrapForPanelRender()` is the only way back to a string, and
+`privacy/__tests__/displayOnly.guard.test.ts` confines that call to the panel UI.
+
 ### 5. Redaction
 
 Text PII is **only ever solid-filled**. **Blur is used only for faces.** Never pixelate text —

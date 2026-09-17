@@ -182,10 +182,24 @@ function getComputedStyleSafe(el: Element): CSSStyleDeclaration | null {
  * as a failure.
  */
 export function computeHitOk(el: Element, rect: RectLike, doc: Document = document): boolean | undefined {
-  if (typeof doc.elementFromPoint !== 'function') return undefined;
+  return computeHitTarget(el, rect, doc).hitOk;
+}
+
+/**
+ * The same hit test, but it also hands back whatever `elementFromPoint` actually returned. The
+ * harvester needs that node to answer "covered by what?" — the planner can only clear an obstacle
+ * it is told about (Stage 3A Part A1).
+ */
+export function computeHitTarget(
+  el: Element,
+  rect: RectLike,
+  doc: Document = document,
+): { hitOk: boolean | undefined; hitNode: Element | null } {
+  if (typeof doc.elementFromPoint !== 'function') return { hitOk: undefined, hitNode: null };
   const cx = rect.x + rect.width / 2;
   const cy = rect.y + rect.height / 2;
   const hit = doc.elementFromPoint(cx, cy);
-  if (!hit) return false;
-  return hit === el || el.contains(hit) || hit.contains(el);
+  if (!hit) return { hitOk: false, hitNode: null };
+  const hitOk = hit === el || el.contains(hit) || hit.contains(el);
+  return { hitOk, hitNode: hitOk ? null : hit };
 }
