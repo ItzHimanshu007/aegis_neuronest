@@ -20,6 +20,7 @@ export default defineConfig({
         hidden: resolve(rootDir, 'hidden.html'),
         piiZoo: resolve(rootDir, 'pii-zoo.html'),
         search: resolve(rootDir, 'search.html'),
+        injection: resolve(rootDir, 'injection.html'),
       },
     },
   },

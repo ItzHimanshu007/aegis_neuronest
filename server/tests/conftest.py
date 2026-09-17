@@ -31,3 +31,9 @@ def kyc_payload() -> dict:
 @pytest.fixture
 def kyc_plan() -> dict:
     return json.loads((FIXTURES_DIR / "plan.kyc.json").read_text())
+
+
+@pytest.fixture
+def anyio_backend() -> str:
+    """Async tests run on asyncio only; trio isn't a dependency."""
+    return "asyncio"

@@ -1,3 +1,6 @@
+import json
+
+
 def test_valid_kyc_payload_returns_valid_plan(client, kyc_payload):
     response = client.post("/v1/plan", json=kyc_payload)
     assert response.status_code == 200
@@ -82,3 +85,37 @@ def test_validation_errors_do_not_echo_payload_content_back(client, kyc_payload)
     body = response.text
     # The 422 must describe WHERE the problem is, never reflect the offending values.
     assert "12345" not in body
+
+
+class TestSessionAndTimings:
+    """Stage 3A: session history, the timings header, and /v1/session/end."""
+
+    def test_session_end_deletes_the_history(self, client, kyc_payload):
+        client.post(
+            "/v1/plan",
+            content=json.dumps(kyc_payload),
+            headers={"X-Aegis-History": "type E1 OK|click E2 OK"},
+        )
+        assert (
+            client.post("/v1/session/end", json={"session": kyc_payload["session"]}).status_code
+            == 204
+        )
+
+    def test_session_end_requires_a_session_id(self, client):
+        assert client.post("/v1/session/end", json={}).status_code == 400
+
+    def test_history_header_is_accepted_and_does_not_change_the_response_shape(
+        self, client, kyc_payload
+    ):
+        response = client.post(
+            "/v1/plan",
+            content=json.dumps(kyc_payload),
+            headers={"X-Aegis-History": "type E1 OK"},
+        )
+        assert response.status_code == 200
+        assert response.json()["state_token"] == kyc_payload["state_token"]
+
+    def test_the_mock_adapter_emits_no_timings_header(self, client, kyc_payload):
+        # Nothing was measured, so nothing is claimed.
+        response = client.post("/v1/plan", content=json.dumps(kyc_payload))
+        assert "X-Aegis-Timings" not in response.headers
