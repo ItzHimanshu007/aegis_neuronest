@@ -39,6 +39,7 @@ from app.config import load_env_file
 from app.prompts.system import PROMPT_VERSION
 from app.schemas.payload import PayloadV2
 from app.vlm.openai_compatible_adapter import (
+    ENFORCEMENT_FAILURE_CODES,
     CallMetrics,
     OpenAICompatibleAdapter,
     enforce,
@@ -150,7 +151,9 @@ async def run_fixture(
         return result
 
     # A `fail` plan carrying one of our own reason codes means the adapter refused the output; that
-    # is not a schema-valid answer from the model.
+    # is not a schema-valid answer from the model. Each enforce() violation now travels as its own
+    # specific code (TOO_MANY_ACTIONS, UNKNOWN_EID, ...) rather than a single generic one, so this
+    # set has to recognize all of them, not just the top-level adapter failure modes.
     refused = (
         bool(plan.plan)
         and plan.plan[0].action == "fail"
@@ -159,7 +162,7 @@ async def run_fixture(
             "MODEL_OUTPUT_INVALID",
             "MODEL_TIMEOUT",
             "MODEL_UNAVAILABLE",
-            "MODEL_OUTPUT_UNGROUNDED",
+            *ENFORCEMENT_FAILURE_CODES,
         }
     )
     result.schema_valid = (

@@ -42,7 +42,28 @@ logger = logging.getLogger("aegis.vlm")
 FAIL_MODEL_OUTPUT_INVALID = "MODEL_OUTPUT_INVALID"
 FAIL_MODEL_TIMEOUT = "MODEL_TIMEOUT"
 FAIL_MODEL_UNAVAILABLE = "MODEL_UNAVAILABLE"
+# Reserved for an enforce() violation that is genuinely an unclassified ungroundable target.
+# Every violation enforce() currently knows how to name (see ENFORCEMENT_FAILURE_CODES) returns
+# its own specific code instead — this used to be returned for ALL of them, which hid a
+# TOO_MANY_ACTIONS rejection behind the same code as a genuinely ungrounded target.
 FAIL_MODEL_UNGROUNDED = "MODEL_OUTPUT_UNGROUNDED"
+
+# Every code enforce() can return. Kept as one set so callers (the probe, tests) can recognize an
+# enforcement rejection without re-typing this list next to it.
+ENFORCEMENT_FAILURE_CODES = frozenset(
+    {
+        "STATE_TOKEN_MISMATCH",
+        "CONTEXT_REQUEST_NAMES_ELEMENT",
+        "TOO_MANY_ACTIONS",
+        "UNKNOWN_EID",
+        "FP_MISMATCH",
+        "TOKEN_IN_URL",
+        "TOKEN_IN_KEY",
+        "TOKEN_IN_SELECT_VALUE",
+        "TOKEN_OUTSIDE_TYPE",
+        FAIL_MODEL_UNGROUNDED,
+    }
+)
 
 
 @dataclass
@@ -140,10 +161,14 @@ class OpenAICompatibleAdapter:
         metrics.state_token_echoed = parsed.state_token == payload.state_token
         violation = enforce(parsed, payload)
         if violation is not None:
-            metrics.outcome = FAIL_MODEL_UNGROUNDED
+            # `violation` is already one of enforce()'s own closed codes (STATE_TOKEN_MISMATCH,
+            # UNKNOWN_EID, TOO_MANY_ACTIONS, ...) — that is what travels to the client and what the
+            # probe counts. Collapsing every distinct cause into FAIL_MODEL_UNGROUNDED here was the
+            # bug: a TOO_MANY_ACTIONS rejection looked identical to an ungrounded target.
+            metrics.outcome = violation
             metrics.errors = [violation]
             logger.warning("model output rejected: %s", violation)
-            return _fail_plan(payload.state_token, FAIL_MODEL_UNGROUNDED)
+            return _fail_plan(payload.state_token, violation)
 
         return parsed
 
