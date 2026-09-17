@@ -55,7 +55,7 @@ export class DebugOverlay {
 
   render(doc: Document, elements: RawElement[], media: RawMedia[], textBlocks: RawTextBlock[]): void {
     const shadow = this.ensureHost(doc);
-    shadow.innerHTML = '';
+    shadow.replaceChildren();
 
     const marks: OverlayMark[] = [
       ...elements.map((el) => ({
@@ -128,7 +128,7 @@ export class DebugOverlay {
   }
 
   clear(): void {
-    if (this.shadow) this.shadow.innerHTML = '';
+    this.shadow?.replaceChildren();
   }
 }
 

@@ -138,8 +138,8 @@ Individual pieces:
 
 ```sh
 pnpm gen:types       # regenerate extension/shared/schema/*.d.ts from /shared/schema/*.schema.json
-pnpm gen:policy      # regenerate extension/privacy/generated/policy.ts from docs/policy.yaml
-pnpm gen:validator   # precompile the payload JSON Schema into a standalone ajv validator
+pnpm gen:policy      # regenerate extension/privacy/policyData.ts from docs/policy.yaml
+pnpm gen:validator   # precompile payload.v1 into extension/privacy/generated/payloadValidator.js
 pnpm schema:check    # validate shared/schema/examples/* against the JSON Schemas
 pnpm typecheck        # extension TypeScript (includes the e2e specs and the LocalOnly type proof)
 pnpm lint             # ESLint across the repo

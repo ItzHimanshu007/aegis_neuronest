@@ -116,7 +116,7 @@ Enforcement is not decoration. If you add a bypass "just for a test", the test i
   session key lives only in memory, so a termination mid-task would destroy it. Background is a
   thin capture-only router: it passes observations straight through and retains nothing raw.
 - Generated code is generated, never hand-edited: `pnpm gen:types` (schema -> TS),
-  `pnpm gen:policy` (`docs/policy.yaml` -> `privacy/generated/policy.ts`), `pnpm gen:validator`
+  `pnpm gen:policy` (`docs/policy.yaml` -> `privacy/policyData.ts`), `pnpm gen:validator`
   (payload schema -> a **precompiled standalone** ajv validator, because ajv's runtime `compile()`
   uses `new Function`, which invariant 7 and the extension CSP both forbid). `pnpm gen:all` runs
   all three.
