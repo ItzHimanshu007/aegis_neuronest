@@ -367,10 +367,10 @@ async def main() -> None:
         report.results.append(await run_fixture(adapter, entry, args.runs))
 
     rendered = render(report)
-    out_path = (
-        args.out
-        or REPORTS_DIR / f"model-probe-{model.replace('/', '_') or 'unknown'}.md"
-    )
+    # Ollama tags use `name:size` (e.g. `qwen2.5vl:7b`); `:` is invalid in a Windows filename and
+    # inconsistent with every other report's naming, so it becomes `-` like the rest of the slug.
+    safe_model = (model or "unknown").replace("/", "_").replace(":", "-")
+    out_path = args.out or REPORTS_DIR / f"model-probe-{safe_model}.md"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(rendered)
     print(rendered)

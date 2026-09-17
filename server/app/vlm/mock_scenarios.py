@@ -17,6 +17,7 @@ from typing import Any
 
 from app.schemas.payload import Element, PayloadV2
 from app.schemas.plan import PlanV2
+from app.schemas.tokens import TOKEN_RE
 
 BENIGN_SCENARIOS = (
     "kyc_fill",
@@ -77,8 +78,18 @@ def _by_label(payload: PayloadV2, *needles: str) -> Element | None:
 
 
 def _token_for(payload: PayloadV2, category: str) -> str:
-    """A token of this category from anywhere in the payload, or a well-formed stand-in so the
-    scenario still produces schema-valid output on a page that has none."""
+    """A token of this category to fill a field with, or a well-formed stand-in so the scenario
+    still produces schema-valid output on a page that has none.
+
+    A task-supplied token wins when there is one: that is what `runAgentLoop.ts` appends to
+    `payload.task` for the values the user typed into the panel's task-data rows (a `NAME`/`EMAIL`
+    scenario filling an EMPTY field has nothing else to go on — there is no page value yet to
+    echo). Falling back to a token already on the page keeps every fixture that has no task data
+    (e.g. the server's own `payload.kyc.json`) working exactly as before.
+    """
+    for match in TOKEN_RE.finditer(payload.task):
+        if f":{category}:" in match.group(0):
+            return match.group(0)
     for el in payload.elements:
         if el.value_token and f":{category}:" in el.value_token:
             return el.value_token

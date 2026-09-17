@@ -109,6 +109,21 @@ def test_kyc_fill_targets_real_elements_and_stops_before_submitting(payload):
     assert all(a.expect is not None for a in result.plan if a.action == "type")
 
 
+def test_kyc_fill_prefers_a_task_supplied_token_over_the_page_echo(kyc_payload):
+    # E14 (Email address) starts empty in the fixture and has no page token to echo — the only
+    # way to fill it is the token runAgentLoop.ts appends to `task` for what the user typed into
+    # the panel's task-data rows. This is what makes `kyc_fill` usable against a real empty field,
+    # not just against a field the page already filled in.
+    task_token = "[[PII:EMAIL:zzzzzzzz]]"
+    payload = PayloadV2.model_validate(
+        {**kyc_payload, "task": f"{kyc_payload['task']}\nTask data: {task_token}"}
+    )
+    email = next(el for el in payload.elements if el.label == "Email address")
+    result = run_scenario("kyc_fill", payload)
+    fill = next(a for a in result.plan if a.target and a.target.eid == email.eid)
+    assert fill.text == task_token
+
+
 def test_stale_state_does_not_echo_the_state_token(payload):
     # The whole point of this scenario: checkPlan must reject it as STALE_PLAN.
     assert run_scenario("stale_state", payload).state_token != payload.state_token

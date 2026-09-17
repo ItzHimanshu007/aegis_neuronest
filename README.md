@@ -58,6 +58,16 @@ pnpm run server
 Serves on `http://localhost:8000`. `GET /health` and `POST /v1/plan` are available; see
 [`shared/schema/examples`](shared/schema/examples) for example request/response bodies.
 
+### Running with a live model
+
+Copy `server/.env.example` to `server/.env` and set `AEGIS_ADAPTER=openai_compat`. The default
+there points at a local Ollama (`AEGIS_LLM_BASE_URL=http://localhost:11434/v1`,
+`AEGIS_LLM_MODEL=qwen2.5vl:7b`) — see [`eval/reports/model-probe-qwen2.5vl-7b.md`](eval/reports/model-probe-qwen2.5vl-7b.md)
+for its measured numbers. To use a hosted open-weight vision endpoint instead (faster/more
+reliable, e.g. for a live demo recording), point the same three variables at it —
+`AEGIS_LLM_BASE_URL` to its OpenAI-compatible base URL, `AEGIS_LLM_MODEL` to its model id, and
+`AEGIS_LLM_API_KEY` to your key — no code change required.
+
 ### Demo portal (Vite)
 
 ```sh
