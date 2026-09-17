@@ -1,9 +1,11 @@
 # Aegis PII policy matrix.
 #
-# DATA ONLY. There is no policy engine yet - TODO(stage-2) implements
-# extension/privacy/policy.ts, which reads this file as its single source of truth.
+# This file is the SINGLE SOURCE OF TRUTH for the policy. It is converted to a typed TypeScript
+# module by `pnpm gen:policy` (scripts/gen-policy.mjs -> extension/privacy/policyData.ts), and a
+# test (extension/privacy/__tests__/policyData.test.ts) proves the generated module still matches
+# this YAML. Edit this file, never the generated one.
 #
-# Each class lists the PII types it covers and the action to take in two situations:
+# Each class lists the PII categories it covers and the action to take in two situations:
 #   needed:     the task genuinely requires this value (e.g. the form asks for it)
 #   not_needed: the value is on screen but the task does not require it
 #
@@ -18,10 +20,9 @@
 #                             extracted or read back from the page), kept in memory only, and only
 #                             filled into an input[type=password] field on the one origin the user
 #                             approved it for. Requires upfront approval, like
-#                             TOKEN_WITH_APPROVAL, but there is no token and no re-hydration from a
-#                             vault - the plan text can never reference this value, only the
-#                             executor's own type-bound fill logic uses it. Cleared when the task
-#                             ends.
+#                             TOKEN_WITH_APPROVAL, but there is no token derived from page content
+#                             and no re-hydration from a vault entry the page produced. Cleared
+#                             when the task ends.
 #   TOKEN_WITH_APPROVAL       Replace with an HMAC token before sealing. The token may be re-hydrated
 #                             locally into a matching field, but only after explicit, upfront user
 #                             approval for that origin.
@@ -34,34 +35,56 @@
 #                             not just a text span.
 #   ALLOW                     Send as-is. Nothing about this value is identifying in context.
 #
-# A type that appears nowhere below is treated as non_pii -> ALLOW.
+# A category that appears nowhere below is treated as non_pii -> ALLOW.
 # When two rules could apply, the more restrictive action wins.
+#
+# LOCKED CLASSES (see `locked` below) can never be downgraded by a user setting. A user may make
+# the policy stricter, never looser, for those classes.
 
-version: 1
+version: 2
+
+# Classes whose actions user settings can never downgrade.
+locked:
+  - never_automated
+  - credential
+  - high
+  - biometric
+  - documents
+
+# Detecting any of these categories on an origin marks that origin as "identity seen" for the rest
+# of the task, which is what flips `quasi` categories from ALLOW to TOKEN. Accumulated per task AND
+# per site (an identity item seen on screen 1 still counts on screen 3 of the same site).
+identity_categories:
+  - NAME
+  - EMAIL
+  - PHONE
+  - AADHAAR
+  - PAN
+  - CARD_NUMBER
+  - BANK_ACCOUNT
+  - UPI_ID
+  - DOB
+  - ADDRESS
+  - FACE
 
 classes:
   never_automated:
     description: >-
       One-time or transient secrets. Aegis will not type these, will not tokenize them, will not
       hold them in memory even briefly, and will not let them reach the server in any form. The
-      plan must hand control back to the user to enter directly into the page. Distinct from
-      `credential` below: these are never plausible for Aegis to fill on the user's behalf even
-      with approval, because they're single-use or issued per-attempt (an OTP from an SMS, a CVV
-      read off a physical card, a UPI PIN) - there is nothing durable for Aegis to be trusted with.
-    types: [OTP, CVV, UPI_PIN]
+      harvester does not even read their field values (Stage 2 Part A1) - only `hasValue`.
+    categories: [OTP, CVV, UPI_PIN, SECRET]
     needed: USER_ENTERS
     not_needed: FILL
 
   credential:
     description: >-
-      Login secrets the task may genuinely need submitted, unlike never_automated's one-time
-      codes. The user provides the value directly into the Aegis panel at task start (Aegis never
-      extracts or reads a password back from the page or any profile data) - it lives in memory
-      only, is cleared when the task ends, requires the same upfront approval as `high`, and the
-      executor will only ever fill it into an input[type=password] field on the one origin it was
-      approved for. It is never tokenized and never appears in plan text, because a token would
-      mean the server-visible plan references it, however indirectly - see AGENTS.md invariant 4.
-    types: [PASSWORD]
+      Login secrets the task may genuinely need submitted. The user provides the value directly
+      into the Aegis panel at task start (Aegis never extracts or reads a password back from the
+      page) - it lives in memory only, is cleared when the task ends, requires the same upfront
+      approval as `high`, and the executor will only ever fill it into an input[type=password]
+      field on the one origin it was approved for.
+    categories: [PASSWORD]
     needed: USER_PROVIDED_ORIGIN_BOUND
     not_needed: FILL
 
@@ -69,15 +92,15 @@ classes:
     description: >-
       Strong government or financial identifiers. Usable for fraud on their own, so re-hydration
       requires explicit upfront approval scoped to the origin.
-    types: [AADHAAR, PAN, CARD_NUMBER, BANK_ACCOUNT]
+    categories: [AADHAAR, PAN, CARD_NUMBER, BANK_ACCOUNT, UPI_ID]
     needed: TOKEN_WITH_APPROVAL
     not_needed: FILL
 
   medium:
     description: >-
-      Ordinary personal data. Routinely required by forms, so tokenization without a separate prompt
-      is proportionate.
-    types: [NAME, PHONE, EMAIL, ADDRESS, DOB, HEALTH]
+      Ordinary personal data. Routinely required by forms, so tokenization without a separate
+      prompt is proportionate.
+    categories: [NAME, PHONE, EMAIL, ADDRESS, DOB, HEALTH, VEHICLE_REG, FINANCIAL_VALUE, PRIVATE_GENERIC]
     needed: TOKEN
     not_needed: FILL
 
@@ -85,32 +108,35 @@ classes:
     description: >-
       Faces. Blur is the one place irreversible blur is correct, because a solid box over a face
       destroys the visual context the agent needs to understand the page.
-    types: [FACE, PHOTO]
+    categories: [FACE, PHOTO]
     needed: BLUR
     not_needed: BLUR
 
   documents:
     description: >-
-      Whole-document imagery. The entire region goes, not just the text inside it, because layout
-      and photograph are identifying on their own.
-    types: [ID_DOCUMENT, CARD_IMAGE, SIGNATURE, QR]
+      Whole-document imagery, plus any media Aegis cannot yet see inside. The entire region goes,
+      not just the text inside it, because layout and photograph are identifying on their own.
+      UNSCANNED_MEDIA is the fail-closed default for images/canvas/video/embeds/unmapped iframes
+      until Stage 6's vision layer can classify what is actually in them.
+    categories: [ID_DOCUMENT, CARD_IMAGE, SIGNATURE, QR, UNSCANNED_MEDIA]
     needed: FILL_REGION
     not_needed: FILL_REGION
 
   quasi:
     description: >-
-      Not identifying alone, identifying in combination. Tokenized only when an identity item from
-      high/medium/biometric/documents is present on the same screen; otherwise sent as-is.
-    types: [CITY, EMPLOYER, DATE, ORDER_ID]
+      Not identifying alone, identifying in combination. Tokenized only once an identity category
+      has been seen on this origin during this task (see identity_categories); otherwise sent
+      as-is, because a bare city or date carries no linkage on its own.
+    categories: [CITY, PIN_CODE, EMPLOYER, DATE, ORDER_ID, IFSC]
     needed: TOKEN_IF_IDENTITY_PRESENT
     not_needed: TOKEN_IF_IDENTITY_PRESENT
     conditional:
-      when: identity_item_on_screen
+      when: identity_seen_on_origin
       then: TOKEN
       else: ALLOW
 
   non_pii:
     description: Everything else.
-    types: []
+    categories: []
     needed: ALLOW
     not_needed: ALLOW

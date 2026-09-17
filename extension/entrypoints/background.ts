@@ -2,7 +2,7 @@ import { onMessage, type ObserveResult } from '../shared/messages';
 import { health } from '../net/network';
 import { AEGIS_CONFIG } from '../shared/config';
 import { composeObservation, type FrameComposeInput } from '../observe/compose';
-import { computeMutationDiff } from '../observe/diff';
+import { computeMutationDiff, toMarkIdentity, type MarkIdentity } from '../observe/diff';
 import { decideScreenChange, type ChangeResult, type ChangeSnapshot } from '../observe/change';
 import { dataUrlToGrayscale, imageSizeFromDataUrl } from '../observe/captureAdapter';
 import { RateLimiter, CoalescingQueue } from '../observe/rateLimiter';
@@ -135,6 +135,7 @@ export default defineBackground(() => {
     let harvestMs = 0;
     let captureMs = 0;
     let finalStateToken: StateToken | null = null;
+    let finalCaptureId: string | null = null;
 
     while (attempt < AEGIS_CONFIG.CAPTURE_RETRIES) {
       attempt++;
@@ -144,6 +145,7 @@ export default defineBackground(() => {
         frameInfos: FrameInfo[];
         dialogOpen: boolean;
         stateToken: StateToken;
+        captureId: string;
       }>(tabId, { type: 'HARVEST_TREE', data: { salt } }, 0);
       harvestMs = performance.now() - harvestStart;
 
@@ -169,6 +171,7 @@ export default defineBackground(() => {
         dialogOpen = harvestResponse.dialogOpen;
         screenshotDataUrl = dataUrl;
         finalStateToken = stateTokenAfter;
+        finalCaptureId = harvestResponse.captureId;
 
         await sendToFrame(
           tabId,
@@ -182,7 +185,7 @@ export default defineBackground(() => {
       // state changed mid-capture — loop and retry (Part D.1.5)
     }
 
-    if (!screenshotDataUrl || !finalStateToken) {
+    if (!screenshotDataUrl || !finalStateToken || !finalCaptureId) {
       throw new Error(`Capture did not stabilize after ${AEGIS_CONFIG.CAPTURE_RETRIES} attempts`);
     }
 
@@ -212,7 +215,7 @@ export default defineBackground(() => {
       // tab.url can be empty (e.g. chrome://newtab in some states) — treat as a single fixed path
       // so the URL check simply never fires rather than throwing.
     }
-    const diff = computeMutationDiff(previous?.elements ?? null, composedElements);
+    const diff = computeMutationDiff(previous?.marks ?? null, composedElements);
 
     let dhashInput;
     try {
@@ -234,12 +237,15 @@ export default defineBackground(() => {
     };
     const change: ChangeResult = decideScreenChange(previous?.snapshot ?? null, snapshot);
 
-    tabState.set(tabId, { elements: composedElements, snapshot });
+    // Project down to MarkIdentity before storing — see TabObserveState's docblock. This is the
+    // ONE place a "previous capture" is retained anywhere in background.ts, and it never holds a
+    // full RawElement.
+    tabState.set(tabId, { marks: toMarkIdentity(composedElements), snapshot });
 
     const totalMs = performance.now() - totalStart;
 
     const observation = markLocalOnly({
-      capture_id: crypto.randomUUID(),
+      capture_id: finalCaptureId,
       ts: Date.now(),
       url: tab.url ?? '',
       title: tab.title ?? '',
@@ -261,7 +267,7 @@ export default defineBackground(() => {
     });
 
     lastChangeByTab.set(tabId, change);
-    return { observation, change };
+    return { observation, change, tabId };
   }
 
   /** Attempts to upgrade any 'iframe-unmapped' media entries by matching a same-size FRAME_HELLO
@@ -340,8 +346,20 @@ interface FrameHello {
   h: number;
 }
 
+/**
+ * Stage 2 Part A2 hardening: background must not cache raw observations. `marks` is a
+ * deliberately narrow projection (fp/fpOrdinal/visible only — see observe/diff.ts's
+ * `MarkIdentity`) of the previous capture's elements, kept only so the next capture's change
+ * detector can diff against it; it carries no names, values, urls or any other page content.
+ * `snapshot.dhashInput`, similarly, is a 9x8 grayscale thumbnail (72 bytes) of the previous
+ * screenshot — lossy and irreversible, kept only for the perceptual-hash fallback in
+ * observe/change.ts, and useless for reconstructing anything about the page. Nothing else about
+ * a past Observation is retained anywhere in this file: `runObservationPipeline` returns the full
+ * Observation to the caller (the side panel) and keeps no other reference to it once it returns —
+ * see privacy/__tests__/backgroundNoRawCache.test.ts for the enforcement test.
+ */
 interface TabObserveState {
-  elements: RawElement[];
+  marks: MarkIdentity[];
   snapshot: ChangeSnapshot;
 }
 

@@ -60,11 +60,45 @@ export const AEGIS_CONFIG = {
    * deeply nested markup. */
   TEXT_BLOCK_MAX_ANCESTOR_DEPTH: 6,
 
+  /** Stage 2 Part C.4 field-context detection: how far (CSS px) a candidate label text block may
+   * be from a target element/block — to its left on the same row, or above it in the same
+   * column — and still be treated as "the label for this field" (e.g. a table's "Balance" header
+   * labelling the value cell below it, or a left-hand label next to a right-hand value). */
+  FIELD_CONTEXT_MAX_PX: 120,
+
+  /** Stage 2 Part C.7: rects belonging to the same detection are padded by this many CSS px
+   * before the redactor masks them, and this is also the minimum gap two independent detections'
+   * rects must have to be treated as non-overlapping. */
+  REDACT_PAD_CSS_PX: 2,
+
   /** Opacity below which an element (after multiplying opacity down its ancestor chain) is
    * treated as invisible. Real "opacity: 0" is exact zero; this small epsilon also catches
    * "opacity: 0.001"-style evasions without flagging genuinely-translucent (opacity: 0.3, say)
    * elements as hidden. */
   OPACITY_EPSILON: 0.05,
+
+  // --- Stage 2: Privacy core -----------------------------------------------------------------
+
+  /** Detections at or above this confidence mark their origin as "identity seen" for the quasi
+   * category's identity-accumulation rule (docs/policy.yaml). */
+  IDENTITY_MIN_CONF: 0.6,
+
+  /** Redacted screenshot long-edge size (px) per mode, before WebP/JPEG export. Balances payload
+   * size against the server's ability to read layout — Fast trades detail for latency, Accurate
+   * keeps the most. */
+  IMAGE_MAX_SIDE_FAST: 960,
+  IMAGE_MAX_SIDE_BALANCED: 1280,
+  IMAGE_MAX_SIDE_ACCURATE: 1600,
+
+  /** Minimum length (characters, and separately digits-only) a string must reach before
+   * firewall.seal()'s known-value leak check compares it against vault/detection values — below
+   * this, short common substrings (e.g. a 2-3 digit area code) would false-positive constantly. */
+  LEAK_MIN_LEN: 4,
+
+  /** Cap on total characters sent in payload.v1's `texts[]` (Stage 2 Part F.3) — bounds payload
+   * size on text-heavy pages; text blocks beyond the budget are simply omitted, fail-closed
+   * (never truncated mid-token, which could split a token pattern and make it unparseable). */
+  TEXT_BUDGET_CHARS: 4000,
 } as const;
 
 export type AegisConfig = typeof AEGIS_CONFIG;

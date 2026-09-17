@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeMutationDiff } from '../diff';
+import { computeMutationDiff, toMarkIdentity } from '../diff';
 import type { RawElement } from '../types';
 
 function makeEl(fp: string, fpOrdinal: number, visible = true): RawElement {
@@ -66,5 +66,26 @@ describe('computeMutationDiff', () => {
     const previous = [makeEl('dup', 0), makeEl('dup', 1)];
     const current = [makeEl('dup', 0), makeEl('dup', 1), makeEl('dup', 2)];
     expect(computeMutationDiff(previous, current).mutationScore).toBe(1);
+  });
+});
+
+describe('toMarkIdentity (Stage 2 Part A2: background must not cache raw observations)', () => {
+  it('projects down to exactly fp, fpOrdinal and visible — nothing else', () => {
+    const withPii = { ...makeEl('a', 0), name: 'Asha Verma', labelText: 'Full name', value: 'Asha Verma' };
+    const [projected] = toMarkIdentity([withPii]);
+    expect(Object.keys(projected!).sort()).toEqual(['fp', 'fpOrdinal', 'visible']);
+  });
+
+  it('never lets a name or value leak into the projection, even serialized', () => {
+    const withPii = { ...makeEl('a', 0), name: 'Priya Shah', value: 'super-secret-value' };
+    const json = JSON.stringify(toMarkIdentity([withPii]));
+    expect(json).not.toContain('Priya Shah');
+    expect(json).not.toContain('super-secret-value');
+  });
+
+  it('preserves fp/fpOrdinal/visible values exactly', () => {
+    const el = makeEl('xyz', 2, false);
+    const [projected] = toMarkIdentity([el]);
+    expect(projected).toEqual({ fp: 'xyz', fpOrdinal: 2, visible: false });
   });
 });

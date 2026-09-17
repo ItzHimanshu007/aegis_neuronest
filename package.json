@@ -2,7 +2,7 @@
   "name": "aegis",
   "version": "0.1.0",
   "private": true,
-  "description": "Aegis — a privacy-preserving browser vision agent (SIH26171, ISRO / Dept. of Space)",
+  "description": "Aegis \u2014 a privacy-preserving browser vision agent (SIH26171, ISRO / Dept. of Space)",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -27,7 +27,8 @@
     "server:lint": "uv run --project server ruff check server && uv run --project server ruff format --check server",
     "server:test": "uv run --project server pytest server/tests -q",
     "check": "pnpm run schema:check && pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run server:lint && pnpm run server:test",
-    "manifests": "node scripts/print-manifests.mjs"
+    "manifests": "node scripts/print-manifests.mjs",
+    "gen:policy": "node scripts/gen-policy.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -37,6 +38,7 @@
     "globals": "^17.12.0",
     "json-schema-to-typescript": "^16.0.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.70.0"
+    "typescript-eslint": "^8.70.0",
+    "js-yaml": "^5.4.2"
   }
 }

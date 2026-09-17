@@ -2,8 +2,10 @@ import { harvestFrame } from '../observe/harvester';
 import { debugOverlay } from '../observe/overlay';
 import { waitForSettle } from '../observe/settle';
 import { InputWatcher } from '../observe/inputWatcher';
+import { computeSpanRects, getTextParts } from '../observe/spanRects';
 import { AEGIS_CONFIG } from '../shared/config';
 import type { FrameComposeInput } from '../observe/compose';
+import { composeToTopLevel, type FrameOffset } from '../observe/frames';
 import type { FrameInfo, RawElement, RawMedia } from '../observe/types';
 
 /**
@@ -32,7 +34,13 @@ export default defineContentScript({
     // Local per-frame state. `fpMap` lets the input watcher translate a live DOM element back to
     // the `fp` it had at the last harvest, without re-deriving a fingerprint from scratch.
     const fpMap = new WeakMap<Element, string>();
-    let lastTopStateToken: StateToken | null = null;
+    // Stage 2 Part A3: state from the most recent HARVEST_TREE call, kept so SPAN_RECTS can
+    // re-locate a text block and verify the capture is still fresh before computing rects. All of
+    // this is local-only DOM state — Elements are never serialized or sent anywhere.
+    let lastCaptureId: string | null = null;
+    let lastHarvestStateToken: StateToken | null = null;
+    let lastBlockElements: Map<string, Element> = new Map();
+    let lastFrameOffsets: Map<number, FrameOffset[]> = new Map();
 
     // Announce this frame to background (fire-and-forget) so cross-origin iframes can be matched
     // by size — see entrypoints/background.ts's FRAME_HELLO handling and Stage 1 Part C.6.
@@ -57,14 +65,54 @@ export default defineContentScript({
               maxMs: AEGIS_CONFIG.SETTLE_MAX_MS,
             });
             const stateTokenBefore = readStateToken();
-            const { inputs, frameInfos, dialogOpen } = harvestDocumentTree(document, window, 0, null, message.data.salt, fpMap, makeFrameIdAllocator());
-            lastTopStateToken = stateTokenBefore;
-            sendResponse({ ok: true, response: { inputs, frameInfos, dialogOpen, stateToken: stateTokenBefore } });
+            const { inputs, frameInfos, dialogOpen, blockElements, frameOffsets } = harvestDocumentTree(
+              document,
+              window,
+              0,
+              null,
+              message.data.salt,
+              fpMap,
+              makeFrameIdAllocator(),
+            );
+            // Generated here (not by background) so it can double as the freshness key
+            // SPAN_RECTS checks against — background reuses this same id as the Observation's
+            // capture_id instead of minting its own (Stage 2 Part A3).
+            const captureId = crypto.randomUUID();
+            lastCaptureId = captureId;
+            lastHarvestStateToken = stateTokenBefore;
+            lastBlockElements = blockElements;
+            lastFrameOffsets = frameOffsets;
+            sendResponse({ ok: true, response: { inputs, frameInfos, dialogOpen, stateToken: stateTokenBefore, captureId } });
           } catch (err) {
             sendResponse({ ok: false, error: err instanceof Error ? err.message : String(err) });
           }
         })();
         return true;
+      }
+
+      if (message.type === 'SPAN_RECTS') {
+        try {
+          const { capture_id, stateToken, spans } = message.data;
+          const isStale = capture_id !== lastCaptureId || !stateTokensEqual(stateToken, lastHarvestStateToken);
+          if (isStale) {
+            sendResponse({ ok: true, response: { stale: true } });
+            return false;
+          }
+          const results = spans.map((span) => {
+            const el = lastBlockElements.get(span.blockRef);
+            if (!el) return { blockRef: span.blockRef, rects: [], notFound: true };
+            const captured = new Set<Element>(); // text blocks never include captured-interactive text by construction
+            const index = getTextParts(el, (candidate) => captured.has(candidate));
+            const localRects = computeSpanRects(index, span.start, span.end);
+            const offsetChain = lastFrameOffsets.get(getFrameIdFromBlockRef(span.blockRef)) ?? [];
+            const rects = localRects.map((r) => composeToTopLevel(r, offsetChain));
+            return { blockRef: span.blockRef, rects };
+          });
+          sendResponse({ ok: true, response: { stale: false, results } });
+        } catch (err) {
+          sendResponse({ ok: false, error: err instanceof Error ? err.message : String(err) });
+        }
+        return false;
       }
 
       if (message.type === 'HARVEST_SUBTREE') {
@@ -119,8 +167,6 @@ export default defineContentScript({
       },
     );
     inputWatcher.attach(document);
-
-    void lastTopStateToken; // read by future stages' re-verification logic; kept for clarity now.
   },
 });
 
@@ -152,6 +198,12 @@ export interface HarvestTreeResult {
   inputs: FrameComposeInput[];
   frameInfos: FrameInfo[];
   dialogOpen: boolean;
+  /** blockRef -> the live Element it came from, frame-local (not yet offset-composed). */
+  blockElements: Map<string, Element>;
+  /** frameId -> the offset chain that composes that frame's *local* coordinates into top-level
+   * coordinates — the same chain `inputs[].offsetChain` carries, indexed by frame instead, so the
+   * SPAN_RECTS handler can compose a freshly-computed local rect without re-walking the tree. */
+  frameOffsets: Map<number, FrameOffset[]>;
 }
 
 /**
@@ -175,7 +227,8 @@ export function harvestDocumentTree(
   fpMap: WeakMap<Element, string>,
   nextFrameId: () => number,
 ): HarvestTreeResult {
-  const frameResult = harvestFrame({ salt, frameId, doc, win });
+  const blockRefMap = new Map<string, Element>();
+  const frameResult = harvestFrame({ salt, frameId, doc, win, blockRefMap });
   for (const el of collectMarkedElements(doc, frameResult.elements)) {
     fpMap.set(el.element, el.fp);
   }
@@ -187,6 +240,8 @@ export function harvestDocumentTree(
   const frameInfos: FrameInfo[] = [
     { frameId, parentFrameId, url: doc.location?.href ?? win.location.href, mapping: parentFrameId === null ? 'top' : 'same-origin' },
   ];
+  const blockElements = new Map<string, Element>(blockRefMap);
+  const frameOffsets = new Map<number, FrameOffset[]>([[frameId, []]]);
   let dialogOpenAggregate = frameResult.dialogOpen;
 
   const iframeEls = Array.from(doc.querySelectorAll('iframe')) as HTMLIFrameElement[];
@@ -201,15 +256,22 @@ export function harvestDocumentTree(
 
     const childFrameId = nextFrameId();
     const child = harvestDocumentTree(childDoc, childDoc.defaultView, childFrameId, frameId, salt, fpMap, nextFrameId);
+    const prefix: FrameOffset = { x: rectPlain.x, y: rectPlain.y, scale: 1 };
     for (const input of child.inputs) {
-      input.offsetChain = [{ x: rectPlain.x, y: rectPlain.y, scale: 1 }, ...input.offsetChain];
+      input.offsetChain = [prefix, ...input.offsetChain];
+    }
+    for (const [childFrameIdKey, chain] of child.frameOffsets) {
+      frameOffsets.set(childFrameIdKey, [prefix, ...chain]);
+    }
+    for (const [ref, el] of child.blockElements) {
+      blockElements.set(ref, el);
     }
     inputs.push(...child.inputs);
     frameInfos.push(...child.frameInfos);
     dialogOpenAggregate = dialogOpenAggregate || child.dialogOpen;
   }
 
-  return { inputs, frameInfos, dialogOpen: dialogOpenAggregate };
+  return { inputs, frameInfos, dialogOpen: dialogOpenAggregate, blockElements, frameOffsets };
 }
 
 /** harvestFrame() doesn't return live Element references (RawElement is plain, serializable
@@ -294,10 +356,36 @@ function readStateToken(): StateToken {
   };
 }
 
+function stateTokensEqual(a: StateToken | null, b: StateToken | null): boolean {
+  if (!a || !b) return false;
+  return (
+    a.mutationCounter === b.mutationCounter &&
+    a.scrollX === b.scrollX &&
+    a.scrollY === b.scrollY &&
+    a.dpr === b.dpr &&
+    a.visualScale === b.visualScale &&
+    a.innerWidth === b.innerWidth &&
+    a.innerHeight === b.innerHeight
+  );
+}
+
+/** blockRef is always `${frameId}:${localIndex}` — see observe/types.ts's RawTextBlock docblock. */
+function getFrameIdFromBlockRef(blockRef: string): number {
+  const [frameIdStr] = blockRef.split(':');
+  const frameId = Number(frameIdStr);
+  return Number.isFinite(frameId) ? frameId : 0;
+}
+
 // ---------------------------------------------------------------------------------------------
 // Message typing helpers (kept local to this file — these are internal content<->background
 // messages, distinct from the public shared/messages.ts bus used by the side panel).
 // ---------------------------------------------------------------------------------------------
+
+interface SpanRequest {
+  blockRef: string;
+  start: number;
+  end: number;
+}
 
 type AegisContentMessage =
   | { type: 'HARVEST_TREE'; data: { salt: string } }
@@ -305,7 +393,8 @@ type AegisContentMessage =
   | { type: 'GET_STATE_TOKEN' }
   | { type: 'HIDE_OVERLAY' }
   | { type: 'SHOW_OVERLAY' }
-  | { type: 'RENDER_OVERLAY'; data: { elements: RawElement[]; media: RawMedia[] } };
+  | { type: 'RENDER_OVERLAY'; data: { elements: RawElement[]; media: RawMedia[] } }
+  | { type: 'SPAN_RECTS'; data: { capture_id: string; stateToken: StateToken; spans: SpanRequest[] } };
 
 function isAegisMessage(message: unknown): message is AegisContentMessage {
   return typeof message === 'object' && message !== null && 'type' in message && typeof (message as { type: unknown }).type === 'string';

@@ -43,7 +43,7 @@ describe('composeObservation', () => {
 
   it('offsets element, media and text block rects into top-level coordinates', () => {
     const media: RawMedia[] = [{ kind: 'img', bbox: { x: 1, y: 1, width: 2, height: 2 }, alt: '', title: '', srcFilename: '', visible: true, frameId: 1 }];
-    const textBlocks: RawTextBlock[] = [{ text: 'x', lineRects: [{ x: 1, y: 1, width: 2, height: 2 }], bbox: { x: 1, y: 1, width: 2, height: 2 }, role: 'generic', frameId: 1 }];
+    const textBlocks: RawTextBlock[] = [{ blockRef: '1:0', text: 'x', lineRects: [{ x: 1, y: 1, width: 2, height: 2 }], bbox: { x: 1, y: 1, width: 2, height: 2 }, role: 'generic', frameId: 1 }];
     const inputs: FrameComposeInput[] = [
       {
         frameId: 1,

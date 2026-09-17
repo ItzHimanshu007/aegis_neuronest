@@ -1,8 +1,140 @@
 /**
- * Policy engine. TODO(stage-2): load docs/policy.yaml and decide FILL / BLUR / FILL_REGION /
- * TOKEN / TOKEN_WITH_APPROVAL / USER_ENTERS / ALLOW for each detected PII item.
+ * Policy engine (Stage 2 Part D). Turns a `Detection` into an `Action`, using docs/policy.yaml
+ * (via the generated privacy/policyData.ts) plus per-task session state.
+ *
+ * Two rules here are load-bearing and deliberately not configurable:
+ *   - Locked classes (never_automated, credential, high, biometric, documents) ignore
+ *     `userOverrides` entirely. A user may make policy STRICTER, never looser.
+ *   - Page-sourced PASSWORD/OTP/CVV/UPI_PIN values are never tokenized. Only a credential the
+ *     user typed into the Aegis panel can become a PASSWORD token (privacy/vault.ts's
+ *     `putCredential`) — see docs/policy.yaml's `credential` class.
  */
 
-export function decide(_piiType: string, _needed: boolean): never {
-  throw new Error('NotImplemented: privacy/policy.ts lands in Stage 2');
+import { CATEGORY_TO_CLASS, IDENTITY_CATEGORIES, LOCKED_CLASSES, POLICY_CLASSES } from './policyData';
+import { AEGIS_CONFIG } from '../shared/config';
+import type { Action, Category, PolicyClass } from './categoryTypes';
+import type { Detection } from './detect/types';
+
+export type Necessity = 'needed' | 'not_needed';
+
+export interface DecideContext {
+  necessity: Necessity;
+  identitySeenOnOrigin: boolean;
+  userOverrides: Partial<Record<Category, Action>>;
+}
+
+export function classOf(category: Category): PolicyClass {
+  return CATEGORY_TO_CLASS[category] ?? 'non_pii';
+}
+
+export function isLockedCategory(category: Category): boolean {
+  return LOCKED_CLASSES.includes(classOf(category));
+}
+
+/** Categories whose presence on an origin marks it "identity seen" for the quasi rule. */
+export function isIdentityCategory(category: Category): boolean {
+  return IDENTITY_CATEGORIES.includes(category);
+}
+
+export function decide(det: Detection, ctx: DecideContext): Action {
+  const category = det.category;
+  const policyClass = classOf(category);
+  const classData = POLICY_CLASSES[policyClass];
+
+  const baseAction = ctx.necessity === 'needed' ? classData.needed : classData.not_needed;
+
+  // quasi: TOKEN only once an identity item has been seen on this origin during this task.
+  let resolved: Action;
+  if (baseAction === 'TOKEN_IF_IDENTITY_PRESENT') {
+    const conditional = classData.conditional;
+    resolved = ctx.identitySeenOnOrigin ? (conditional?.then ?? 'TOKEN') : (conditional?.else ?? 'ALLOW');
+  } else {
+    resolved = baseAction;
+  }
+
+  const override = ctx.userOverrides[category];
+  if (override && !isLockedCategory(category)) {
+    return override;
+  }
+  return resolved;
+}
+
+/**
+ * Per-task privacy session state. Lives in the agentHost (side panel), not the background service
+ * worker — a service worker can be evicted after ~30s idle, which would silently reset
+ * `identitySeenOrigins` mid-task and quietly downgrade every quasi detection back to ALLOW.
+ *
+ * Accumulates per task AND per site, per the Stage 1 review's decision: an identity item seen on
+ * screen 1 of a site still counts on screen 3 of that same site, because the server's session
+ * history links those screens together anyway.
+ */
+export class SessionPrivacyState {
+  private readonly identitySeenOrigins = new Set<string>();
+
+  /** Call once per capture, BEFORE deciding any detection in it. Marks the origin if any identity
+   * category was detected with at least `IDENTITY_MIN_CONF` confidence. */
+  observeDetections(origin: string, detections: Detection[]): void {
+    for (const det of detections) {
+      if (isIdentityCategory(det.category) && det.confidence >= AEGIS_CONFIG.IDENTITY_MIN_CONF) {
+        this.identitySeenOrigins.add(origin);
+        return;
+      }
+    }
+  }
+
+  hasIdentitySeen(origin: string): boolean {
+    return this.identitySeenOrigins.has(origin);
+  }
+
+  /** Cleared when the task ends (or the panel closes and the whole host context goes away). */
+  clear(): void {
+    this.identitySeenOrigins.clear();
+  }
+}
+
+export interface NecessityInput {
+  det: Detection;
+  /** Normalized values the vault already holds from task/profile/credential sources. */
+  vaultNormalizedValues: Set<string>;
+  /** Categories the task has tokens for (so an empty field of that category is "needed"). */
+  taskCategories: Set<Category>;
+  /** Whether the detection's target is an editable field (input/textarea/select/contenteditable). */
+  targetIsEditable: boolean;
+  /** Field-context category of the target element, if it is a field. */
+  targetFieldCategory?: Category;
+  /** Normalizer shared with the vault, so "needed" comparisons use the same canonical form. */
+  normalize: (category: Category, value: string) => string;
+}
+
+/**
+ * Stage 2's necessity heuristic (Part D). Deliberately conservative: a detection is only "needed"
+ * when there's concrete evidence the task wants it, otherwise it's "not_needed" — and since every
+ * class's `not_needed` action is at least as strict as its `needed` one, guessing wrong here
+ * fails closed (masks more, not less).
+ *
+ * TODO(stage-3): replace with planner-driven necessity — the plan itself will say which fields it
+ * intends to fill, which is far better evidence than either of these two proxies.
+ */
+export function determineNecessity(input: NecessityInput): Necessity {
+  const { det, vaultNormalizedValues, taskCategories, targetIsEditable, targetFieldCategory, normalize } = input;
+
+  // (a) the detection's value is one the task/profile/credential already supplied
+  if (det.rawValue) {
+    const normalized = normalize(det.category, det.rawValue as unknown as string);
+    if (vaultNormalizedValues.has(normalized)) return 'needed';
+  }
+
+  // (b) an editable field whose field-context category matches something the task has tokens for
+  if (targetIsEditable && targetFieldCategory && taskCategories.has(targetFieldCategory)) {
+    return 'needed';
+  }
+
+  return 'not_needed';
+}
+
+/** Page-sourced values for these categories are NEVER tokenized — see the module docblock. */
+const NEVER_TOKENIZE_FROM_PAGE: Category[] = ['PASSWORD', 'OTP', 'CVV', 'UPI_PIN'];
+
+export function canTokenizeFromPage(category: Category): boolean {
+  return !NEVER_TOKENIZE_FROM_PAGE.includes(category);
 }

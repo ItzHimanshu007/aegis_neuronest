@@ -17,11 +17,28 @@ export interface MutationDiffResult {
   previousMarkCount: number;
 }
 
-function markKey(el: Pick<RawElement, 'fp' | 'fpOrdinal'>): string {
+/**
+ * The only fields this diff ever needs. Typed narrowly (rather than accepting `RawElement[]`) so
+ * that whoever stores a "previous" snapshot for later diffing — entrypoints/background.ts, in
+ * particular — is type-checked into keeping only this non-PII projection (fingerprint, ordinal,
+ * visibility) rather than retaining full elements with raw names/values across captures. See
+ * AGENTS.md invariant 1 and the Stage 2 Part A2 hardening note in background.ts.
+ */
+export type MarkIdentity = Pick<RawElement, 'fp' | 'fpOrdinal' | 'visible'>;
+
+/** The one sanctioned way to build a MarkIdentity[] from a full elements array — used by
+ * background.ts before storing "previous capture" state, so that operation is a single,
+ * independently-testable function rather than an inline object literal that could silently grow
+ * extra (PII-carrying) fields over time. */
+export function toMarkIdentity(elements: RawElement[]): MarkIdentity[] {
+  return elements.map((e) => ({ fp: e.fp, fpOrdinal: e.fpOrdinal, visible: e.visible }));
+}
+
+function markKey(el: MarkIdentity): string {
   return `${el.fp}:${el.fpOrdinal}`;
 }
 
-export function computeMutationDiff(previous: RawElement[] | null, current: RawElement[]): MutationDiffResult {
+export function computeMutationDiff(previous: MarkIdentity[] | null, current: MarkIdentity[]): MutationDiffResult {
   const currVisible = current.filter((e) => e.visible);
   if (!previous) {
     return { mutationScore: currVisible.length, changedMarkCount: 0, previousMarkCount: 0 };

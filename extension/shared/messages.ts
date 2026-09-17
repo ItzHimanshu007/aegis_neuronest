@@ -24,6 +24,11 @@ export interface HealthResult {
 export interface ObserveResult {
   observation: Observation;
   change: ChangeResult;
+  /** The tab this observation was captured from. The agentHost (Stage 2 Part A2, running in the
+   * side panel) uses this to call `browser.tabs.sendMessage(tabId, { type: 'SPAN_RECTS', ... })`
+   * directly — SPAN_RECTS is a content-script query the host makes on its own, not something
+   * background needs to know about or relay (background stays a thin capture-only router). */
+  tabId: number;
 }
 
 /** Message payload/response map. Add new message types here, never ad hoc. */

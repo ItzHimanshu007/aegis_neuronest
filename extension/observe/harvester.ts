@@ -13,6 +13,8 @@ import { findBlockAncestor } from './blockAncestor';
 import { classifyMedia, getPrivacyAttrs, isCandidate, isDialogElement, isLandmarkOrForm, isSkippable } from './classify';
 import { buildFingerprintKey, computeFingerprint } from './fingerprint';
 import { computeHitOk, computeVisibility, domStyleReader } from './visibility';
+import { isSecretLabel } from '../privacy/detect/labels';
+import { getTextParts } from './spanRects';
 import type { CssRect, ElementStates, RawElement, RawMedia, RawTextBlock, ValueLenBucket } from './types';
 import { AEGIS_CONFIG } from '../shared/config';
 
@@ -21,6 +23,11 @@ export interface HarvestOptions {
   frameId: number;
   doc?: Document;
   win?: Window;
+  /** Populated (blockRef -> the live Element it was built from) as a side effect, so the caller
+   * (entrypoints/content.ts) can serve SPAN_RECTS requests later in the same capture without a
+   * second DOM walk. Never sent anywhere — Elements aren't serializable and this map never leaves
+   * the content script. */
+  blockRefMap?: Map<string, Element>;
 }
 
 export interface FrameHarvestResult {
@@ -116,7 +123,19 @@ function computeStates(el: Element, doc: Document): ElementStates {
   };
 }
 
-function getRawValueAndHasValue(el: Element): { value?: string; hasValue: boolean } {
+/**
+ * Stage 2 Part A1: for a secret field (password, OTP/CVV/UPI-PIN by autocomplete or label), the
+ * raw string is never put into `RawElement.value` — `getRawValueAndHasValue` is called with
+ * `treatAsSecret: true` and returns `hasValue` only, computed from `.value.length > 0`.
+ *
+ * That expression still invokes the browser's `.value` getter internally (there is no boolean-only
+ * DOM signal for "does this field have any content" that works across all input types and
+ * doesn't depend on a `placeholder`/`required` attribute being present) — but the resulting
+ * string is never assigned to a variable, never leaves this expression, and is immediately
+ * eligible for garbage collection. Nothing derived from it — not even a length — is ever stored;
+ * `hasValue` is the one bit A1 explicitly says to keep emitting.
+ */
+function getRawValueAndHasValue(el: Element, treatAsSecret: boolean): { value?: string; hasValue: boolean } {
   const tag = el.tagName;
   if (tag === 'INPUT') {
     const input = el as HTMLInputElement;
@@ -124,21 +143,40 @@ function getRawValueAndHasValue(el: Element): { value?: string; hasValue: boolea
     if (type === 'checkbox' || type === 'radio' || type === 'submit' || type === 'button' || type === 'reset' || type === 'file' || type === 'image') {
       return { hasValue: false };
     }
+    if (treatAsSecret) return { hasValue: input.value.length > 0 };
     return { value: input.value, hasValue: input.value.length > 0 };
   }
   if (tag === 'TEXTAREA') {
     const textarea = el as HTMLTextAreaElement;
+    if (treatAsSecret) return { hasValue: textarea.value.length > 0 };
     return { value: textarea.value, hasValue: textarea.value.length > 0 };
   }
   if (tag === 'SELECT') {
     const select = el as HTMLSelectElement;
+    if (treatAsSecret) return { hasValue: select.selectedIndex > -1 && select.value !== '' };
     return { value: select.value, hasValue: select.selectedIndex > -1 && select.value !== '' };
   }
   if (el.hasAttribute('contenteditable') && el.getAttribute('contenteditable') !== 'false') {
+    if (treatAsSecret) return { hasValue: (el.textContent ?? '').trim().length > 0 };
     const text = el.textContent ?? '';
     return { value: text, hasValue: text.trim().length > 0 };
   }
   return { hasValue: false };
+}
+
+/**
+ * Stage 2 Part A1: true if this field's value must never be read into `RawElement.value` —
+ * `input[type=password]`, `autocomplete` containing `one-time-code`/`cc-csc`, `autocomplete=cc-exp`
+ * paired with a CVV-like label (a mislabelled expiry field some sites use for the security code),
+ * or a label/name matching the OTP/CVV/UPI-PIN dictionary (privacy/detect/labels.ts).
+ */
+function isSecretField(inputType: string | undefined, autocomplete: string | undefined, name: string, labelText: string): boolean {
+  if (inputType === 'password') return true;
+  const ac = (autocomplete ?? '').toLowerCase();
+  if (ac.includes('one-time-code') || ac.includes('cc-csc')) return true;
+  const labelForMatching = name || labelText;
+  if (ac.includes('cc-exp') && isSecretLabel(labelForMatching)) return true;
+  return isSecretLabel(labelForMatching);
 }
 
 function getInputType(el: Element): string | undefined {
@@ -247,12 +285,12 @@ export function harvestFrame(options: HarvestOptions): FrameHarvestResult {
     const { name, role } = computeNameAndRole(el);
     const labelText = getAssociatedLabelText(el, doc);
     const inputType = getInputType(el);
-    const isPassword = inputType === 'password';
-    const { value, hasValue } = getRawValueAndHasValue(el);
-    const valueLenBucket = isPassword ? undefined : bucketValueLen((value ?? '').length);
-    const ancestorSignature = getNearestLandmarkSignature(el.parentElement);
     const nameAttr = el.getAttribute('name') ?? undefined;
     const autocomplete = el.getAttribute('autocomplete') ?? undefined;
+    const isSecret = isSecretField(inputType, autocomplete, name, labelText);
+    const { value, hasValue } = getRawValueAndHasValue(el, isSecret);
+    const valueLenBucket = isSecret ? undefined : bucketValueLen((value ?? '').length);
+    const ancestorSignature = getNearestLandmarkSignature(el.parentElement);
 
     const fp = computeFingerprint(
       { role, name, tag: el.tagName.toLowerCase(), inputType, autocomplete, nameAttr, ancestorSignature, labelText },
@@ -285,7 +323,7 @@ export function harvestFrame(options: HarvestOptions): FrameHarvestResult {
     });
   }
 
-  const textBlocks = harvestTextBlocks(root, options.frameId, capturedInteractive, win);
+  const textBlocks = harvestTextBlocks(root, options.frameId, capturedInteractive, win, options.blockRefMap);
 
   return { frameId: options.frameId, elements, media, textBlocks, dialogOpen };
 }
@@ -303,12 +341,27 @@ function extractSrcFilename(el: Element): string {
   }
 }
 
-/** Groups visible text nodes by their nearest block ancestor, skipping text that's already
- * captured as an interactive candidate's accessible name (see module docblock). */
-function harvestTextBlocks(root: Element, frameId: number, captured: Set<Element>, win: Window): RawTextBlock[] {
+/** True if `el` (or an ancestor up to, but not including, `stopAt`) is a captured-interactive
+ * element or is itself skippable — the exclusion rule text blocks and span-rect lookups share. */
+function isExcludedFromTextBlock(el: Element, captured: Set<Element>): boolean {
+  return captured.has(el) || isSkippable(el);
+}
+
+/** Discovers the set of block-ancestor elements under `root` that contain visible, non-captured
+ * text (skipping text that's already captured as an interactive candidate's accessible name — see
+ * module docblock), then delegates the actual text/offset extraction to `getTextParts`
+ * (observe/spanRects.ts) so harvest-time offsets and later SPAN_RECTS-time offsets are always
+ * computed by the exact same algorithm. */
+function harvestTextBlocks(
+  root: Element,
+  frameId: number,
+  captured: Set<Element>,
+  win: Window,
+  blockRefMap?: Map<string, Element>,
+): RawTextBlock[] {
   const doc = root.ownerDocument;
-  const groups = new Map<Element, { texts: string[] }>();
   const order: Element[] = [];
+  const seen = new Set<Element>();
 
   const treeWalker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
     acceptNode(node) {
@@ -342,24 +395,29 @@ function harvestTextBlocks(root: Element, frameId: number, captured: Set<Element
             }
           },
         });
-        if (!groups.has(blockAncestor)) {
-          groups.set(blockAncestor, { texts: [] });
+        if (!seen.has(blockAncestor)) {
+          seen.add(blockAncestor);
           order.push(blockAncestor);
         }
-        groups.get(blockAncestor)!.texts.push((textNode.textContent ?? '').trim());
       }
     }
     textNode = treeWalker.nextNode();
   }
 
+  const isExcluded = (el: Element) => isExcludedFromTextBlock(el, captured);
   const blocks: RawTextBlock[] = [];
+  let localIndex = 0;
   for (const blockEl of order) {
     const visibility = computeVisibility(blockEl, { reader: domStyleReader });
     if (!visibility.visible) continue;
-    const group = groups.get(blockEl)!;
+    const { text } = getTextParts(blockEl, isExcluded);
+    if (!text) continue;
     const { role } = computeNameAndRole(blockEl);
+    const blockRef = `${frameId}:${localIndex++}`;
+    if (blockRefMap) blockRefMap.set(blockRef, blockEl);
     blocks.push({
-      text: group.texts.join(' ').replace(/\s+/g, ' ').trim(),
+      blockRef,
+      text,
       lineRects: getLineRects(blockEl),
       bbox: rectFromDomRect(blockEl.getBoundingClientRect()),
       role,

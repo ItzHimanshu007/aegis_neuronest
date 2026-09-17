@@ -120,6 +120,11 @@ export interface RawMedia {
 }
 
 export interface RawTextBlock {
+  /** Stable within one capture (`${frameId}:${localIndex}`) — used by the content script's
+   * SPAN_RECTS handler (Stage 2 Part A3) to re-locate this exact block later in the same capture
+   * and compute line rects for a character-offset substring inside it. Not meaningful across
+   * captures — a new harvest reassigns indices from scratch. */
+  blockRef: string;
   text: string;
   lineRects: CssRect[];
   bbox: CssRect;
