@@ -38,3 +38,45 @@ def test_invalid_payload_extra_field_returns_422(client, kyc_payload):
     payload = {**kyc_payload, "raw_cookie": "should never be a field"}
     response = client.post("/v1/plan", json=payload)
     assert response.status_code == 422
+
+
+def test_digest_header_matching_body_is_accepted(client, kyc_payload):
+    import hashlib
+    import json
+
+    body = json.dumps(kyc_payload).encode()
+    digest = hashlib.sha256(body).hexdigest()
+    response = client.post(
+        "/v1/plan",
+        content=body,
+        headers={"content-type": "application/json", "X-Aegis-Digest": digest},
+    )
+    assert response.status_code == 200
+
+
+def test_digest_header_mismatch_is_rejected(client, kyc_payload):
+    import json
+
+    body = json.dumps(kyc_payload).encode()
+    response = client.post(
+        "/v1/plan",
+        content=body,
+        headers={"content-type": "application/json", "X-Aegis-Digest": "0" * 64},
+    )
+    assert response.status_code == 400
+    assert "digest" in response.json()["detail"].lower()
+
+
+def test_request_without_digest_header_still_works(client, kyc_payload):
+    # The header is a verification aid, not an auth mechanism — its absence is not an error.
+    response = client.post("/v1/plan", json=kyc_payload)
+    assert response.status_code == 200
+
+
+def test_validation_errors_do_not_echo_payload_content_back(client, kyc_payload):
+    payload = {**kyc_payload, "session": 12345}  # wrong type on purpose
+    response = client.post("/v1/plan", json=payload)
+    assert response.status_code == 422
+    body = response.text
+    # The 422 must describe WHERE the problem is, never reflect the offending values.
+    assert "12345" not in body

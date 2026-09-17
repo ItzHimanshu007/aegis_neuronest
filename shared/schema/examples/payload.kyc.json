@@ -18,9 +18,15 @@
       "input_type": "text",
       "has_value": true,
       "value_len_bucket": "medium",
-      "bbox": [240, 196, 320, 36],
+      "bbox": [
+        240,
+        196,
+        320,
+        36
+      ],
       "visible": true,
-      "enabled": true
+      "enabled": true,
+      "value_token": "[[PII:NAME:k4m2xq7b]]"
     },
     {
       "mark_id": 14,
@@ -30,7 +36,12 @@
       "input_type": "email",
       "has_value": false,
       "value_len_bucket": "empty",
-      "bbox": [240, 252, 320, 36],
+      "bbox": [
+        240,
+        252,
+        320,
+        36
+      ],
       "visible": true,
       "enabled": true
     },
@@ -41,8 +52,12 @@
       "label": "Password",
       "input_type": "password",
       "has_value": true,
-      "value_len_bucket": "short",
-      "bbox": [240, 420, 320, 36],
+      "bbox": [
+        240,
+        420,
+        320,
+        36
+      ],
       "visible": true,
       "enabled": true
     },
@@ -51,7 +66,12 @@
       "fp": "fp_d4e5f60718293041",
       "role": "button",
       "label": "Submit verification",
-      "bbox": [240, 520, 160, 44],
+      "bbox": [
+        240,
+        520,
+        160,
+        44
+      ],
       "visible": true,
       "enabled": true,
       "hidden_interactive": false
@@ -61,13 +81,33 @@
     {
       "rid": "r_face_01",
       "class": "face",
-      "bbox": [612, 180, 128, 128]
+      "bbox": [
+        612,
+        180,
+        128,
+        128
+      ]
     },
     {
       "rid": "r_doc_01",
       "class": "id_document",
-      "bbox": [600, 340, 280, 176],
+      "bbox": [
+        600,
+        340,
+        280,
+        176
+      ],
       "ocr": "Government of India [[PII:AADHAAR:h4r3k2wq]]"
+    },
+    {
+      "rid": "r_media_01",
+      "class": "unscanned_media",
+      "bbox": [
+        600,
+        180,
+        160,
+        160
+      ]
     }
   ],
   "redactions": [
@@ -75,23 +115,63 @@
       "rid": "r_face_01",
       "kind": "BLUR",
       "type": "FACE",
-      "bbox": [612, 180, 128, 128],
+      "bbox": [
+        612,
+        180,
+        128,
+        128
+      ],
       "reason": "biometric class detected by local vision model"
     },
     {
       "rid": "r_aadhaar_01",
-      "kind": "FILL",
+      "kind": "LABELLED_FILL",
       "type": "AADHAAR",
-      "bbox": [244, 476, 312, 28],
-      "reason": "12-digit Verhoeff-valid identifier in a field labelled Aadhaar"
+      "bbox": [
+        244,
+        476,
+        312,
+        28
+      ],
+      "reason": "12-digit Verhoeff-valid identifier in a field labelled Aadhaar",
+      "token": "[[PII:AADHAAR:h4r3k2wq]]"
     },
     {
       "rid": "r_password_01",
       "kind": "FILL",
       "type": "PASSWORD",
-      "bbox": [244, 424, 312, 28],
+      "bbox": [
+        244,
+        424,
+        312,
+        28
+      ],
       "reason": "input_type password is never automated and never transmitted"
     }
   ],
-  "image": "data:image/webp;base64,UklGRhIAAABXRUJQVlA4TAYAAAAvAAAAAAfQ//73v/+BiOh/AAA="
+  "image": "data:image/webp;base64,UklGRhIAAABXRUJQVlA4TAYAAAAvAAAAAAfQ//73v/+BiOh/AAA=",
+  "texts": [
+    {
+      "tid": "t0",
+      "role": "heading",
+      "text": "KYC Verification",
+      "bbox": [
+        240,
+        120,
+        320,
+        32
+      ]
+    },
+    {
+      "tid": "t1",
+      "role": "cell",
+      "text": "Balance [REDACTED:FINANCIAL_VALUE]",
+      "bbox": [
+        600,
+        560,
+        280,
+        24
+      ]
+    }
+  ]
 }

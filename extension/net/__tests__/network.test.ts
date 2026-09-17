@@ -1,9 +1,29 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { send, health } from '../network';
+import { seal } from '../../privacy/firewall';
 import type { SanitizedPayload } from '../../privacy/firewall';
+import type { DraftPayload } from '../../privacy/payloadBuilder';
 
-// AGENTS.md invariant 2: send() must only accept a SanitizedPayload minted by firewall.seal(),
-// and must re-check a runtime registry so a type-level bypass still fails.
+// AGENTS.md invariant 2 + Stage 2 Part F.6: send() only accepts a registered SanitizedPayload,
+// transmits the exact sealed bytes, verifies the digest, and is single-use.
+
+function makeDraft(): DraftPayload {
+  return {
+    session: 'sess-1',
+    capture_id: 'cap-1',
+    schema: 'aegis/1',
+    mode: 'balanced',
+    task: 'Do the thing',
+    page: { url: 'https://example.test/', title: 'Example' },
+    elements: [],
+    redactions: [],
+  };
+}
+
+async function sealOne(): Promise<SanitizedPayload> {
+  const { payload } = await seal(makeDraft(), { vaultValues: [], issuedTokens: new Set(), decisions: [], observedRawValues: [] });
+  return payload;
+}
 
 describe('network.send()', () => {
   beforeEach(() => {
@@ -15,14 +35,48 @@ describe('network.send()', () => {
 
   it('rejects a plain object that was never sealed, even when forced past the type system', async () => {
     const forged = { session: 's1', capture_id: 'c1' };
-    // @ts-expect-error forged is not a SanitizedPayload — this is exactly what the type brand exists to catch.
+    // @ts-expect-error forged is not a SanitizedPayload — this is exactly what the brand exists to catch.
     await expect(send(forged)).rejects.toThrow(/refused/i);
   });
 
   it('rejects an object cast to SanitizedPayload without going through seal()', async () => {
-    const forged = { session: 's1', capture_id: 'c1' } as unknown as SanitizedPayload;
+    const forged = { bytes: new Uint8Array([1, 2]), digest: 'deadbeef', capture_id: 'c1', size: 2 } as unknown as SanitizedPayload;
     await expect(send(forged)).rejects.toThrow(/refused/i);
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('sends the EXACT sealed bytes as the body, with the digest header', async () => {
+    const payload = await sealOne();
+    const result = await send(payload);
+
+    expect(result.status).toBe(200);
+    const fetchMock = vi.mocked(fetch);
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toMatch(/\/v1\/plan$/);
+    expect(init?.method).toBe('POST');
+    expect((init?.headers as Record<string, string>)['X-Aegis-Digest']).toBe(payload.digest);
+    // The body is the sealed byte array itself — not a re-serialization of an object.
+    expect(init?.body).toBe(payload.bytes);
+  });
+
+  it('is single-use: replaying the same sealed payload throws', async () => {
+    const payload = await sealOne();
+    await send(payload);
+    await expect(send(payload)).rejects.toThrow(/refused/i);
+    expect(vi.mocked(fetch).mock.calls).toHaveLength(1); // the replay never reached the network
+  });
+
+  it('refuses when the sealed bytes were modified after sealing (digest mismatch)', async () => {
+    const payload = await sealOne();
+    payload.bytes[0] = payload.bytes[0]! ^ 0xff; // tamper
+    await expect(send(payload)).rejects.toThrow(/digest mismatch/i);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('throws on a non-OK server response', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('nope', { status: 500 })));
+    const payload = await sealOne();
+    await expect(send(payload)).rejects.toThrow(/500/);
   });
 });
 
