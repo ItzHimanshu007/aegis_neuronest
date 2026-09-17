@@ -94,6 +94,10 @@ export const AEGIS_CONFIG = {
    * firewall.seal()'s known-value leak check compares it against vault/detection values — below
    * this, short common substrings (e.g. a 2-3 digit area code) would false-positive constantly. */
   LEAK_MIN_LEN: 4,
+  /** Separate, stricter floor for the digits-only form of the leak check. Short digit runs (a
+   * 4-digit masked-card tail, a year, a port number) collide by coincidence in any numeric-heavy
+   * string, so comparing them flags noise instead of leaks. */
+  LEAK_MIN_DIGITS: 7,
 
   /** Cap on total characters sent in payload.v1's `texts[]` (Stage 2 Part F.3) — bounds payload
    * size on text-heavy pages; text blocks beyond the budget are simply omitted, fail-closed

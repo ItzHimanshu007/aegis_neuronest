@@ -15,7 +15,7 @@ export async function observe(panelPage: Page, targetPage: Page): Promise<Observ
   await panelPage.evaluate(() => {
     delete (window as unknown as { __aegisLastObserveResult?: unknown }).__aegisLastObserveResult;
   });
-  await panelPage.getByRole('button', { name: 'Observe' }).click();
+  await panelPage.getByRole('button', { name: 'Observe', exact: true }).click();
   await panelPage.waitForFunction(() => Boolean((window as unknown as { __aegisLastObserveResult?: unknown }).__aegisLastObserveResult), {
     timeout: 20_000,
   });

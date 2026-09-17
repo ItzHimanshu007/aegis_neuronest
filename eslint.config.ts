@@ -46,9 +46,13 @@ export default tseslint.config(
     },
   },
   {
-    // The one sanctioned exception to the network boundary rule, plus its own tests, which must
-    // reference the global `fetch` to stub/assert on it (they never call the real network).
-    files: ['extension/net/network.ts', 'extension/net/__tests__/**'],
+    // The one sanctioned exception to the network boundary rule, plus test code:
+    //  - net/__tests__ must reference the global `fetch` to stub/assert on it (never calling out).
+    //  - e2e specs run inside Playwright and evaluate code in a *page* context (e.g. probing
+    //    whether the mock server is up before a send test). That is the test harness driving a
+    //    browser, not extension runtime code, and none of it ships in the built extension — the
+    //    invariant this rule protects is about what the EXTENSION may do.
+    files: ['extension/net/network.ts', 'extension/net/__tests__/**', 'extension/e2e/**'],
     rules: {
       'no-restricted-globals': 'off',
     },

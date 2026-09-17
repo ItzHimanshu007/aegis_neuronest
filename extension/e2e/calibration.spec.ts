@@ -8,7 +8,7 @@ import type { ObserveResult } from '../shared/messages';
  * not just what's rendered as visible text. */
 async function observeAndGetResult(panelPage: import('@playwright/test').Page, targetPage: import('@playwright/test').Page): Promise<ObserveResult> {
   await targetPage.bringToFront();
-  await panelPage.getByRole('button', { name: 'Observe' }).click();
+  await panelPage.getByRole('button', { name: 'Observe', exact: true }).click();
   await panelPage.waitForFunction(() => Boolean((window as unknown as { __aegisLastObserveResult?: unknown }).__aegisLastObserveResult), {
     timeout: 15_000,
   });

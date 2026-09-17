@@ -7,7 +7,7 @@ import type { ObserveResult } from '../shared/messages';
  * messaging). */
 async function observe(panelPage: import('@playwright/test').Page, targetPage: import('@playwright/test').Page) {
   await targetPage.bringToFront();
-  await panelPage.getByRole('button', { name: 'Observe' }).click();
+  await panelPage.getByRole('button', { name: 'Observe', exact: true }).click();
   await expect(panelPage.getByText(/Observing…/)).toHaveCount(0, { timeout: 15_000 });
   await expect(panelPage.locator('.marks-list')).toBeVisible({ timeout: 15_000 });
 }

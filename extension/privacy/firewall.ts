@@ -7,7 +7,7 @@
  * redundant with the layers upstream of them: detection, policy, tokenization and redaction are
  * all supposed to have already made the payload safe, and `seal()` assumes all of them are buggy.
  *
- *   1. JSON-schema validation (ajv, bundled — no remote refs)
+ *   1. JSON-schema validation (precompiled standalone validator — no runtime codegen)
  *   2. Rule scan over every outgoing string
  *   3. Known-value leak check against the vault and observed raw values
  *   4. Token check — every token-shaped string is one the vault actually issued
@@ -17,8 +17,7 @@
  *   8. Canonical serialization -> bytes -> SHA-256 digest -> registry -> SanitizedPayload
  */
 
-import Ajv2020, { type ValidateFunction } from 'ajv/dist/2020';
-import payloadSchema from '../../shared/schema/payload.v1.schema.json';
+import validatePayloadSchema from './generated/payloadValidator.js';
 import { AEGIS_CONFIG } from '../shared/config';
 import { TOKEN_PATTERN } from '../shared/schema/tokens';
 import { runRules } from './detect/rules';
@@ -51,16 +50,6 @@ export class SealError extends Error {
   }
 }
 
-// --- ajv ---------------------------------------------------------------------------------------
-// `strictRequired: false` for the same reason scripts/validate-fixtures.mjs sets it — the
-// conditional `allOf` blocks add `required` without redeclaring the property's type.
-const ajv = new Ajv2020({ strict: true, strictRequired: false, allErrors: true });
-let validatePayload: ValidateFunction | null = null;
-function getValidator(): ValidateFunction {
-  if (!validatePayload) validatePayload = ajv.compile(payloadSchema);
-  return validatePayload;
-}
-
 export interface SealContext {
   /** Every value the vault holds, for the leak check. */
   vaultValues: Array<{ value: string; normalized: string; type: Category }>;
@@ -90,9 +79,20 @@ export interface SealResult {
   timings: SealTimings;
 }
 
-/** Walks every string in the draft, with a path for error reporting. */
+/**
+ * Walks every string in the draft, with a path for error reporting.
+ *
+ * The one deliberate exclusion is the image data URL. It is base64-encoded BINARY, not text:
+ * substring-scanning it is meaningless (any long base64 blob contains, by chance, short digit
+ * runs and letter sequences that will match almost any value's normalized form), and doing so
+ * produced exactly that false positive in practice — a masked Aadhaar's 4-digit tail "matching"
+ * inside the PNG bytes. The image's safety is established far more meaningfully by checks 5 and 6
+ * (every non-ALLOW detection's rects are covered by a mask, and `verifyMasks()` confirms those
+ * pixels really are filled at both full and downscaled resolution).
+ */
 function* walkStrings(value: unknown, path = '$'): Generator<{ path: string; value: string }> {
   if (typeof value === 'string') {
+    if (path === '$.image' || value.startsWith('data:')) return;
     yield { path, value };
   } else if (Array.isArray(value)) {
     for (const [i, item] of value.entries()) yield* walkStrings(item, `${path}[${i}]`);
@@ -120,6 +120,19 @@ function rectsCover(outer: Array<{ x: number; y: number; width: number; height: 
   return corners.every((corner) => outer.some((o) => corner.x >= o.x - 1 && corner.x <= o.x + o.width + 1 && corner.y >= o.y - 1 && corner.y <= o.y + o.height + 1));
 }
 
+/** Returns the overlap of two rects, or null when they don't intersect at all. */
+function intersectRect(
+  a: { x: number; y: number; width: number; height: number },
+  b: { x: number; y: number; width: number; height: number },
+): { x: number; y: number; width: number; height: number } | null {
+  const x0 = Math.max(a.x, b.x);
+  const y0 = Math.max(a.y, b.y);
+  const x1 = Math.min(a.x + a.width, b.x + b.width);
+  const y1 = Math.min(a.y + a.height, b.y + b.height);
+  if (x1 <= x0 || y1 <= y0) return null;
+  return { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
+}
+
 /** Canonical JSON: object keys sorted, no whitespace. Two structurally identical payloads always
  * serialize to identical bytes, so the digest is stable and verifiable on the server. */
 export function canonicalize(value: unknown): string {
@@ -137,10 +150,12 @@ export async function seal(draft: DraftPayload, ctx: SealContext): Promise<SealR
   const totalStart = performance.now();
 
   // --- 1. schema -------------------------------------------------------------------------------
+  // Precompiled at build time by `pnpm gen:validator` — ajv's runtime `compile()` generates code
+  // and evaluates it with `new Function`, which the extension CSP blocks and AGENTS.md invariant 7
+  // forbids outright. See scripts/gen-validator.mjs.
   let t = performance.now();
-  const validate = getValidator();
-  if (!validate(draft)) {
-    throw new SealError('schema', validate.errors);
+  if (!validatePayloadSchema(draft)) {
+    throw new SealError('schema', validatePayloadSchema.errors);
   }
   const schemaMs = performance.now() - t;
 
@@ -177,7 +192,10 @@ export async function seal(draft: DraftPayload, ctx: SealContext): Promise<SealR
           throw new SealError('known-value-leak', { path: haystack.path, category: known.category, length: candidate.length });
         }
       }
-      if (digitsOnly.length >= AEGIS_CONFIG.LEAK_MIN_LEN && haystack.digits.includes(digitsOnly)) {
+      // Digits-only comparison needs a HIGHER floor than the textual one: a 4-digit run appears
+      // by coincidence in almost any numeric string, so matching on it flags noise rather than
+      // leaks. LEAK_MIN_DIGITS is the separate, stricter threshold for this form.
+      if (digitsOnly.length >= AEGIS_CONFIG.LEAK_MIN_DIGITS && haystack.digits.includes(digitsOnly)) {
         throw new SealError('known-value-leak', { path: haystack.path, category: known.category, form: 'digits-only', length: digitsOnly.length });
       }
     }
@@ -212,6 +230,8 @@ export async function seal(draft: DraftPayload, ctx: SealContext): Promise<SealR
     if (!ctx.redactResult) {
       throw new SealError('coverage', { detectionId: detection.id, reason: 'no redaction result for a detection with rects' });
     }
+    const imageW = ctx.redactResult.fullResolution.pxW;
+    const imageH = ctx.redactResult.fullResolution.pxH;
     for (const rect of detection.rects) {
       const pxRect = {
         x: rect.x * ctx.redactResult.scaleX,
@@ -219,7 +239,16 @@ export async function seal(draft: DraftPayload, ctx: SealContext): Promise<SealR
         width: rect.width * ctx.redactResult.scaleX,
         height: rect.height * ctx.redactResult.scaleY,
       };
-      if (!rectsCover(maskRects, pxRect)) {
+
+      // Clip to the captured image. A detection can legitimately sit outside the viewport — the
+      // page scrolls, the capture doesn't — and a region that isn't in the image has no pixels to
+      // redact, so demanding a mask for it would fail on something that cannot leak through the
+      // image in the first place. (Its TEXT is still governed independently by the rule scan,
+      // leak check and token check, which do not care about geometry.)
+      const visible = intersectRect(pxRect, { x: 0, y: 0, width: imageW, height: imageH });
+      if (!visible) continue;
+
+      if (!rectsCover(maskRects, visible)) {
         throw new SealError('coverage', { detectionId: detection.id, category: detection.category, rect });
       }
     }

@@ -136,6 +136,7 @@ export default function App() {
 
       const observeResponse = await sendMessage('OBSERVE', { tabId: activeTab.id });
       setObserveResult(observeResponse);
+      (window as unknown as { __aegisLastObserveResult?: ObserveResult }).__aegisLastObserveResult = observeResponse;
 
       const session = sessionRef.current!;
       // Stage 2 preview treats the observed origin as consented; Stage 3's consent screen will

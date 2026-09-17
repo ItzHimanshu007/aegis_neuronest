@@ -28,7 +28,9 @@
     "server:test": "uv run --project server pytest server/tests -q",
     "check": "pnpm run schema:check && pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run server:lint && pnpm run server:test",
     "manifests": "node scripts/print-manifests.mjs",
-    "gen:policy": "node scripts/gen-policy.mjs"
+    "gen:policy": "node scripts/gen-policy.mjs",
+    "gen:validator": "node scripts/gen-validator.mjs",
+    "gen:all": "pnpm run gen:types && pnpm run gen:policy && pnpm run gen:validator"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
