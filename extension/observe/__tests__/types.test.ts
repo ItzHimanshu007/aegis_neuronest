@@ -34,7 +34,7 @@ function makeObservation(overrides: Partial<RawObservation> = {}): RawObservatio
       },
     ],
     media: [],
-    textBlocks: [{ blockRef: '0:0', text: 'Some paragraph text that should only appear as a length', lineRects: [], bbox: { x: 0, y: 0, width: 0, height: 0 }, role: 'generic', frameId: 0 }],
+    textBlocks: [{ blockRef: '0:0', text: 'Some paragraph text that should only appear as a length', lineRects: [], bbox: { x: 0, y: 0, width: 0, height: 0 }, role: 'generic', frameId: 0, privacyAttrs: [] }],
     screenshot: { dataUrl: 'data:image/png;base64,AAAA', pxW: 100, pxH: 100, scaleX: 1, scaleY: 1 },
     timings: { injectMs: 1, harvestMs: 2, captureMs: 3, totalMs: 6 },
     counts: { elements: 1, visibleElements: 1, hiddenInteractive: 0, media: 0, textBlocks: 1, frames: 1 },

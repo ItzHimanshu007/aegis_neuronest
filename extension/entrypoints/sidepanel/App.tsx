@@ -148,7 +148,7 @@ export default function App() {
         task: taskText,
         mode,
         session,
-        stateToken: observeResponse.observation.viewport,
+        stateToken: observeResponse.stateToken,
         requestSpanRects: async (request) => {
           const envelope = (await browser.tabs.sendMessage(observeResponse.tabId, { type: 'SPAN_RECTS', data: request }, { frameId: 0 })) as
             | { ok: true; response: { stale: boolean; results?: Array<{ blockRef: string; rects: Array<{ x: number; y: number; width: number; height: number }>; notFound?: boolean }> } }

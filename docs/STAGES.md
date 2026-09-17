@@ -51,6 +51,16 @@ engine reading `policy.yaml`, the redactor (solid fill / face blur), the side-ch
 token-like-string neutralization. Fail-closed verification: if anything is uncertain, nothing ships.
 Heavy adversarial unit tests.
 
+Also delivered here, beyond the original outline: the detection cascade itself (privacy tags,
+autocomplete tokens, field context, regex + checksums, a labelled-value fallback and per-span
+rect resolution), the DOM-rect screenshot redactor, the Privacy Preview panel, and the
+`pii-zoo.html` corpus with `data-gt` ground truth. The pipeline was moved out of the background
+service worker into the side panel document — see AGENTS.md's conventions for why.
+
+Baseline measurements live in `eval/reports/`: `stage2-baseline.md` (per-category precision and
+recall on `pii-zoo.html`, the floor Stages 6 and 7 must beat) and `stage2-timings.md` (pipeline
+stage timings and payload sizes per capture mode).
+
 ## Stage 3 — First end-to-end loop
 
 The agent loop end to end on the demo KYC form: seal → send → plan → validate → approve → reacquire →

@@ -13,7 +13,7 @@
 import type { RawElement } from '../../observe/types';
 import type { Detection } from './types';
 
-const GENERIC_PRIVACY_ATTRS = new Set(['data-private', 'data-pii', 'data-hj-suppress', 'data-clarity-mask', 'rr-mask', 'rr-block', 'sentry-mask']);
+export const GENERIC_PRIVACY_ATTRS = new Set(['data-private', 'data-pii', 'data-hj-suppress', 'data-clarity-mask', 'rr-mask', 'rr-block', 'sentry-mask']);
 
 export function detectFromTags(el: RawElement, captureId: string, idFor: (suffix: string) => string): Detection[] {
   const detections: Detection[] = [];

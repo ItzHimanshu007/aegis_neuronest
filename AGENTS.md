@@ -111,6 +111,15 @@ Enforcement is not decoration. If you add a bypass "just for a test", the test i
   truth. TS types are generated (`pnpm gen:types`); Pydantic models mirror them and a test proves
   the two agree on the fixtures.
 - Extension: React for **side panel UI only**. Content scripts are plain TypeScript.
+- The **privacy pipeline runs in the side panel document**, never in the background service
+  worker. Chrome may terminate an MV3 service worker after ~30 seconds idle; the token vault's
+  session key lives only in memory, so a termination mid-task would destroy it. Background is a
+  thin capture-only router: it passes observations straight through and retains nothing raw.
+- Generated code is generated, never hand-edited: `pnpm gen:types` (schema -> TS),
+  `pnpm gen:policy` (`docs/policy.yaml` -> `privacy/generated/policy.ts`), `pnpm gen:validator`
+  (payload schema -> a **precompiled standalone** ajv validator, because ajv's runtime `compile()`
+  uses `new Function`, which invariant 7 and the extension CSP both forbid). `pnpm gen:all` runs
+  all three.
 - Python: 3.12, `uv`, `ruff`, `pytest`, pydantic v2.
 - Both browser targets are **MV3**. WXT may default Firefox to MV2 — it is forced to MV3, and the
   generated manifests are checked.

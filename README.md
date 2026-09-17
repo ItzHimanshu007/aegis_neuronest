@@ -8,17 +8,30 @@ only ever sees tokens and redacted pixels, and only ever proposes actions — th
 reacquires, re-hydrates and executes them. See [`docs/architecture.md`](docs/architecture.md) for
 the full design and [`AGENTS.md`](AGENTS.md) for the invariants every change must respect.
 
-This repository is currently at **Stage 1 — Observe** (see [`docs/STAGES.md`](docs/STAGES.md)).
-Stage 0 built the repo structure, contracts and shells; Stage 1 adds **Layer 1 (Observe)**: an
+This repository is currently at **Stage 2 — Privacy core** (see [`docs/STAGES.md`](docs/STAGES.md)).
+Stage 0 built the repo structure, contracts and shells. Stage 1 added **Layer 1 (Observe)**: an
 on-demand harvester content script (Set-of-Marks elements with stable fingerprints, visibility and
 hit-testing, text blocks, media, shadow DOM and same-origin frames), a capture pipeline (settle
 wait, screenshot with scale mapping, capture throttle, NEW_SCREEN/SAME_SCREEN change detection),
 a debug overlay, and an input watcher that never reports raw values.
 
-Everything Stage 1 observes is **local only** — it is branded `LocalOnly<T>` (see
+Stage 2 adds **Layer 2 (Privacy)**: a detection cascade (privacy tags, autocomplete tokens, field
+context, regex + checksums, labelled-value fallback), a policy engine driven by
+[`docs/policy.yaml`](docs/policy.yaml), an HMAC token vault whose key is non-extractable and
+in-memory only, a side-channel sanitizer, a DOM-rect screenshot redactor, and the real
+`firewall.seal()` — eight fail-closed checks that are the only way to mint the `SanitizedPayload`
+that `net/network.ts → send()` accepts. A Privacy Preview panel shows exactly what would leave.
+
+Everything the extension observes is **local only** — it is branded `LocalOnly<T>` (see
 [`extension/observe/types.ts`](extension/observe/types.ts)) and provably cannot reach
-`net/network.ts`. There is still no PII detection, redaction, ML or agent logic — those land in
-Stages 2, 3, 5 and 6.
+`net/network.ts`. There is still no ML or agent loop — those land in Stages 3, 5 and 6.
+
+**Where the privacy pipeline runs matters.** The detection cascade, the policy engine and the token
+vault all live in the **side panel document**, not the background service worker: Chrome can
+terminate an MV3 service worker after ~30 seconds idle, which would destroy the vault's session key
+mid-task. Background stays a thin capture-only router that passes observations through and retains
+nothing raw (enforced by
+[`extension/privacy/__tests__/backgroundNoRawCache.test.ts`](extension/privacy/__tests__/backgroundNoRawCache.test.ts)).
 
 ## Prerequisites
 
@@ -124,7 +137,9 @@ Vitest suite, server `ruff check`/`ruff format --check`, and server `pytest`.
 Individual pieces:
 
 ```sh
-pnpm gen:types      # regenerate extension/shared/schema/*.d.ts from /shared/schema/*.schema.json
+pnpm gen:types       # regenerate extension/shared/schema/*.d.ts from /shared/schema/*.schema.json
+pnpm gen:policy      # regenerate extension/privacy/generated/policy.ts from docs/policy.yaml
+pnpm gen:validator   # precompile the payload JSON Schema into a standalone ajv validator
 pnpm schema:check    # validate shared/schema/examples/* against the JSON Schemas
 pnpm typecheck        # extension TypeScript (includes the e2e specs and the LocalOnly type proof)
 pnpm lint             # ESLint across the repo
@@ -154,15 +169,16 @@ mirrors every Chromium test as a checklist.
 ```
 extension/
   observe/      Stage 1: harvester, fingerprints, visibility, change detection, overlay (LocalOnly)
-  entrypoints/  background (capture pipeline), content (harvester), sidepanel (React UI)
-  privacy/      Stage 2 stubs — firewall.seal(), vault, policy, redactor
+  entrypoints/  background (capture pipeline), content (harvester), sidepanel (React UI + agentHost)
+  agentHost/    Stage 2: the privacy pipeline, running in the SIDE PANEL document (see below)
+  privacy/      Stage 2: detection cascade, policy engine, token vault, redactor, firewall.seal()
   net/          network.ts — the ONLY network path out of the extension
   shared/       config.ts (all tuning thresholds), messages.ts, permissions.ts, schema types
   e2e/          Playwright specs (Chromium) — run with `pnpm e2e`
 server/         FastAPI server, Pydantic schemas, VLM adapter interface + MockAdapter
 shared/schema/  JSON Schema contracts (payload.v1, plan.v1) — the single source of truth
-demo-portal/    Vite static site: kyc, calibration, shadow, frames, dynamic, hidden scenarios
-eval/           Evaluation harness (not implemented yet — see eval/README.md)
+demo-portal/    Vite static site: kyc, calibration, shadow, frames, dynamic, hidden, pii-zoo
+eval/           Evaluation harness (reports/ holds the Stage 2 baseline — see eval/README.md)
 docs/           Architecture, build stages, threat model, PII policy matrix, Firefox test checklist
 ```
 

@@ -1,4 +1,4 @@
-import { onMessage, type ObserveResult } from '../shared/messages';
+import { onMessage, type ObserveResult, type StateToken } from '../shared/messages';
 import { health } from '../net/network';
 import { AEGIS_CONFIG } from '../shared/config';
 import { composeObservation, type FrameComposeInput } from '../observe/compose';
@@ -267,7 +267,7 @@ export default defineBackground(() => {
     });
 
     lastChangeByTab.set(tabId, change);
-    return { observation, change, tabId };
+    return { observation, change, tabId, stateToken: finalStateToken };
   }
 
   /** Attempts to upgrade any 'iframe-unmapped' media entries by matching a same-size FRAME_HELLO
@@ -328,16 +328,6 @@ export default defineBackground(() => {
 // ---------------------------------------------------------------------------------------------
 // Local helper types
 // ---------------------------------------------------------------------------------------------
-
-interface StateToken {
-  mutationCounter: number;
-  scrollX: number;
-  scrollY: number;
-  dpr: number;
-  visualScale: number;
-  innerWidth: number;
-  innerHeight: number;
-}
 
 interface FrameHello {
   frameId: number;

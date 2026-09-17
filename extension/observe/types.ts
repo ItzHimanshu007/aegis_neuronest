@@ -130,6 +130,9 @@ export interface RawTextBlock {
   bbox: CssRect;
   role: string;
   frameId: number;
+  /** Privacy markers on the block element or any ancestor — a `data-private` wrapper covers
+   * everything inside it, which is exactly how site authors use these attributes. */
+  privacyAttrs: PrivacyAttr[];
 }
 
 // ---------------------------------------------------------------------------------------------

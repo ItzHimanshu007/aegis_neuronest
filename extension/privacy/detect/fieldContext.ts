@@ -81,17 +81,24 @@ export function findNearestLabelCategory(
   return best?.category;
 }
 
-/** Pairs adjacent `<dt>`/`<dd>`-shaped text blocks (role 'term' / 'definition' per the AccName
- * spec's role mapping) by document order — a `<dt>Aadhaar</dt><dd>1234...</dd>` pair should give
- * the `<dd>` block AADHAAR context even though it has no colon of its own. */
+const LABEL_ROLES = new Set(['term', 'rowheader', 'columnheader']);
+const VALUE_ROLES = new Set(['definition', 'cell', 'gridcell']);
+
+/**
+ * Pairs a label block with the value block that follows it in document order, for the two markups
+ * that carry their own label without a colon: `<dt>Aadhaar</dt><dd>1234...</dd>` (roles
+ * 'term'/'definition') and `<tr><th scope="row">City</th><td>Bengaluru</td></tr>` (roles
+ * 'rowheader'/'cell'). Both give the value block its category even though the value itself
+ * contains no clue.
+ */
 export function pairDtDd(blocks: RawTextBlock[]): Map<string, Category> {
   const result = new Map<string, Category>();
   for (let i = 0; i < blocks.length - 1; i++) {
-    const dt = blocks[i]!;
-    const dd = blocks[i + 1]!;
-    if (dt.role !== 'term' || dd.role !== 'definition') continue;
-    const matches = matchLabelCategories(dt.text);
-    if (matches.length > 0) result.set(dd.blockRef, matches[0]!);
+    const label = blocks[i]!;
+    const value = blocks[i + 1]!;
+    if (!LABEL_ROLES.has(label.role) || !VALUE_ROLES.has(value.role)) continue;
+    const matches = matchLabelCategories(label.text);
+    if (matches.length > 0) result.set(value.blockRef, matches[0]!);
   }
   return result;
 }

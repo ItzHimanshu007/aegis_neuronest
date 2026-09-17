@@ -4,6 +4,7 @@ import { waitForSettle } from '../observe/settle';
 import { InputWatcher } from '../observe/inputWatcher';
 import { computeSpanRects, getTextParts } from '../observe/spanRects';
 import { AEGIS_CONFIG } from '../shared/config';
+import type { StateToken } from '../shared/messages';
 import type { FrameComposeInput } from '../observe/compose';
 import { composeToTopLevel, type FrameOffset } from '../observe/frames';
 import type { FrameInfo, RawElement, RawMedia } from '../observe/types';
@@ -304,16 +305,6 @@ function collectMarkedElements(doc: Document, elements: Omit<RawElement, 'mark_i
 // ---------------------------------------------------------------------------------------------
 // State token (Stage 1 Part D.1.3-5)
 // ---------------------------------------------------------------------------------------------
-
-export interface StateToken {
-  mutationCounter: number;
-  scrollX: number;
-  scrollY: number;
-  dpr: number;
-  visualScale: number;
-  innerWidth: number;
-  innerHeight: number;
-}
 
 let mutationCounter = 0;
 let mutationObserverInstalled = false;

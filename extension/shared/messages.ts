@@ -15,6 +15,28 @@
 import type { ChangeResult } from '../observe/change';
 import type { Observation } from '../observe/types';
 
+/**
+ * The freshness token for one capture. The content script stamps every harvest with one and
+ * refuses a later SPAN_RECTS lookup unless the token it is handed still matches — any scroll,
+ * resize, zoom or DOM mutation in between invalidates the rects it would compute.
+ *
+ * It lives here, in the message contract, because three separate places have to agree on its
+ * exact shape: the content script that mints and checks it, background, which carries it through
+ * the capture loop, and the side panel, which hands it back on the SPAN_RECTS call. It used to be
+ * declared twice, and the panel passed the viewport object instead — structurally similar, no
+ * `mutationCounter`, so every lookup was silently reported stale and every text detection fell
+ * back to masking its whole block.
+ */
+export interface StateToken {
+  mutationCounter: number;
+  scrollX: number;
+  scrollY: number;
+  dpr: number;
+  visualScale: number;
+  innerWidth: number;
+  innerHeight: number;
+}
+
 export interface HealthResult {
   status: string;
   version: string;
@@ -29,6 +51,8 @@ export interface ObserveResult {
    * directly — SPAN_RECTS is a content-script query the host makes on its own, not something
    * background needs to know about or relay (background stays a thin capture-only router). */
   tabId: number;
+  /** The token this capture stabilized on, for the agentHost's SPAN_RECTS call. */
+  stateToken: StateToken;
 }
 
 /** Message payload/response map. Add new message types here, never ad hoc. */

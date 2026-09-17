@@ -171,3 +171,24 @@ test.describe('kyc.html: the Stage 1 page still sanitizes cleanly', () => {
     expect(sentText).toContain(result.preview.digest);
   });
 });
+
+test.describe('span-rect lookup', () => {
+  test('resolves every text span on a static page instead of falling back to whole-block masks', async ({ context, sidepanelUrl }) => {
+    // Regression guard. The panel used to hand the content script the viewport object in place of
+    // the capture's StateToken — structurally similar, but with no `mutationCounter`, so the
+    // freshness check reported every lookup stale and the redactor fell back to masking each
+    // detection's entire text block. The payload stayed safe (fail-closed), which is exactly why
+    // nothing caught it: the only visible symptom was a screenshot blacked out far past the PII.
+    const { targetPage, panelPage } = await openPages(context, sidepanelUrl, '/pii-zoo.html');
+    const result = await observeAndSanitize(panelPage, targetPage);
+
+    expect(
+      result.preview.spanFallbacks,
+      'pii-zoo.html is static, so no span lookup has any reason to be stale or not-found',
+    ).toEqual([]);
+    expect(
+      result.preview.detections.some((d) => d.targetKind === 'text_span' && d.rectCount > 0),
+      'text-span detections must carry real rects',
+    ).toBe(true);
+  });
+});

@@ -19,12 +19,13 @@ import { canTokenizeFromPage, decide, determineNecessity } from '../privacy/poli
 import { getElementFieldContext } from '../privacy/detect/fieldContext';
 import { maskKindForAction, redact, type MaskRequest, type Mode, type RedactResult } from '../privacy/redactor';
 import { buildPayload, type DraftRedaction, type DraftVisualRegion, type ElementDecision, type SanitizedTextBlock } from '../privacy/payloadBuilder';
-import { sanitizeText, sanitizeTask, sanitizeTitle, sanitizeUrl } from '../privacy/sideChannels';
+import { sanitizeText, sanitizeTask, sanitizeTitle, sanitizeUrl, type KnownValue } from '../privacy/sideChannels';
 import { normalizeValue } from '../privacy/vault';
 import { seal, type SanitizedPayload, type SealTimings } from '../privacy/firewall';
 import type { MergedDetection } from '../privacy/detect/merge';
 import type { Action, Category } from '../privacy/categoryTypes';
 import type { Observation } from '../observe/types';
+import type { StateToken } from '../shared/messages';
 import type { PrivacySession } from './session';
 
 export interface ProcessOptions {
@@ -33,9 +34,11 @@ export interface ProcessOptions {
   mode: Mode;
   session: PrivacySession;
   /** Sends a SPAN_RECTS message to the observed tab. Injected so the pipeline stays testable. */
-  requestSpanRects: (request: { capture_id: string; stateToken: unknown; spans: Array<{ blockRef: string; start: number; end: number }> }) => Promise<SpanRectsResponse>;
-  /** The live state token, so the content script can tell us if the page moved on. */
-  stateToken: unknown;
+  requestSpanRects: (request: { capture_id: string; stateToken: StateToken; spans: Array<{ blockRef: string; start: number; end: number }> }) => Promise<SpanRectsResponse>;
+  /** The token the capture stabilized on. The content script refuses the span lookup unless this
+   * still matches, so passing anything else silently degrades every text detection to a
+   * whole-block mask. */
+  stateToken: StateToken;
 }
 
 export interface PreviewDetection {
@@ -176,9 +179,22 @@ export async function processObservation(options: ProcessOptions): Promise<Proce
   });
 
   // --- sanitize text blocks -------------------------------------------------------------------
+  // Text blocks get the cascade's decided values as well as the rule pass. The cascade uses
+  // context the rules cannot see (a block whose KEY says "Aadhaar" is AADHAAR even when the
+  // digits fail their checksum), so a rules-only sanitize would emit those values verbatim.
+  const knownValues: KnownValue[] = decisions
+    .filter(({ action }) => action !== 'ALLOW')
+    .map(({ detection, action }) => ({
+      value: (detection.rawValue as unknown as string) ?? '',
+      category: detection.category,
+      action,
+      token: tokensByDetection.get(detection.id),
+    }))
+    .filter((v) => v.value.length > 0);
+
   const texts: SanitizedTextBlock[] = [];
   for (const block of observation.textBlocks) {
-    const sanitized = await sanitizeText(block.text, sanitizeOptions);
+    const sanitized = await sanitizeText(block.text, { ...sanitizeOptions, knownValues });
     if (!sanitized.text.trim()) continue;
     texts.push({
       tid: block.blockRef,

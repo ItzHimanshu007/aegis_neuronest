@@ -15,7 +15,7 @@
  * whole cascade unit-testable without any browser messaging.
  */
 
-import { detectFromTags } from './tags';
+import { detectFromTags, GENERIC_PRIVACY_ATTRS } from './tags';
 import { detectFromAutocomplete } from './autocomplete';
 import { detectUnscannedMedia } from './unscannedMedia';
 import { nerDetect, ocrDetect, visualDetect } from './hooks';
@@ -121,12 +121,22 @@ export function runDetectionCascade(input: CascadeInput): CascadeResult {
       spanLookups.push({ detectionId: id, blockRef: block.blockRef, start, end });
     }
 
-    // A key-value block whose VALUE part didn't match any rule is still sensitive if the KEY
-    // matched the dictionary (e.g. "Employer: Acme Corp" — no rule matches "Acme Corp").
-    if (keyValue) {
-      const valueText = block.text.slice(keyValue.valueStart);
+    // A labelled value that matched no rule is still sensitive, because the LABEL says so:
+    // "Employer: Acme Industries" and a <dt>Blood group</dt><dd>O positive</dd> pair both name
+    // their own category, and no regex will ever match the value. Two sources of that label:
+    // a "Key: value" prefix inside the block, and a term/definition or row-header/cell pairing
+    // with the block before it. A nearest-label *spatial* guess is deliberately NOT enough here —
+    // it feeds the rules as context, but on its own it would redact half the page.
+    const labelled = keyValue
+      ? { category: keyValue.category, valueStart: keyValue.valueStart }
+      : dtDdContext.has(block.blockRef)
+        ? { category: dtDdContext.get(block.blockRef)!, valueStart: 0 }
+        : undefined;
+
+    if (labelled) {
+      const valueText = block.text.slice(labelled.valueStart);
       const alreadyCovered = raw.some(
-        (d) => d.target.kind === 'text_span' && d.target.ref === block.blockRef && d.span && d.span.start >= keyValue.valueStart,
+        (d) => d.target.kind === 'text_span' && d.target.ref === block.blockRef && d.span && d.span.start >= labelled.valueStart,
       );
       if (!alreadyCovered && valueText.trim().length > 0) {
         const id = idFor('field-context-value');
@@ -134,15 +144,31 @@ export function runDetectionCascade(input: CascadeInput): CascadeResult {
           id,
           capture_id: captureId,
           source: 'field_context',
-          category: keyValue.category,
+          category: labelled.category,
           confidence: 0.65,
           target: { kind: 'text_span', ref: block.blockRef },
-          span: { start: keyValue.valueStart, end: block.text.length },
+          span: { start: labelled.valueStart, end: block.text.length },
           rawValue: markLocalOnlyValue(valueText),
           rects: [],
         });
-        spanLookups.push({ detectionId: id, blockRef: block.blockRef, start: keyValue.valueStart, end: block.text.length });
+        spanLookups.push({ detectionId: id, blockRef: block.blockRef, start: labelled.valueStart, end: block.text.length });
       }
+    }
+
+    // The site's own privacy markers (`data-private`, `rr-mask`, ...) on a block or any ancestor.
+    // They say "sensitive" without saying what, so merge.ts upgrades the category if anything
+    // more specific lands on the same block.
+    if (block.privacyAttrs.some((attr) => GENERIC_PRIVACY_ATTRS.has(attr))) {
+      raw.push({
+        id: idFor('tag-generic-block'),
+        capture_id: captureId,
+        source: 'tag',
+        category: 'PRIVATE_GENERIC',
+        confidence: 0.5,
+        target: { kind: 'text_span', ref: block.blockRef },
+        rawValue: markLocalOnlyValue(block.text),
+        rects: [block.bbox],
+      });
     }
   }
 

@@ -15,7 +15,7 @@ import { buildFingerprintKey, computeFingerprint } from './fingerprint';
 import { computeHitOk, computeVisibility, domStyleReader } from './visibility';
 import { isSecretLabel } from '../privacy/detect/labels';
 import { getTextParts } from './spanRects';
-import type { CssRect, ElementStates, RawElement, RawMedia, RawTextBlock, ValueLenBucket } from './types';
+import type { CssRect, ElementStates, PrivacyAttr, RawElement, RawMedia, RawTextBlock, ValueLenBucket } from './types';
 import { AEGIS_CONFIG } from '../shared/config';
 
 export interface HarvestOptions {
@@ -422,9 +422,23 @@ function harvestTextBlocks(
       bbox: rectFromDomRect(blockEl.getBoundingClientRect()),
       role,
       frameId,
+      privacyAttrs: getInheritedPrivacyAttrs(blockEl, root),
     });
   }
   return blocks;
+}
+
+/** Privacy markers on `el` or any ancestor up to and including `root`. Site authors put
+ * `data-private` on a wrapper, not on every text node inside it. */
+function getInheritedPrivacyAttrs(el: Element, root: Element): PrivacyAttr[] {
+  const found = new Set<PrivacyAttr>();
+  let node: Element | null = el;
+  while (node) {
+    for (const attr of getPrivacyAttrs(node)) found.add(attr);
+    if (node === root) break;
+    node = node.parentElement;
+  }
+  return Array.from(found);
 }
 
 export { buildFingerprintKey };

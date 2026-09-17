@@ -93,3 +93,49 @@ describe('sanitizeTitle', () => {
     expect(result.text).toMatch(/\[\[PII:EMAIL:/);
   });
 });
+
+describe('sanitizeText knownValues', () => {
+  it('redacts a value the cascade decided on even when no rule matches it', async () => {
+    // The checksum is wrong, so the Aadhaar rule rejects it — but the block's own label says
+    // "Aadhaar", so the cascade flagged it. Without knownValues the digits go out verbatim.
+    const text = 'Aadhaar-shaped but checksum-invalid: 2345 6789 0128';
+    const bare = await sanitizeText(text, options());
+    expect(bare.text).toContain('2345 6789 0128');
+
+    const guarded = await sanitizeText(text, {
+      ...options(),
+      knownValues: [{ value: '2345 6789 0128', category: 'AADHAAR', action: 'FILL' }],
+    });
+    expect(guarded.text).not.toContain('2345 6789 0128');
+    expect(guarded.text).toContain('[REDACTED:AADHAAR]');
+  });
+
+  it('reuses the token the vault already minted rather than redacting', async () => {
+    const result = await sanitizeText('Blood group O positive', {
+      ...options(),
+      knownValues: [{ value: 'O positive', category: 'HEALTH', action: 'TOKEN', token: '[[PII:HEALTH:aaaaaabb]]' }],
+    });
+    expect(result.text).toBe('Blood group [[PII:HEALTH:aaaaaabb]]');
+  });
+
+  it('leaves ALLOW values and sub-threshold values alone', async () => {
+    const result = await sanitizeText('code xy and Bengaluru', {
+      ...options(),
+      knownValues: [
+        { value: 'Bengaluru', category: 'CITY', action: 'ALLOW' },
+        { value: 'xy', category: 'PRIVATE_GENERIC', action: 'FILL' },
+      ],
+    });
+    expect(result.text).toBe('code xy and Bengaluru');
+  });
+
+  it('never rewrites inside a token the rule pass just minted', async () => {
+    // Token bodies are base32, so a short textual value can occur inside one by chance — here
+    // 'aaaa' sits inside the email's token. Rewriting it there would forge a token seal() rejects.
+    const result = await sanitizeText('mail asha@example.com and aaaa', {
+      ...options(),
+      knownValues: [{ value: 'aaaa', category: 'PRIVATE_GENERIC', action: 'FILL' }],
+    });
+    expect(result.text).toBe('mail [[PII:EMAIL:aaaaaabb]] and [REDACTED:PRIVATE_GENERIC]');
+  });
+});

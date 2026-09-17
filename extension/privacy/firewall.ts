@@ -184,7 +184,15 @@ export async function seal(draft: DraftPayload, ctx: SealContext): Promise<SealR
   const haystacks = strings.map((s) => ({ path: s.path, text: withoutTokens(s.value), lower: withoutTokens(s.value).toLowerCase(), digits: withoutTokens(s.value).replace(/\D/g, '') }));
 
   for (const known of nonAllowValues) {
-    const candidates = [known.value, known.normalized].filter((v) => v.length >= AEGIS_CONFIG.LEAK_MIN_LEN);
+    // A candidate that is ALL DIGITS is held to the stricter digit floor, not the textual one.
+    // Normalizing a partially-masked value ("XXXX XXXX 0124") strips the mask and leaves a short
+    // digit run, which then collides with any text containing those same digits — including the
+    // page's own full, correctly-tokenized Aadhaar. Short digit runs are not identifying, and
+    // treating them as leaks blocks payloads that contain no leak at all.
+    const candidates = [known.value, known.normalized].filter((v) => {
+      const floor = /^\d+$/.test(v) ? AEGIS_CONFIG.LEAK_MIN_DIGITS : AEGIS_CONFIG.LEAK_MIN_LEN;
+      return v.length >= floor;
+    });
     const digitsOnly = known.value.replace(/\D/g, '');
     for (const haystack of haystacks) {
       for (const candidate of candidates) {

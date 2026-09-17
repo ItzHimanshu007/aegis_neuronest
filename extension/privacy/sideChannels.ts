@@ -10,7 +10,18 @@
 
 import { neutralize } from './vault';
 import { runRules } from './detect/rules';
+import { AEGIS_CONFIG } from '../shared/config';
+import { TOKEN_PATTERN } from '../shared/schema/tokens';
 import type { Action, Category } from './categoryTypes';
+
+/** A value the detection cascade already resolved, for `sanitizeText` to apply literally. */
+export interface KnownValue {
+  value: string;
+  category: Category;
+  action: Action;
+  /** Present when the vault already minted a token for it, so both paths reuse one token. */
+  token?: string;
+}
 
 export interface SanitizeTextOptions {
   /** Resolves the action for a category found in this text (the policy engine, pre-bound to the
@@ -18,6 +29,17 @@ export interface SanitizeTextOptions {
   decideFor: (category: Category, value: string) => Action;
   /** Mints (or reuses) a token for a value. Async because HMAC signing is async. */
   tokenize: (category: Category, value: string) => Promise<string>;
+  /**
+   * Values the detection cascade resolved for this capture, applied as literal replacements after
+   * the rule pass.
+   *
+   * WHY: the cascade sees context the rules cannot. A block reading
+   * "Aadhaar-shaped but checksum-invalid: 2345 6789 0128" is flagged AADHAAR because its KEY says
+   * Aadhaar, but re-running the rules over that text alone matches nothing (the checksum fails),
+   * so a rules-only sanitize would emit the digits verbatim. Passing the decided values in closes
+   * that gap; `seal()`'s known-value leak check is the backstop that found it.
+   */
+  knownValues?: KnownValue[];
 }
 
 export interface SanitizedText {
@@ -67,7 +89,39 @@ export async function sanitizeText(text: string, options: SanitizeTextOptions): 
     result = result.slice(0, match.start) + replacement + result.slice(match.start + match.matchedText.length);
   }
 
+  for (const known of options.knownValues ?? []) {
+    if (!isWorthReplacing(known.value)) continue;
+    if (known.action === 'ALLOW') continue;
+    const replacement = known.token ?? `[REDACTED:${known.category}]`;
+    const replaced = replaceOutsideTokens(result, known.value, replacement);
+    if (replaced === result) continue;
+    result = replaced;
+    applied.push({ category: known.category, action: known.action });
+  }
+
   return { text: result, applied, neutralizedCount: neutralized.neutralizedCount };
+}
+
+/** Mirrors the floors `seal()`'s leak check uses, so the two agree on what counts as identifying. */
+function isWorthReplacing(value: string): boolean {
+  const floor = /^\d+$/.test(value) ? AEGIS_CONFIG.LEAK_MIN_DIGITS : AEGIS_CONFIG.LEAK_MIN_LEN;
+  return value.length >= floor;
+}
+
+/**
+ * Literal replace, skipping the token substrings already in the text. Token bodies are base32
+ * (a-z2-7), so a short textual value can occur inside one by chance; rewriting it there would
+ * forge a token `seal()`'s token check then rejects.
+ */
+function replaceOutsideTokens(text: string, needle: string, replacement: string): string {
+  const tokens = new RegExp(TOKEN_PATTERN.source, 'g');
+  let out = '';
+  let cursor = 0;
+  for (const match of text.matchAll(tokens)) {
+    out += text.slice(cursor, match.index).split(needle).join(replacement) + match[0];
+    cursor = match.index + match[0].length;
+  }
+  return out + text.slice(cursor).split(needle).join(replacement);
 }
 
 const ID_LIKE_SEGMENT = /^(?:\d{6,}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-fA-F]{16,}|[A-Za-z0-9+/=_-]{20,})$/;

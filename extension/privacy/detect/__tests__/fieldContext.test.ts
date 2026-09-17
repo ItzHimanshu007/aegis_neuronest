@@ -64,6 +64,7 @@ function makeBlock(overrides: Partial<RawTextBlock>): RawTextBlock {
     bbox: { x: 0, y: 0, width: 50, height: 20 },
     role: 'generic',
     frameId: 0,
+    privacyAttrs: [],
     ...overrides,
   };
 }
