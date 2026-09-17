@@ -27,9 +27,13 @@ pnpm model:probe              # one call per fixture
 pnpm model:probe -- --runs 3  # repeat for a latency spread
 ```
 
-It needs a live endpoint: set `AEGIS_ADAPTER=openai_compat`, `AEGIS_LLM_BASE_URL` and
-`AEGIS_LLM_MODEL` in `server/.env` (see `server/.env.example`). It refuses to run against the mock
-adapter, which returns a fixed plan and would produce meaningless numbers.
+For real numbers it needs a live endpoint: set `AEGIS_ADAPTER=openai_compat`,
+`AEGIS_LLM_BASE_URL` and `AEGIS_LLM_MODEL` in `server/.env` (see `server/.env.example`).
+
+With none configured it still runs, against the mock adapter, so the harness stays exercised and a
+report still lands — but the mock returns a fixed plan, so the report opens with a banner saying
+its scores describe the mock and say nothing about any model. A mock run scores 0% grounding by
+construction; that is the harness working, not a finding.
 
 Output goes to `eval/reports/model-probe-<model>.md`.
 
