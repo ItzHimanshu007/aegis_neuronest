@@ -292,3 +292,54 @@ it('a data: prefix outside image cannot bypass rule or known-value scanning', as
   await expect(seal(makeDraft({task:'data:text/plain,asha@example.com'}),makeContext())).rejects.toMatchObject({reason:'rule-scan'});
   await expect(seal(makeDraft({task:'data:text/plain,Asha Verma'}),makeContext({observedRawValues:[{value:'Asha Verma',category:'NAME'}]}))).rejects.toMatchObject({reason:'known-value-leak'});
 });
+
+describe('seal: check 6b — Set-of-Marks labels', () => {
+  function withLabels(somLabels: Array<{ eid: string }>): SealContext {
+    return makeContext({
+      redactResult: {
+        image: {
+          dataUrl: 'data:image/png;base64,AAAA',
+          pxW: 100,
+          pxH: 100,
+          capture_id: 'cap-1',
+          masks: [],
+          somLabels: somLabels.map((l) => ({ eid: l.eid, pxRect: { x: 0, y: 0, width: 10, height: 10 } })),
+        },
+        fullResolution: { canvas: {} as OffscreenCanvas, pxW: 100, pxH: 100 },
+        scaleX: 1,
+        scaleY: 1,
+      } as unknown as SealContext['redactResult'],
+    });
+  }
+
+  const draftWithImage = () => makeDraft({ image: 'data:image/png;base64,AAAA' });
+
+  it('accepts a label naming an element the server is actually receiving', async () => {
+    await expect(seal(draftWithImage(), withLabels([{ eid: 'E0' }]))).resolves.toBeDefined();
+  });
+
+  it('refuses a label naming an EID that is not in the payload', async () => {
+    // Otherwise the image could instruct the planner to act on something it was never sent.
+    await expect(seal(draftWithImage(), withLabels([{ eid: 'E99' }]))).rejects.toMatchObject({
+      reason: 'som-label',
+      details: { label: 'E99', reason: 'not an outbound element' },
+    });
+  });
+
+  it('refuses a label that is not an EID at all', async () => {
+    await expect(seal(draftWithImage(), withLabels([{ eid: 'Submit' }]))).rejects.toMatchObject({
+      reason: 'som-label',
+      details: { reason: 'not an EID' },
+    });
+  });
+
+  it('refuses a label carrying a token', async () => {
+    await expect(seal(draftWithImage(), withLabels([{ eid: '[[PII:NAME:abcdefgh]]' }]))).rejects.toMatchObject({
+      reason: 'som-label',
+    });
+  });
+
+  it('has nothing to check when the payload carries no image', async () => {
+    await expect(seal(makeDraft(), withLabels([{ eid: 'E99' }]))).resolves.toBeDefined();
+  });
+});

@@ -12,7 +12,8 @@
  *   3. Known-value leak check against the vault and observed raw values
  *   4. Token check — every token-shaped string is one the vault actually issued
  *   5. Coverage — every non-ALLOW detection's rects are covered by manifest masks
- *   6. verifyMasks() — the pixels really are filled
+ *   6. verifyMasks() — the pixels really are filled, and every Set-of-Marks tag names an
+ *      outbound EID
  *   7. capture_id consistency, and at most one image
  *   8. Canonical serialization -> bytes -> SHA-256 digest -> registry -> SanitizedPayload
  */
@@ -23,6 +24,7 @@ import { TOKEN_PATTERN } from '../shared/schema/tokens';
 import { runRules } from './detect/rules';
 import { normalizeValue } from './vault';
 import { verifyMasks, type RedactResult } from './redactor';
+import { SOM_LABEL_PATTERN } from './som';
 import type { Action, Category } from './categoryTypes';
 import type { Detection } from './detect/types';
 import type { DraftPayload } from './payloadBuilder';
@@ -36,7 +38,8 @@ export type SealFailureReason =
   | 'coverage'
   | 'mask-integrity'
   | 'capture-id-mismatch'
-  | 'image-count';
+  | 'image-count'
+  | 'som-label';
 
 export { isRegisteredSealed, consumeSealed, sha256Hex, type SanitizedPayload } from './sealedRegistry';
 
@@ -269,6 +272,20 @@ export async function seal(draft: DraftPayload, ctx: SealContext): Promise<SealR
     const verification = await verifyMasks(ctx.redactResult);
     if (!verification.ok) {
       throw new SealError('mask-integrity', verification.failures);
+    }
+  }
+  // Every mark drawn on the image must be an EID the server is actually receiving. A tag naming
+  // anything else would be either an unactionable instruction or a channel for text we never
+  // checked (AGENTS.md invariant 12; Stage 3A Part B).
+  if (ctx.redactResult && draft.image !== undefined) {
+    const outboundEids = new Set(draft.elements.map((el) => el.eid));
+    for (const label of ctx.redactResult.image.somLabels) {
+      if (!SOM_LABEL_PATTERN.test(label.eid)) {
+        throw new SealError('som-label', { label: label.eid, reason: 'not an EID' });
+      }
+      if (!outboundEids.has(label.eid)) {
+        throw new SealError('som-label', { label: label.eid, reason: 'not an outbound element' });
+      }
     }
   }
   const maskIntegrityMs = performance.now() - t;

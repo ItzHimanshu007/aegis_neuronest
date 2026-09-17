@@ -196,10 +196,36 @@ export function computeHitTarget(
   doc: Document = document,
 ): { hitOk: boolean | undefined; hitNode: Element | null } {
   if (typeof doc.elementFromPoint !== 'function') return { hitOk: undefined, hitNode: null };
-  const cx = rect.x + rect.width / 2;
-  const cy = rect.y + rect.height / 2;
-  const hit = doc.elementFromPoint(cx, cy);
-  if (!hit) return { hitOk: false, hitNode: null };
+
+  // Sample the centre of the part of the element that is actually ON SCREEN, not the centre of
+  // its box. A field scrolled half past the bottom edge has its box centre outside the viewport,
+  // where elementFromPoint returns null — reading that as "covered" marked perfectly clear fields
+  // as occluded, which is the opposite of what the planner needs to know.
+  const view = viewportOf(doc);
+  let sampleX = rect.x + rect.width / 2;
+  let sampleY = rect.y + rect.height / 2;
+  if (view.width > 0 && view.height > 0) {
+    const left = Math.max(rect.x, 0);
+    const top = Math.max(rect.y, 0);
+    const right = Math.min(rect.x + rect.width, view.width);
+    const bottom = Math.min(rect.y + rect.height, view.height);
+    if (right <= left || bottom <= top) return { hitOk: undefined, hitNode: null };
+    sampleX = (left + right) / 2;
+    sampleY = (top + bottom) / 2;
+  }
+
+  const hit = doc.elementFromPoint(sampleX, sampleY);
+  if (!hit) return { hitOk: undefined, hitNode: null };
   const hitOk = hit === el || el.contains(hit) || hit.contains(el);
   return { hitOk, hitNode: hitOk ? null : hit };
+}
+
+/** Zero means "unknown" — callers then sample the element's own centre rather than clipping to a
+ * viewport they cannot measure. */
+function viewportOf(doc: Document): { width: number; height: number } {
+  const win = doc.defaultView;
+  return {
+    width: win?.innerWidth ?? doc.documentElement?.clientWidth ?? 0,
+    height: win?.innerHeight ?? doc.documentElement?.clientHeight ?? 0,
+  };
 }

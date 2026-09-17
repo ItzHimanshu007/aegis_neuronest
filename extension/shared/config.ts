@@ -94,6 +94,19 @@ export const AEGIS_CONFIG = {
    * firewall.seal()'s known-value leak check compares it against vault/detection values — below
    * this, short common substrings (e.g. a 2-3 digit area code) would false-positive constantly. */
   LEAK_MIN_LEN: 4,
+  /** Privacy Set-of-Marks (Stage 3A Part B): EID tags drawn on the sanitized image so the server
+   * can name elements it can see. Labels never overlap a mask, so mask verification still runs
+   * over the shipped image unchanged. */
+  SOM_ENABLED: true,
+  /** Rendered tag height in the FINAL (downscaled) image. The redactor draws at full resolution
+   * and divides by the downscale factor, so the tag survives the balanced/fast shrink legibly. */
+  SOM_MIN_LABEL_PX: 11,
+  SOM_STYLE: {
+    background: '#1b6ef3',
+    text: '#ffffff',
+    outline: '#ffffff',
+  },
+
   /** Independent local detector sizes; unused until Stage 5. Candidate settings, not results. */
   DETECTOR_INPUT_FAST: 640,
   DETECTOR_INPUT_ACCURATE: 1280,

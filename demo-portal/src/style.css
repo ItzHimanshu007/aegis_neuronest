@@ -129,6 +129,13 @@ form {
   font-weight: 500;
 }
 
+/* `display: flex` below outranks the UA stylesheet's `[hidden] { display: none }`, so without
+   this rule the banner is visible even when the `hidden` attribute is set — which silently made
+   ?banner=1 a no-op and left the "Submit is covered" scenario untested. */
+.cookie-banner[hidden] {
+  display: none;
+}
+
 .cookie-banner {
   position: fixed;
   bottom: 0;

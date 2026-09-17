@@ -37,6 +37,8 @@ export interface ProcessOptions {
   session: PrivacySession;
   /** Sends a SPAN_RECTS message to the observed tab. Injected so the pipeline stays testable. */
   requestSpanRects: (request: { capture_id: string; stateToken: StateToken; spans: Array<{ blockRef: string; start: number; end: number }> }) => Promise<SpanRectsResponse>;
+  /** Overrides the SoM config default, for the Privacy Preview's on/off toggle. */
+  somEnabled?: boolean;
   /** The token the capture stabilized on. The content script refuses the span lookup unless this
    * still matches, so passing anything else silently degrades every text detection to a
    * whole-block mask. */
@@ -235,6 +237,12 @@ export async function processObservation(options: ProcessOptions): Promise<Proce
       scaleY: observation.screenshot.scaleY,
       masks: localView.local.masks,
       mode,
+      // Only elements the server will actually receive get a tag — a mark naming an EID that is
+      // not in the payload would be an instruction the planner cannot act on (invariant 12).
+      somCandidates: [...localView.elements.values()]
+        .filter((el) => el.visible)
+        .map((el) => ({ eid: el.eid, rect: el.bbox })),
+      somEnabled: options.somEnabled,
     });
   }
   const redactMs = performance.now() - redactStart;

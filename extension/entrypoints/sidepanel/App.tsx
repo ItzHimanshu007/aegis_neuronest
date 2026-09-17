@@ -7,6 +7,7 @@ import { PrivacyPreview } from './PrivacyPreview';
 import { send } from '../../net/network';
 import type { Mode } from '../../privacy/redactor';
 import type { RawElement } from '../../observe/types';
+import { AEGIS_CONFIG } from '../../shared/config';
 
 type ServerStatus = 'checking' | 'online' | 'offline';
 type Tab = 'agent' | 'judge';
@@ -65,6 +66,7 @@ export default function App() {
 
   const [taskText, setTaskText] = useState('');
   const [mode, setMode] = useState<Mode>('balanced');
+  const [somEnabled, setSomEnabled] = useState<boolean>(AEGIS_CONFIG.SOM_ENABLED);
   const [processResult, setProcessResult] = useState<ProcessResult | null>(null);
   const [sanitizing, setSanitizing] = useState(false);
   const [sendState, setSendState] = useState<{ digest: string; size: number; at: string } | null>(null);
@@ -162,6 +164,7 @@ export default function App() {
         observation: observeResponse.observation,
         task: taskText,
         mode,
+        somEnabled,
         session,
         stateToken: observeResponse.stateToken,
         screen: observeResponse.change,
@@ -241,6 +244,10 @@ export default function App() {
                 <option value="balanced">balanced</option>
                 <option value="accurate">accurate</option>
               </select>
+            </label>
+            <label>
+              <input type="checkbox" checked={somEnabled} onChange={(e) => setSomEnabled(e.target.checked)} />{' '}
+              Element ID marks
             </label>
             <div className="button-row">
               <button className="action" onClick={handleObserveAndSanitize} disabled={sanitizing}>

@@ -13,6 +13,7 @@
  */
 
 import { AEGIS_CONFIG } from '../shared/config';
+import { drawSomLabels, fullResLabelHeight, placeSomLabels, type SomCandidate, type SomLabel } from './som';
 import type { Action } from './categoryTypes';
 import type { Category } from './categoryTypes';
 
@@ -49,6 +50,9 @@ export interface RedactedImage {
   pxH: number;
   capture_id: string;
   masks: AppliedMask[];
+  /** EID tags actually drawn on this image. `seal()` checks every one against the payload's
+   * outbound elements, so a label can never name something the server was not sent. */
+  somLabels: SomLabel[];
 }
 
 export type Mode = 'fast' | 'balanced' | 'accurate';
@@ -61,6 +65,11 @@ export interface RedactOptions {
   scaleY: number;
   masks: MaskRequest[];
   mode: Mode;
+  /** Outbound, visible elements to tag, in the order they should win contested spots. Omitted or
+   * empty means no marks are drawn. */
+  somCandidates?: Array<{ eid: import('../scene/registry').EID; rect: { x: number; y: number; width: number; height: number } }>;
+  /** Overrides AEGIS_CONFIG.SOM_ENABLED, for the panel's preview toggle. */
+  somEnabled?: boolean;
 }
 
 const FILL_COLOR = '#000000';
@@ -211,6 +220,27 @@ export async function redact(options: RedactOptions): Promise<RedactResult> {
   const outW = Math.max(1, Math.round(pxW * scale));
   const outH = Math.max(1, Math.round(pxH * scale));
 
+  // Marks go on after the masks and before the downscale: drawing at full resolution keeps the
+  // tags sharp, and placing them around (never over) the masks leaves verifyMasks() valid on the
+  // shipped image. Positions are computed in final-image space and scaled up, so a tag is the
+  // same apparent size in every mode.
+  const somEnabled = options.somEnabled ?? AEGIS_CONFIG.SOM_ENABLED;
+  const somCandidates: SomCandidate[] = (options.somCandidates ?? []).map((c) => ({
+    eid: c.eid,
+    pxRect: toPaddedPixelRect(c.rect, options.scaleX, options.scaleY, pxW, pxH, 0),
+  }));
+  let somLabels: SomLabel[] = [];
+  if (somEnabled && somCandidates.length > 0) {
+    const labelHeight = fullResLabelHeight(scale);
+    somLabels = placeSomLabels(somCandidates, applied.map((m) => m.pxRect), {
+      imageW: pxW,
+      imageH: pxH,
+      labelHeightPx: labelHeight,
+      charWidthPx: labelHeight * 0.62,
+    });
+    if (somLabels.length > 0) drawSomLabels(ctx, somLabels, labelHeight);
+  }
+
   let exportCanvas = canvas;
   if (scale < 1) {
     exportCanvas = new OffscreenCanvas(outW, outH);
@@ -228,6 +258,7 @@ export async function redact(options: RedactOptions): Promise<RedactResult> {
     pxH: outH,
     capture_id: options.capture_id,
     masks: applied,
+    somLabels,
   } as RedactedImage;
 
   return { image, fullResolution: { canvas, pxW, pxH }, scaleX: options.scaleX, scaleY: options.scaleY };
