@@ -58,6 +58,8 @@ class CallMetrics:
     outcome: str = "ok"
     json_valid_first_try: bool | None = None
     schema_valid_first_try: bool | None = None
+    schema_valid_final: bool = False
+    state_token_echoed: bool | None = None
     errors: list[str] = field(default_factory=list)
 
 
@@ -134,6 +136,8 @@ class OpenAICompatibleAdapter:
             logger.warning("model output invalid after repair: %s", ",".join(errors))
             return _fail_plan(payload.state_token, FAIL_MODEL_OUTPUT_INVALID)
 
+        metrics.schema_valid_final = True
+        metrics.state_token_echoed = parsed.state_token == payload.state_token
         violation = enforce(parsed, payload)
         if violation is not None:
             metrics.outcome = FAIL_MODEL_UNGROUNDED

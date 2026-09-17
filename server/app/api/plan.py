@@ -51,7 +51,6 @@ async def plan(
     response: Response,
     x_aegis_digest: str | None = Header(default=None),
     x_aegis_mock_scenario: str | None = Header(default=None),
-    x_aegis_history: str | None = Header(default=None),
     settings: Settings = Depends(get_settings),
     store: SessionStore = Depends(get_store),
 ) -> PlanV2:
@@ -77,8 +76,6 @@ async def plan(
     except (ValidationError, json.JSONDecodeError) as exc:
         raise HTTPException(status_code=422, detail=_safe_validation_detail(exc)) from exc
 
-    if x_aegis_history:
-        store.append_history(payload.session, _parse_history(x_aegis_history))
     store.record_state_token(payload.session, payload.state_token)
 
     if x_aegis_mock_scenario is not None:
@@ -145,17 +142,13 @@ async def end_session(
         body = json.loads(await request.body() or b"{}")
     except json.JSONDecodeError as exc:
         raise HTTPException(status_code=400, detail="invalid JSON body") from exc
+    if not isinstance(body, dict) or set(body) != {"session"}:
+        raise HTTPException(status_code=400, detail="session only")
     session_id = body.get("session")
     if not isinstance(session_id, str) or not session_id:
         raise HTTPException(status_code=400, detail="session is required")
     store.end(session_id)
     return Response(status_code=204)
-
-
-def _parse_history(header: str) -> list[str]:
-    """Client-reported action/verdict records, one per pipe-separated field. The store truncates
-    and caps them; this only splits."""
-    return [part.strip() for part in header.split("|") if part.strip()]
 
 
 def _safe_validation_detail(exc: Exception) -> list[dict] | str:

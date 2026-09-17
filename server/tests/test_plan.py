@@ -93,8 +93,10 @@ class TestSessionAndTimings:
     def test_session_end_deletes_the_history(self, client, kyc_payload):
         client.post(
             "/v1/plan",
-            content=json.dumps(kyc_payload),
-            headers={"X-Aegis-History": "type E1 OK|click E2 OK"},
+            json={
+                **kyc_payload,
+                "history": [{"step": 1, "action": "type", "eid": "E1", "verdict": "PASS"}],
+            },
         )
         assert (
             client.post("/v1/session/end", json={"session": kyc_payload["session"]}).status_code
@@ -104,13 +106,15 @@ class TestSessionAndTimings:
     def test_session_end_requires_a_session_id(self, client):
         assert client.post("/v1/session/end", json={}).status_code == 400
 
-    def test_history_header_is_accepted_and_does_not_change_the_response_shape(
+    def test_sealed_body_history_is_accepted_and_does_not_change_the_response_shape(
         self, client, kyc_payload
     ):
         response = client.post(
             "/v1/plan",
-            content=json.dumps(kyc_payload),
-            headers={"X-Aegis-History": "type E1 OK"},
+            json={
+                **kyc_payload,
+                "history": [{"step": 1, "action": "type", "eid": "E1", "verdict": "PASS"}],
+            },
         )
         assert response.status_code == 200
         assert response.json()["state_token"] == kyc_payload["state_token"]
@@ -119,3 +123,17 @@ class TestSessionAndTimings:
         # Nothing was measured, so nothing is claimed.
         response = client.post("/v1/plan", content=json.dumps(kyc_payload))
         assert "X-Aegis-Timings" not in response.headers
+
+
+def test_history_free_text_is_rejected(client, kyc_payload):
+    payload = {
+        **kyc_payload,
+        "history": [{"step": 1, "action": "type", "verdict": "PASS", "reason": "unsealed secret"}],
+    }
+    assert client.post("/v1/plan", json=payload).status_code == 422
+
+
+def test_session_end_rejects_extra_content(client):
+    assert (
+        client.post("/v1/session/end", json={"session": "s1", "page": "private"}).status_code == 400
+    )

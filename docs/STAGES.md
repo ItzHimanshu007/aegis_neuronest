@@ -1,6 +1,6 @@
 # Aegis — Build stages (architecture v6)
 
-Current stage: **3A**. Implement one stage at a time; future implementation is a throwing
+Current stage: **3B**. Implement one stage at a time; future implementation is a throwing
 `TODO(stage-N)` stub where a silent default could be unsafe. Every stage adds tests and requires
 `pnpm check`, browser checks and a stage report. Architecture describes intended interfaces, not
 claims that later-stage modules are already implemented.

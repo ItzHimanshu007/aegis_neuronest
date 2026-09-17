@@ -90,6 +90,7 @@ const TOKEN_LENGTH = 8;
 
 export class TokenVault {
   private key: CryptoKey | null = null;
+  private generation = 0;
   private readonly byToken = new Map<string, VaultEntry>();
   private readonly byNormalized = new Map<string, VaultEntry>();
 
@@ -97,7 +98,10 @@ export class TokenVault {
    * never be read back out, even by our own code (AGENTS.md invariant 3). */
   async init(): Promise<void> {
     if (this.key) return;
-    this.key = await crypto.subtle.generateKey({ name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const generation = this.generation;
+    const key = await crypto.subtle.generateKey({ name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    if (generation !== this.generation) throw new Error('Vault session ended');
+    this.key = key;
   }
 
   private async hash(type: Category, normalized: string, counter = 0): Promise<string> {
@@ -109,6 +113,7 @@ export class TokenVault {
   }
 
   async tokenize(type: Category, value: string, options: TokenizeOptions): Promise<string> {
+    const generation = this.generation;
     const normalized = normalizeValue(type, value);
     const key = `${type}\u0000${normalized}`;
 
@@ -128,6 +133,7 @@ export class TokenVault {
       token = `[[PII:${type}:${digest}]]`;
     }
 
+    if (generation !== this.generation) throw new Error("Vault session ended");
     const entry: VaultEntry = {
       token,
       type,
@@ -232,6 +238,7 @@ export class TokenVault {
 
   /** Ends the session: drops every entry and the key reference. */
   clear(): void {
+    this.generation++;
     this.byToken.clear();
     this.byNormalized.clear();
     this.key = null;

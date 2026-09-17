@@ -23,7 +23,9 @@ frequently contain user data.
 - `SanitizedPayload` is a **branded type**. Only `extension/privacy/firewall.ts → seal()` may create one.
 - `send()` additionally checks a **runtime registry** of sealed payloads, so a type assertion is not
   enough to get past it.
-- `health()` is the only other permitted request: `GET /health`, carrying no page data.
+- `health()` permits `GET /health`, carrying no page data.
+- `endSession(sessionId)` permits `POST /v1/session/end` with only the random session ID.
+  These three requests all live in `extension/net/network.ts`.
 
 ### 3. Tokens
 

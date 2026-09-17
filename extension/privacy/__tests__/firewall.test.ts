@@ -203,11 +203,27 @@ describe('seal: check 4 — token check', () => {
 });
 
 describe('seal: check 5 — coverage', () => {
-  it('rejects a masked detection whose rects no mask covers', async () => {
+  it('rejects a masked detection whose rects no mask covers, when an image ships', async () => {
+    const ctx = makeContext({
+      decisions: [{ detection: det({ rects: [{ x: 0, y: 0, width: 50, height: 20 }] }), action: 'FILL' }],
+      redactResult: {
+        image: { dataUrl: 'data:image/webp;base64,AAAA', pxW: 100, pxH: 100, capture_id: 'cap-1', masks: [] },
+        fullResolution: { canvas: {} as OffscreenCanvas, pxW: 100, pxH: 100 },
+        scaleX: 1,
+        scaleY: 1,
+      } as unknown as SealContext['redactResult'],
+    });
+    await expect(seal(makeDraft(), ctx)).rejects.toMatchObject({ reason: 'coverage' });
+  });
+
+  // A DOM-only observation (no screenshot at all) has no pixels a mask could fail to cover —
+  // that risk is pixel-only. Its text is still governed independently by checks 1-4, and a draft
+  // that claims an image without a redaction result to verify it is still caught by check 7.
+  it('does not require pixel coverage when no image is being sent', async () => {
     const ctx = makeContext({
       decisions: [{ detection: det({ rects: [{ x: 0, y: 0, width: 50, height: 20 }] }), action: 'FILL' }],
     });
-    await expect(seal(makeDraft(), ctx)).rejects.toMatchObject({ reason: 'coverage' });
+    await expect(seal(makeDraft(), ctx)).resolves.toBeDefined();
   });
 
   it('passes when a mask fully covers the detection rect', async () => {

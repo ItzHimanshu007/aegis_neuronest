@@ -61,7 +61,7 @@ export interface MessageMap {
   PING_SERVER: { data: undefined; response: HealthResult };
   /** Side panel -> background: runs the full Stage 1 capture pipeline for `tabId` and returns the
    * resulting Observation plus the NEW_SCREEN/SAME_SCREEN decision against the previous one. */
-  OBSERVE: { data: { tabId: number }; response: ObserveResult };
+  OBSERVE: { data: { tabId: number; domOnly?: boolean }; response: ObserveResult };
   /** TODO(stage-3): starts extension/agent/runAgentLoop.ts for the active tab. */
   START_TASK: { data: { task: string }; response: void };
   /** TODO(stage-3): stops the running agent loop. */

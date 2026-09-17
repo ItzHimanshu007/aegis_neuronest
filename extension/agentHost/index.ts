@@ -31,6 +31,11 @@ import type { StateToken } from '../shared/messages';
 import type { PrivacySession } from './session';
 
 export interface ProcessOptions {
+  history?: import("../shared/schema/payload.v2").HistoryEntry[];
+  contextDenied?: "BUDGET_EXHAUSTED" | "NO_SAFE_ELEMENTS" | "INVALID_REQUEST";
+  taskTokens?: string;
+  forceImage?: boolean;
+  signal?: AbortSignal;
   observation: Observation;
   task: string;
   mode: Mode;
@@ -182,6 +187,7 @@ export async function processObservation(options: ProcessOptions): Promise<Proce
   const sanitizedTitle = await sanitizeTitle(observation.title, sanitizeOptions);
   const sanitizedTask = await sanitizeTask(task, {
     ...sanitizeOptions,
+    knownValues: session.vault.knownValues().map(v => ({ value: v.value, category: v.type, action: "TOKEN" as const, token: session.vault.allTokens().find(t => session.vault.get(t)?.normalized === v.normalized && session.vault.get(t)?.type === v.type) })),
     tokenize: (category, value) => {
       session.taskCategories.add(category);
       return session.vault.tokenize(category, value, { origin, source: 'task' });
@@ -249,8 +255,13 @@ export async function processObservation(options: ProcessOptions): Promise<Proce
 
   // --- build + seal ---------------------------------------------------------------------------
   const sensing = decideSensing(session.scene, { screen, captureId: scene.capture_id }, mode, { elements: scene.elements.size });
-  scene.image = sensing.serverImage === 'none' ? undefined : redactResult?.image;
+  scene.image = sensing.serverImage === 'none' && !options.forceImage ? undefined : redactResult?.image;
   const draft = buildPayload(toOutboundDraft(scene));
+  if (options.history) draft.history = options.history.slice(-25);
+  if (options.contextDenied) draft.context_denied = options.contextDenied;
+  // Only vault-issued tokens supplied by the task controller may be appended here.
+  if (options.taskTokens) draft.task += `\nTask data: ${options.taskTokens}`;
+  options.signal?.throwIfAborted();
 
   const sealStart = performance.now();
   const { payload, timings: sealTimings } = await seal(draft, {
@@ -264,6 +275,7 @@ export async function processObservation(options: ProcessOptions): Promise<Proce
       .filter((v) => v.value.length > 0),
   });
   const sealMs = performance.now() - sealStart;
+  options.signal?.throwIfAborted();
   session.stateTokens.commit(scene);
   session.scene = scene;
   session.sensingCounters = countSensing(session.sensingCounters, sensing);

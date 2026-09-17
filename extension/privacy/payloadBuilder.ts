@@ -65,6 +65,8 @@ export interface DraftElement {
 }
 
 export interface DraftPayload {
+  history?: import("../shared/schema/payload.v2").HistoryEntry[];
+  context_denied?: "BUDGET_EXHAUSTED" | "NO_SAFE_ELEMENTS" | "INVALID_REQUEST";
   session: string;
   capture_id: string;
   schema: 'aegis/2';

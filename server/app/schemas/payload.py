@@ -97,6 +97,70 @@ class FieldHint(StrictObject):
     fill: Literal["empty"]
 
 
+class HistoryEntry(StrictObject):
+    """Sealed client facts: closed enums only, never a page string."""
+
+    step: int = Field(ge=0, le=100000)
+    action: Literal[
+        "observe",
+        "click",
+        "type",
+        "select",
+        "check",
+        "scroll",
+        "hover",
+        "key",
+        "wait",
+        "navigate",
+        "ask_user",
+        "done",
+        "fail",
+        "request_context",
+    ]
+    eid: EID | None = None
+    verdict: Literal[
+        "PASS", "FAIL", "REJECT", "ABORT_BATCH", "DROP_REMAINING", "USER_REQUIRED", "STOPPED"
+    ]
+    code: (
+        Literal[
+            "STALE_PLAN",
+            "INVALID_SCHEMA",
+            "PLAN_STEPS_REPEATED",
+            "NEW_SCREEN",
+            "TARGET_MISSING",
+            "FP_MISMATCH",
+            "AMBIGUOUS_TARGET",
+            "NOT_VISIBLE",
+            "NOT_HITTABLE",
+            "DISABLED",
+            "TOKEN_TYPE_MISMATCH",
+            "TOKEN_IN_URL",
+            "TOKEN_IN_KEY",
+            "TOKEN_OUTSIDE_TYPE",
+            "UNSUPPORTED_URL",
+            "NEVER_AUTOMATED",
+            "CONSENT_DENIED",
+            "APPROVAL_SKIPPED",
+            "EXEC_FAILED",
+            "EXEC_UNTRUSTED_REJECTED",
+            "VALUE_MISMATCH",
+            "EXPECT_FAILED",
+            "UNVERIFIABLE",
+            "DONE_UNVERIFIED",
+            "BUDGET_EXHAUSTED",
+            "LOOP_DETECTED",
+            "NO_PROGRESS",
+            "CONTEXT_DENIED",
+            "NETWORK_ERROR",
+            "STOPPED",
+            "USER_HINT",
+            "USER_RETRY",
+            "MODEL_FAILED",
+        ]
+        | None
+    ) = None
+
+
 class PayloadV2(StrictObject):
     """Sanitized payload sent from the extension to the server. See AGENTS.md invariant 1: this is
     the only shape of data the server is ever allowed to see."""
@@ -116,3 +180,6 @@ class PayloadV2(StrictObject):
     redactions: list[Redaction]
     image: DataUrlImage | None = None
     field_hints: list[FieldHint] = Field(default_factory=list)
+
+    history: list[HistoryEntry] = Field(default_factory=list, max_length=25)
+    context_denied: Literal["BUDGET_EXHAUSTED", "NO_SAFE_ELEMENTS", "INVALID_REQUEST"] | None = None

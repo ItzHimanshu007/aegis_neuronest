@@ -158,6 +158,9 @@ export interface RawTextBlock {
 // ---------------------------------------------------------------------------------------------
 
 export interface FrameInfo {
+  /** Browser routing ID for an independently harvested cross-origin frame. Local only. */
+  browserFrameId?: number;
+  documentPath?: number[];
   frameId: number;
   parentFrameId: number | null;
   /** Raw frame URL, local only. */

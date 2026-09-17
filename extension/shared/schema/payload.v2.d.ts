@@ -123,6 +123,11 @@ export interface PayloadV2 {
     category: string;
     fill: 'empty';
   }[];
+  /**
+   * @maxItems 25
+   */
+  history?: HistoryEntry[];
+  context_denied?: 'BUDGET_EXHAUSTED' | 'NO_SAFE_ELEMENTS' | 'INVALID_REQUEST';
 }
 export interface VisualRegion {
   /**
@@ -174,4 +179,58 @@ export interface TextBlock {
    */
   text: string;
   bbox: Bbox;
+}
+export interface HistoryEntry {
+  step: number;
+  action:
+    | 'observe'
+    | 'click'
+    | 'type'
+    | 'select'
+    | 'check'
+    | 'scroll'
+    | 'hover'
+    | 'key'
+    | 'wait'
+    | 'navigate'
+    | 'ask_user'
+    | 'done'
+    | 'fail'
+    | 'request_context';
+  eid?: string;
+  verdict: 'PASS' | 'FAIL' | 'REJECT' | 'ABORT_BATCH' | 'DROP_REMAINING' | 'USER_REQUIRED' | 'STOPPED';
+  code?:
+    | 'STALE_PLAN'
+    | 'INVALID_SCHEMA'
+    | 'PLAN_STEPS_REPEATED'
+    | 'NEW_SCREEN'
+    | 'TARGET_MISSING'
+    | 'FP_MISMATCH'
+    | 'AMBIGUOUS_TARGET'
+    | 'NOT_VISIBLE'
+    | 'NOT_HITTABLE'
+    | 'DISABLED'
+    | 'TOKEN_TYPE_MISMATCH'
+    | 'TOKEN_IN_URL'
+    | 'TOKEN_IN_KEY'
+    | 'TOKEN_OUTSIDE_TYPE'
+    | 'UNSUPPORTED_URL'
+    | 'NEVER_AUTOMATED'
+    | 'CONSENT_DENIED'
+    | 'APPROVAL_SKIPPED'
+    | 'EXEC_FAILED'
+    | 'EXEC_UNTRUSTED_REJECTED'
+    | 'VALUE_MISMATCH'
+    | 'EXPECT_FAILED'
+    | 'UNVERIFIABLE'
+    | 'DONE_UNVERIFIED'
+    | 'BUDGET_EXHAUSTED'
+    | 'LOOP_DETECTED'
+    | 'NO_PROGRESS'
+    | 'CONTEXT_DENIED'
+    | 'NETWORK_ERROR'
+    | 'STOPPED'
+    | 'USER_HINT'
+    | 'USER_RETRY'
+    | 'MODEL_FAILED';
 }

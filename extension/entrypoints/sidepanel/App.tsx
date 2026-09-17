@@ -1,3 +1,4 @@
+import { TaskPanel } from './TaskPanel';
 import { useEffect, useRef, useState } from 'react';
 import { sendMessage, type HealthResult, type ObserveResult } from '../../shared/messages';
 import { hasSiteAccess, requestSiteAccess } from '../../shared/permissions';
@@ -220,11 +221,12 @@ export default function App() {
 
       {tab === 'agent' && (
         <>
+          <TaskPanel />
           <section>
             <label>Server</label>
             <pre>
               {serverStatus === 'checking' && 'checking...'}
-              {serverStatus === 'offline' && 'offline — is `pnpm server` running?'}
+              {serverStatus === 'offline' && 'offline — is `pnpm run server` running?'}
               {serverStatus === 'online' && health && JSON.stringify(health, null, 2)}
             </pre>
           </section>

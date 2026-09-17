@@ -117,3 +117,16 @@ class TestCompactScene:
         message = build_user_message(payload)
         assert f"state_token: {payload.state_token}" in message
         assert payload.task in message
+
+
+def test_history_and_denial_come_from_payload(kyc_payload):
+    payload = PayloadV2.model_validate(
+        {
+            **kyc_payload,
+            "history": [{"step": 1, "action": "type", "eid": "E1", "verdict": "PASS"}],
+            "context_denied": "BUDGET_EXHAUSTED",
+        }
+    )
+    rendered = build_user_message(payload)
+    assert '"verdict":"PASS"' in rendered
+    assert "context_denied: BUDGET_EXHAUSTED" in rendered

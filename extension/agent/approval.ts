@@ -1,7 +1,8 @@
-/**
- * TODO(stage-3): implement approval as part of extension/agent/runAgentLoop.ts.
- */
-
-export function approval(): never {
-  throw new Error('NotImplemented: agent/approval.ts lands in Stage 3');
+import type { Action } from '../shared/schema/plan.v2';
+import type { AuthorityLevel } from '../authority';
+import type { Category } from '../privacy/categoryTypes';
+export interface ApprovalRequest {
+  action: Action['action']; eid?: string; label: string; category?: Category;
+  origin: string; reason: string; level: AuthorityLevel; token?: string;
 }
+export type ApprovalReply = 'approve' | 'skip' | 'stop';

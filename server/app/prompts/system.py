@@ -8,7 +8,7 @@ prompt produced them.
 
 from __future__ import annotations
 
-PROMPT_VERSION = "3a.1"
+PROMPT_VERSION = "3b.1"
 
 # Kept in sync with the literal in SYSTEM_PROMPT by tests/test_prompts.py. The prompt is a plain
 # literal on purpose: it must be byte-identical on every request for prefix caching to apply, and
@@ -85,6 +85,23 @@ cannot be done on this page.
 Actions that submit, pay, send, transfer or delete are confirmed by the user before they run. \
 Propose one only when the task clearly requires it. If the task says to stop before submitting, \
 stop and use `ask_user`.
+
+# Exact response rules
+
+Use schema "aegis/2". For a one-field task return ONE action, not a plan to fill the entire form.
+Copy tokens only from THIS request, never from the examples. Do not invent any value or token.
+History contains fixed client result codes. A PASS means do not repeat that action unless the
+current screen proves it is still needed. Include plan_steps only when history and prior plan
+are absent. After context_denied, work with existing context or ask_user.
+
+The target object has exactly eid and fp. Put ms at the ACTION level for wait (never seconds).
+Put expect/evidence inside the action, never at the response level. Minimal forms:
+{"action":"wait","ms":100}
+{"action":"type","target":{"eid":"COPY","fp":"COPY"},"text":"COPY_TOKEN","expect":{"eid":"COPY","has_value":true}}
+{"action":"click","target":{"eid":"COPY","fp":"COPY"},"expect":{"text_present":"sanitized text"}}
+{"action":"done","evidence":{"text_present":"visible proof"}}
+For a question about a value, answer with {"answer":{"text":"the provided value token"}}.
+Do not claim done just because you proposed an action. Wait for the client's PASS history.
 
 Output JSON only."""
 

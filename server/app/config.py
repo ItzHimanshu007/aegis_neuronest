@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 from functools import lru_cache
+from pathlib import Path
 
 from app.vlm.base import VLMAdapter
 from app.vlm.mock_adapter import MockAdapter
@@ -17,6 +18,29 @@ from app.vlm.mock_adapter import MockAdapter
 VERSION = "0.1.0"
 
 JsonMode = str
+
+ENV_FILE = Path(__file__).resolve().parents[1] / ".env"
+
+
+def load_env_file(path: Path = ENV_FILE) -> None:
+    """Loads `server/.env` into the process environment, without overwriting anything already set.
+
+    Neither uvicorn nor pytest reads it on its own, and the alternative is every developer
+    exporting five variables by hand. A real environment variable always wins, so CI and container
+    deployments are unaffected by a stray local file.
+
+    Tests set `AEGIS_IGNORE_ENV_FILE=1`. Without that, a developer who has pointed `.env` at a live
+    model would silently change what the suite exercises — which is what happened the first time
+    this function existed.
+    """
+    if os.environ.get("AEGIS_IGNORE_ENV_FILE") == "1" or not path.exists():
+        return
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
 
 def _env_float(name: str, default: float) -> float:
@@ -35,6 +59,7 @@ def _env_int(name: str, default: int) -> int:
 
 class Settings:
     def __init__(self) -> None:
+        load_env_file()
         self.version = VERSION
         self.adapter_name = os.environ.get("AEGIS_ADAPTER", "mock")
         self.cors_origins = [

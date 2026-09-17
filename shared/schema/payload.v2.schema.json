@@ -120,6 +120,20 @@
           }
         }
       }
+    },
+    "history": {
+      "type": "array",
+      "maxItems": 25,
+      "items": {
+        "$ref": "#/$defs/historyEntry"
+      }
+    },
+    "context_denied": {
+      "enum": [
+        "BUDGET_EXHAUSTED",
+        "NO_SAFE_ELEMENTS",
+        "INVALID_REQUEST"
+      ]
     }
   },
   "$defs": {
@@ -347,6 +361,93 @@
         },
         "bbox": {
           "$ref": "#/$defs/bbox"
+        }
+      }
+    },
+    "historyEntry": {
+      "title": "HistoryEntry",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "step",
+        "action",
+        "verdict"
+      ],
+      "properties": {
+        "step": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "action": {
+          "enum": [
+            "observe",
+            "click",
+            "type",
+            "select",
+            "check",
+            "scroll",
+            "hover",
+            "key",
+            "wait",
+            "navigate",
+            "ask_user",
+            "done",
+            "fail",
+            "request_context"
+          ]
+        },
+        "eid": {
+          "type": "string",
+          "pattern": "^E[0-9]{1,6}$"
+        },
+        "verdict": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "REJECT",
+            "ABORT_BATCH",
+            "DROP_REMAINING",
+            "USER_REQUIRED",
+            "STOPPED"
+          ]
+        },
+        "code": {
+          "enum": [
+            "STALE_PLAN",
+            "INVALID_SCHEMA",
+            "PLAN_STEPS_REPEATED",
+            "NEW_SCREEN",
+            "TARGET_MISSING",
+            "FP_MISMATCH",
+            "AMBIGUOUS_TARGET",
+            "NOT_VISIBLE",
+            "NOT_HITTABLE",
+            "DISABLED",
+            "TOKEN_TYPE_MISMATCH",
+            "TOKEN_IN_URL",
+            "TOKEN_IN_KEY",
+            "TOKEN_OUTSIDE_TYPE",
+            "UNSUPPORTED_URL",
+            "NEVER_AUTOMATED",
+            "CONSENT_DENIED",
+            "APPROVAL_SKIPPED",
+            "EXEC_FAILED",
+            "EXEC_UNTRUSTED_REJECTED",
+            "VALUE_MISMATCH",
+            "EXPECT_FAILED",
+            "UNVERIFIABLE",
+            "DONE_UNVERIFIED",
+            "BUDGET_EXHAUSTED",
+            "LOOP_DETECTED",
+            "NO_PROGRESS",
+            "CONTEXT_DENIED",
+            "NETWORK_ERROR",
+            "STOPPED",
+            "USER_HINT",
+            "USER_RETRY",
+            "MODEL_FAILED"
+          ]
         }
       }
     }

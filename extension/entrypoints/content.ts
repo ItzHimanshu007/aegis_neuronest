@@ -1,3 +1,5 @@
+import { executeLocal, hasValidationError, type ExecutionRequest } from '../agent/executor';
+import { reacquire } from '../agent/reacquire';
 import { harvestFrame } from '../observe/harvester';
 import { debugOverlay, type OverlayElement } from '../observe/overlay';
 import { waitForSettle } from '../observe/settle';
@@ -31,6 +33,9 @@ export default defineContentScript({
     globalGuard.__aegisInjected = true;
 
     ensureMutationCounter();
+    let executionSalt = "";
+    const executions = new Map<string, AbortController>();
+    const cancelled = new Set<string>();
 
     // Local per-frame state. `fpMap` lets the input watcher translate a live DOM element back to
     // the `fp` it had at the last harvest, without re-deriving a fingerprint from scratch.
@@ -56,9 +61,39 @@ export default defineContentScript({
       });
 
     browser.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
+      if (typeof message === 'object' && message !== null && 'type' in message) {
+        const command = message as { type: string; session?: string; request?: ExecutionRequest };
+        if (['EXECUTE_ACTION', 'PREPARE_ACTION', 'CANCEL_TASK'].includes(command.type)) {
+          if (_sender.id !== browser.runtime.id || !command.session) return undefined;
+          if (command.type === 'CANCEL_TASK') {
+            cancelled.add(command.session); executions.get(command.session)?.abort();
+            if (cancelled.size > 100) cancelled.delete(cancelled.values().next().value!);
+            sendResponse({ ok: true }); return false;
+          }
+          const controller = executions.get(command.session) ?? new AbortController();
+          executions.set(command.session, controller);
+          if (cancelled.has(command.session)) controller.abort();
+          void (async () => {
+            try {
+              controller.signal.throwIfAborted();
+              if (!executionSalt || !command.request) throw new Error('TARGET_MISSING');
+              if (command.type === 'PREPARE_ACTION') {
+                const found = command.request.target ? reacquire(command.request.target, executionSalt) : undefined;
+                sendResponse({ ok: true, validationError: hasValidationError(found?.element.ownerDocument ?? document, found?.element) });
+              } else sendResponse(await executeLocal(command.request, executionSalt, controller.signal));
+            } catch (error) {
+              const code = error instanceof Error ? error.message : 'EXEC_FAILED';
+              const allowed = ['TARGET_MISSING','FP_MISMATCH','AMBIGUOUS_TARGET','NOT_VISIBLE','NOT_HITTABLE','DISABLED','NEW_SCREEN','TOKEN_TYPE_MISMATCH','CONSENT_DENIED'];
+              sendResponse({ ok: false, code: allowed.includes(code) ? code : 'EXEC_FAILED' });
+            }
+          })();
+          return true;
+        }
+      }
       if (!isAegisMessage(message)) return undefined;
 
       if (message.type === 'HARVEST_TREE') {
+        executionSalt = message.data.salt;
         void (async () => {
           try {
             await waitForSettle(document, {
@@ -117,6 +152,7 @@ export default defineContentScript({
       }
 
       if (message.type === 'HARVEST_SUBTREE') {
+        executionSalt = message.data.salt;
         // Used by background to resolve one specific cross-origin/independently-injected frame it
         // matched via FRAME_HELLO. This runs in THAT frame's own content script instance.
         try {
@@ -239,7 +275,7 @@ export function harvestDocumentTree(
     { frameId, offsetChain: [], elements: frameResult.elements, media, textBlocks: frameResult.textBlocks },
   ];
   const frameInfos: FrameInfo[] = [
-    { frameId, parentFrameId, url: doc.location?.href ?? win.location.href, mapping: parentFrameId === null ? 'top' : 'same-origin' },
+    { frameId, parentFrameId, documentPath: [], url: doc.location?.href ?? win.location.href, mapping: parentFrameId === null ? 'top' : 'same-origin' },
   ];
   const blockElements = new Map<string, Element>(blockRefMap);
   const frameOffsets = new Map<number, FrameOffset[]>([[frameId, []]]);
@@ -268,6 +304,7 @@ export function harvestDocumentTree(
       blockElements.set(ref, el);
     }
     inputs.push(...child.inputs);
+    for (const info of child.frameInfos) info.documentPath = [iframeEls.indexOf(iframeEl), ...(info.documentPath ?? [])];
     frameInfos.push(...child.frameInfos);
     dialogOpenAggregate = dialogOpenAggregate || child.dialogOpen;
   }

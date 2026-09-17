@@ -12,7 +12,12 @@ FIXTURES_DIR = REPO_ROOT / "shared" / "schema" / "examples"
 
 
 @pytest.fixture(autouse=True)
-def _clear_settings_cache():
+def _isolate_environment(monkeypatch):
+    """The suite describes the code, not whatever endpoint this machine happens to point at, so
+    `server/.env` is ignored and the adapter defaults to the mock. Tests that want another adapter
+    set it themselves."""
+    monkeypatch.setenv("AEGIS_IGNORE_ENV_FILE", "1")
+    monkeypatch.delenv("AEGIS_ADAPTER", raising=False)
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()

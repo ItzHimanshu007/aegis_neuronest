@@ -20,7 +20,7 @@ export default defineBackground(() => {
 
   onMessage('OBSERVE', async (message) => {
     const { tabId } = message.data;
-    return observeTab(tabId);
+    return observeTab(tabId, message.data.domOnly);
   });
 
   onMessage('START_TASK', async () => {
@@ -82,10 +82,13 @@ export default defineBackground(() => {
   const tabState = new Map<number, TabObserveState>();
   const lastChangeByTab = new Map<number, ChangeResult>();
   const rateLimiter = new RateLimiter(AEGIS_CONFIG.CAPTURE_MAX_PER_SEC);
-  const captureQueue = new CoalescingQueue<number, ObserveResult>((tabId) => runObservationPipeline(tabId));
+  const captureQueue = new CoalescingQueue<string, ObserveResult>((key) => {
+    const [tabId, domOnly] = key.split(":");
+    return runObservationPipeline(Number(tabId), domOnly === "true");
+  });
 
-  async function observeTab(tabId: number): Promise<ObserveResult> {
-    return captureQueue.enqueue(tabId);
+  async function observeTab(tabId: number, domOnly = false): Promise<ObserveResult> {
+    return captureQueue.enqueue(`${tabId}:${domOnly}`);
   }
 
   async function getSalt(): Promise<string> {
@@ -109,7 +112,7 @@ export default defineBackground(() => {
     return envelope.response;
   }
 
-  async function runObservationPipeline(tabId: number): Promise<ObserveResult> {
+  async function runObservationPipeline(tabId: number, domOnly = false): Promise<ObserveResult> {
     const totalStart = performance.now();
     const tab = await browser.tabs.get(tabId);
     if (tab.windowId == null) throw new Error('Tab has no window');
@@ -152,12 +155,12 @@ export default defineBackground(() => {
       const resolvedInputs = await resolveCrossOriginFrames(tabId, salt, harvestResponse.inputs, harvestResponse.frameInfos, frameHellos.get(tabId) ?? []);
 
       const wait = rateLimiter.msUntilNextSlot();
-      if (wait > 0) await sleep(wait);
+      if (!domOnly && wait > 0) await sleep(wait);
 
       await sendToFrame(tabId, { type: 'HIDE_OVERLAY' }, 0).catch(() => {});
       const captureStart = performance.now();
-      const dataUrl = await browser.tabs.captureVisibleTab(tab.windowId, { format: 'png' });
-      rateLimiter.record();
+      const dataUrl = domOnly ? '' : await browser.tabs.captureVisibleTab(tab.windowId, { format: 'png' });
+      if (!domOnly) rateLimiter.record();
       captureMs = performance.now() - captureStart;
 
       const stateTokenAfter = await sendToFrame<StateToken>(tabId, { type: 'GET_STATE_TOKEN' }, 0);
@@ -185,12 +188,12 @@ export default defineBackground(() => {
       // state changed mid-capture — loop and retry (Part D.1.5)
     }
 
-    if (!screenshotDataUrl || !finalStateToken || !finalCaptureId) {
+    if ((!domOnly && !screenshotDataUrl) || !finalStateToken || !finalCaptureId) {
       throw new Error(`Capture did not stabilize after ${AEGIS_CONFIG.CAPTURE_RETRIES} attempts`);
     }
 
     // Scale mapping (Part D.4): screenshot pixel size vs CSS viewport size.
-    const { pxW, pxH } = await imageSizeFromDataUrl(screenshotDataUrl);
+    const { pxW, pxH } = domOnly ? { pxW: finalStateToken.innerWidth, pxH: finalStateToken.innerHeight } : await imageSizeFromDataUrl(screenshotDataUrl);
     const viewport = {
       cssW: finalStateToken.innerWidth,
       cssH: finalStateToken.innerHeight,
@@ -314,7 +317,7 @@ export default defineBackground(() => {
             media: subtree.media,
             textBlocks: subtree.textBlocks,
           });
-          resultFrameInfos.push({ frameId: syntheticId, parentFrameId: input.frameId, url: match.url, mapping: 'src-size-match' });
+          resultFrameInfos.push({ frameId: syntheticId, browserFrameId: match.frameId, parentFrameId: input.frameId, url: match.url, mapping: 'src-size-match' });
         } catch {
           // Couldn't reach that frame (navigated away, no listener yet) — leave it unmapped.
         }

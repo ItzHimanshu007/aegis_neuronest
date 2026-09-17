@@ -11,7 +11,7 @@ from __future__ import annotations
 from app.schemas.payload import PayloadV2
 
 # History is capped so a long task cannot grow the prompt without bound.
-MAX_HISTORY_STEPS = 8
+MAX_HISTORY_STEPS = 25
 # Text blocks are budgeted for the same reason; the image carries the layout.
 MAX_TEXT_BLOCKS = 40
 MAX_TEXT_CHARS = 2000
@@ -95,7 +95,10 @@ def build_user_message(payload: PayloadV2, history: list[str] | None = None) -> 
         kinds = sorted({r.type for r in payload.redactions})
         sections += ["", f"redacted on screen: {', '.join(kinds)}"]
 
-    rendered_history = render_history(history or [])
+    sealed_history = [entry.model_dump_json(exclude_none=True) for entry in payload.history]
+    rendered_history = render_history((history or []) + sealed_history)
+    if payload.context_denied:
+        sections += ["", f"context_denied: {payload.context_denied}"]
     if rendered_history:
         sections += ["", "history (most recent last):", rendered_history]
 

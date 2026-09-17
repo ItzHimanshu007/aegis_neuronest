@@ -35,6 +35,7 @@ REPORTS_DIR = REPO_ROOT / "eval" / "reports"
 
 sys.path.insert(0, str(REPO_ROOT / "server"))
 
+from app.config import load_env_file
 from app.prompts.system import PROMPT_VERSION
 from app.schemas.payload import PayloadV2
 from app.vlm.openai_compatible_adapter import (
@@ -66,7 +67,7 @@ class FixtureResult:
     latency_ms: float = 0.0
     json_valid_first: bool | None = None
     schema_valid: bool = False
-    state_token_echoed: bool = False
+    state_token_echoed: bool | None = None
     grounded: bool | None = None
     action_matched: bool | None = None
     enforced_ok: bool = False
@@ -161,8 +162,16 @@ async def run_fixture(
             "MODEL_OUTPUT_UNGROUNDED",
         }
     )
-    result.schema_valid = not refused
-    result.state_token_echoed = plan.state_token == payload.state_token
+    result.schema_valid = (
+        metrics.schema_valid_final
+        if isinstance(adapter, OpenAICompatibleAdapter)
+        else not refused
+    )
+    result.state_token_echoed = (
+        metrics.state_token_echoed
+        if isinstance(adapter, OpenAICompatibleAdapter)
+        else plan.state_token == payload.state_token
+    )
     result.enforced_ok = enforce(plan, payload) is None and not refused
 
     if refused:
@@ -302,6 +311,7 @@ def render(report: ProbeReport) -> str:
             "Stage 4 owns generalization."
         ),
         "- Grounding is scored on the FIRST action only, against one gold element per fixture.",
+        "- State-token echo excludes adapter-generated failure envelopes; schema validity and server enforcement are counted separately.",
         "- Latency is measured from this machine, including network time to the endpoint.",
         "",
     ]
@@ -314,6 +324,7 @@ async def main() -> None:
     parser.add_argument("--out", type=Path, default=None)
     args = parser.parse_args()
 
+    load_env_file()
     adapter_name = os.environ.get("AEGIS_ADAPTER", "mock")
     base_url = os.environ.get("AEGIS_LLM_BASE_URL", "")
     model = os.environ.get("AEGIS_LLM_MODEL", "")

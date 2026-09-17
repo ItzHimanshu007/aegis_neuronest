@@ -33,6 +33,8 @@ export interface HarvestOptions {
    * second DOM walk. Never sent anywhere — Elements aren't serializable and this map never leaves
    * the content script. */
   blockRefMap?: Map<string, Element>;
+  /** Short-lived executor lookup, local to the content script. */
+  elementRefs?: Map<string, Element>;
 }
 
 export interface FrameHarvestResult {
@@ -305,6 +307,7 @@ export function harvestFrame(options: HarvestOptions): FrameHarvestResult {
       AEGIS_CONFIG.FP_HEX_LENGTH,
     );
 
+    options.elementRefs?.set(localNodeRef(el), el);
     elements.push({
       beingTyped: isBeingTyped(el),
       nodeRef: localNodeRef(el),

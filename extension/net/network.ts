@@ -22,6 +22,8 @@ export interface SendResult {
   digest: string;
   size: number;
   body: unknown;
+  modelMs: number;
+  networkMs: number;
 }
 
 /**
@@ -30,7 +32,7 @@ export interface SendResult {
  * `as SanitizedPayload` still fails), re-verifies the digest over the exact bytes, and consumes
  * the registry entry so the same payload can never be sent twice.
  */
-export async function send(payload: SanitizedPayload): Promise<SendResult> {
+export async function send(payload: SanitizedPayload, signal?: AbortSignal): Promise<SendResult> {
   if (!isRegisteredSealed(payload)) {
     throw new Error('network.send() refused: payload was not produced by firewall.seal() (or has already been sent)');
   }
@@ -44,7 +46,10 @@ export async function send(payload: SanitizedPayload): Promise<SendResult> {
   // same object fails rather than racing.
   consumeSealed(payload);
 
+  signal?.throwIfAborted();
+  const start = performance.now();
   const response = await fetch(`${SERVER_URL}/v1/plan`, {
+    signal,
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -57,7 +62,11 @@ export async function send(payload: SanitizedPayload): Promise<SendResult> {
     throw new Error(`Server responded ${response.status}`);
   }
 
-  return { status: response.status, digest: payload.digest, size: payload.size, body: await response.json() };
+  const body: unknown = await response.json();
+  signal?.throwIfAborted();
+  let modelMs = 0;
+  try { const timing = JSON.parse(response.headers.get("X-Aegis-Timings") ?? "{}"); if (typeof timing.model_ms === "number" && Number.isFinite(timing.model_ms)) modelMs = Math.max(0, timing.model_ms); } catch { /* Timing never affects acceptance. */ }
+  return { status: response.status, digest: payload.digest, size: payload.size, body, modelMs, networkMs: performance.now() - start };
 }
 
 /**
@@ -70,4 +79,14 @@ export async function health(): Promise<HealthResult> {
     throw new Error(`Server responded ${response.status}`);
   }
   return response.json() as Promise<HealthResult>;
+}
+
+/** The only task cleanup request: a random session id, no page data. */
+export async function endSession(sessionId: string): Promise<void> {
+  if (!/^[a-f0-9]{32}$/.test(sessionId)) throw new Error("Invalid session ID");
+  const response = await fetch(`${SERVER_URL}/v1/session/end`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ session: sessionId }), signal: AbortSignal.timeout(5000),
+  });
+  if (!response.ok) throw new Error("Session cleanup failed");
 }

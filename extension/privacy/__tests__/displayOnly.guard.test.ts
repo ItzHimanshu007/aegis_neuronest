@@ -15,7 +15,7 @@ import { TokenVault, unwrapForPanelRender } from '../vault';
 const EXTENSION_ROOT = path.resolve(__dirname, '..', '..');
 
 /** Files permitted to turn a DisplayOnlyText back into a string, relative to extension/. */
-const ALLOWED_UNWRAP_FILES = ['entrypoints/sidepanel/App.tsx', 'entrypoints/sidepanel/PrivacyPreview.tsx'];
+const ALLOWED_UNWRAP_FILES = ['entrypoints/sidepanel/App.tsx', 'entrypoints/sidepanel/PrivacyPreview.tsx', 'entrypoints/sidepanel/TaskPanel.tsx'];
 
 /** Directories that must never contain the unwrap at all — these are the egress paths. */
 const FORBIDDEN_DIRS = ['net', 'entrypoints/background.ts', 'entrypoints/content.ts', 'agent', 'scene', 'audit'];

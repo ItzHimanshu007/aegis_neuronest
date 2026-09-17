@@ -236,6 +236,8 @@ export async function seal(draft: DraftPayload, ctx: SealContext): Promise<SealR
   t = performance.now();
   const maskRects = (ctx.redactResult?.image.masks ?? []).map((m) => m.pxRect);
   for (const { detection, action } of ctx.decisions) {
+    // DOM-only observations have no outbound pixels; text checks above still run.
+    if (draft.image === undefined && !ctx.redactResult) continue;
     if (!NON_ALLOW_ACTIONS.includes(action)) continue;
     if (detection.rects.length === 0) continue; // side-channel/task detections have no geometry
     if (!ctx.redactResult) {
