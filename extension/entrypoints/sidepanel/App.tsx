@@ -241,7 +241,7 @@ export default function App() {
             />
             <label>
               Mode{' '}
-              <select value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
+              <select aria-label="Mode" value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
                 <option value="fast">fast</option>
                 <option value="balanced">balanced</option>
                 <option value="accurate">accurate</option>

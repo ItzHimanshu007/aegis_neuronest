@@ -82,11 +82,13 @@ export interface DraftPayload {
   image?: string;
 }
 
-/** Coarse page classification (Stage 2 Part F.4): a password field means a login screen; three or
- * more identity fields means a form; anything else is left unlabelled rather than guessed at. */
+/** Coarse page classification (Stage 2 Part F.4): a password field alongside three or more
+ * identity fields is a combined KYC/signup form (Stage 3B: this is what lets a plan target it by
+ * shape rather than by guessing at labels); a password field alone means a plain login screen;
+ * three or more identity fields with no password means an ordinary form; anything else is left
+ * unlabelled rather than guessed at. */
 export function classifyPageType(elements: RawElement[], categoryOf: (el: RawElement) => Category | undefined): string | undefined {
   const hasPassword = elements.some((el) => el.inputType === 'password');
-  if (hasPassword) return 'login';
 
   const identityFieldCategories: Category[] = ['NAME', 'EMAIL', 'PHONE', 'ADDRESS', 'DOB', 'AADHAAR', 'PAN', 'CARD_NUMBER', 'BANK_ACCOUNT'];
   const identityFieldCount = elements.filter((el) => {
@@ -94,6 +96,7 @@ export function classifyPageType(elements: RawElement[], categoryOf: (el: RawEle
     return category !== undefined && identityFieldCategories.includes(category);
   }).length;
 
+  if (hasPassword) return identityFieldCount >= 3 ? 'kyc_form' : 'login';
   return identityFieldCount >= 3 ? 'form' : undefined;
 }
 

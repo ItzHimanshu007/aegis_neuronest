@@ -156,6 +156,21 @@ describe('seal: check 2 — rule scan', () => {
     const ctx = makeContext({ decisions: [{ detection: det({ category: 'CITY' }), action: 'ALLOW' }] });
     await expect(seal(draft, ctx)).resolves.toBeDefined();
   });
+
+  it('never rejects the protocol envelope, even when a random identifier happens to look like PII', async () => {
+    // `crypto.randomUUID()`'s last 12-hex-digit segment is all-digit characters about 0.75% of
+    // the time, and a fixed 12-digit run is exactly AADHAAR's shape — this reproduced for real as
+    // an e2e flake (a capture_id whose digits also passed the checksum). None of these five
+    // fields is ever derived from page content, so PII-shape-matching one is only ever a false
+    // positive. Same synthetic Verhoeff-valid value as the task-text rejection test above.
+    const draft = makeDraft({
+      session: '234567890124',
+      capture_id: '234567890124',
+      state_token: 'Sabcdefghij', // must still satisfy the schema's state_token pattern
+      task: 'Fill in the form',
+    });
+    await expect(seal(draft, makeContext())).resolves.toBeDefined();
+  });
 });
 
 describe('seal: check 3 — known-value leak', () => {

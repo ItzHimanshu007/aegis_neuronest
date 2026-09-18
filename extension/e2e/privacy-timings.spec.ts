@@ -27,7 +27,11 @@ function stat(values: number[]): { median: number; p95: number } {
 }
 
 async function setMode(panelPage: Page, mode: string): Promise<void> {
-  await panelPage.locator('select').first().selectOption(mode);
+  // Not `.locator('select').first()`: TaskPanel (Stage 3B) now renders its own `<select>`s
+  // (task-data category, task mode) ahead of this one in the DOM, so position is no longer
+  // unique. "Mode" (this measurement UI's own select) and TaskPanel's "Task mode" both contain
+  // "mode", so this needs an exact match.
+  await panelPage.getByLabel('Mode', { exact: true }).selectOption(mode);
 }
 
 test('privacy pipeline timings and payload sizes', async ({ context, sidepanelUrl }) => {

@@ -123,6 +123,19 @@ describe('classifyPageType', () => {
     expect(classifyPageType([makeElement({ inputType: 'password' })], () => undefined)).toBe('login');
   });
 
+  it('returns kyc_form when a password field is combined with three or more identity fields', () => {
+    // Stage 3B: this is exactly demo-portal's kyc.html (name/email/phone/dob/address/aadhaar/pan
+    // plus a password field) — MockAdapter.plan() (server/app/vlm/mock_adapter.py) keys off this
+    // exact string, so a page like it must actually reach this branch, not just 'login'.
+    const els = [makeElement({ fp: 'a' }), makeElement({ fp: 'b' }), makeElement({ fp: 'c' }), makeElement({ fp: 'd', inputType: 'password' })];
+    const categories = new Map([
+      ['a', 'NAME' as const],
+      ['b', 'EMAIL' as const],
+      ['c', 'PHONE' as const],
+    ]);
+    expect(classifyPageType(els, (el) => categories.get(el.fp))).toBe('kyc_form');
+  });
+
   it('returns form when three or more identity fields are present', () => {
     const els = [makeElement({ fp: 'a' }), makeElement({ fp: 'b' }), makeElement({ fp: 'c' })];
     const categories = new Map([

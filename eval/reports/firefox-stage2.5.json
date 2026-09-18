@@ -121,6 +121,11 @@
       "item": "Screenshot alignment at 100% scrolled",
       "status": "PASS",
       "notes": "1 visible calibration squares"
+    },
+    {
+      "item": "Agent loop: consent, executor, rehydrate, verify round-trip",
+      "status": "PASS",
+      "notes": "{\"nameRoundTripped\": true, \"stopped\": true}"
     }
   ]
 }

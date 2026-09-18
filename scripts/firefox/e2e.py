@@ -304,7 +304,36 @@ try:
         assert aligned['samples'] > 0 and aligned['ok'], aligned
         record(f'Screenshot alignment at {round(zoom*100)}%' + (' scrolled' if scrolled else ''), f"{aligned['samples']} visible calibration squares")
 
+    # --- Stage 3B: the agent loop / TaskPanel end to end ----------------------------------------
+    # No mock-scenario header here (Selenium/Firefox has no equivalent of Playwright's context-wide
+    # request interception, which is how extension/e2e/task-kyc.spec.ts forces one on Chromium) —
+    # this exercises MockAdapter's plain default plan instead: type the pre-filled Full name field
+    # back into itself, then ask_user. That is a smaller plan than the Chromium checkpoint test, but
+    # it is real proof the whole NEW path — consent, planner client, Authority Gate, the content
+    # script's EXECUTE_ACTION/PREPARE_ACTION handlers, reacquire(), rehydrate() and verify() —
+    # actually runs in Firefox, not just Chromium (CLAUDE.md: a change that only works in one
+    # browser is not done).
+    navigate('kyc.html')
+    panel("""const el=document.getElementById('task-input');
+      Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype,'value').set
+        .call(el,'Confirm my name is filled, then stop before submitting.');
+      el.dispatchEvent(new Event('input',{bubbles:true}));""")
+    click_panel('Start')
+    wait(lambda: panel('return !!document.querySelector(\'[aria-label="Task consent"]\')'))
+    click_panel('Continue with selected')
+    # ask_user only fires after the `type` action executed and its `has_value` postcondition
+    # passed — seeing this dialog is itself proof the fill+verify round-trip succeeded.
+    wait(lambda: panel('return !!document.querySelector(\'[aria-label="Task question"]\')'), timeout=30)
+    d.set_context('content')
+    name_value = d.execute_script("return document.getElementById('full-name').value")
+    d.set_context('chrome')
+    click_panel('Stop task')
+    wait(lambda: panel('return document.querySelector(\'[data-testid="task-status"]\')?.textContent===\'stopped\''))
+    task = {'nameRoundTripped': name_value == 'Asha Verma', 'stopped': True}
+    assert all(task.values()), task
+    record('Agent loop: consent, executor, rehydrate, verify round-trip', json.dumps(task))
+
 finally:
     d.quit()
     report = ROOT / 'eval/reports/firefox-stage2.5.json'
-    report.write_text(json.dumps({'firefoxVersion': d.capabilities.get('browserVersion'), 'complete': len(results) >= 24, 'results': results}, indent=2) + '\n')
+    report.write_text(json.dumps({'firefoxVersion': d.capabilities.get('browserVersion'), 'complete': len(results) >= 25, 'results': results}, indent=2) + '\n')

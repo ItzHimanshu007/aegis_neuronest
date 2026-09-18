@@ -5,7 +5,7 @@
     "task": "Fill in my full name",
     "som": true,
     "hasImage": true,
-    "bytes": 96392,
+    "bytes": 96395,
     "goldEid": "E2",
     "goldLabel": "Full name",
     "goldAction": "type"
@@ -16,7 +16,7 @@
     "task": "Fill in my email address",
     "som": true,
     "hasImage": true,
-    "bytes": 96396,
+    "bytes": 96399,
     "goldEid": "E3",
     "goldLabel": "Email address",
     "goldAction": "type"
@@ -27,7 +27,7 @@
     "task": "Submit the verification form",
     "som": true,
     "hasImage": true,
-    "bytes": 112664,
+    "bytes": 112667,
     "goldEid": "E11",
     "goldLabel": "Accept",
     "goldAction": "click"
@@ -82,7 +82,7 @@
     "task": "What phone number is shown on this page?",
     "som": true,
     "hasImage": true,
-    "bytes": 181569,
+    "bytes": 181552,
     "goldEid": null,
     "goldLabel": null,
     "goldAction": "answer"
@@ -93,7 +93,7 @@
     "task": "Fill in my full name",
     "som": false,
     "hasImage": true,
-    "bytes": 94556,
+    "bytes": 94559,
     "goldEid": "E2",
     "goldLabel": "Full name",
     "goldAction": "type"
@@ -104,7 +104,7 @@
     "task": "Submit the verification form",
     "som": false,
     "hasImage": true,
-    "bytes": 109824,
+    "bytes": 109827,
     "goldEid": "E11",
     "goldLabel": "Accept",
     "goldAction": "click"

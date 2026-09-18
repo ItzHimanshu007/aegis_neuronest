@@ -85,17 +85,28 @@ export interface SealResult {
 /**
  * Walks every string in the draft, with a path for error reporting.
  *
- * The one deliberate exclusion is the image data URL. It is base64-encoded BINARY, not text:
- * substring-scanning it is meaningless (any long base64 blob contains, by chance, short digit
- * runs and letter sequences that will match almost any value's normalized form), and doing so
- * produced exactly that false positive in practice — a masked Aadhaar's 4-digit tail "matching"
- * inside the PNG bytes. The image's safety is established far more meaningfully by checks 5 and 6
- * (every non-ALLOW detection's rects are covered by a mask, and `verifyMasks()` confirms those
- * pixels really are filled at both full and downscaled resolution).
+ * The image data URL is excluded. It is base64-encoded BINARY, not text: substring-scanning it is
+ * meaningless (any long base64 blob contains, by chance, short digit runs and letter sequences
+ * that will match almost any value's normalized form), and doing so produced exactly that false
+ * positive in practice — a masked Aadhaar's 4-digit tail "matching" inside the PNG bytes. The
+ * image's safety is established far more meaningfully by checks 5 and 6 (every non-ALLOW
+ * detection's rects are covered by a mask, and `verifyMasks()` confirms those pixels really are
+ * filled at both full and downscaled resolution).
+ *
+ * The protocol envelope — `session`, `capture_id`, `schema`, `state_token`, `mode` — is excluded
+ * for the same reason, found the same way: `capture_id` is `crypto.randomUUID()`, and its last
+ * 12-hex-digit segment lands on all-digit characters (no a-f) about 0.75% of the time — a fixed
+ * 12-digit run is exactly AADHAAR's shape, so a plain page reload would occasionally fail to seal
+ * for a reason that has nothing to do with the page. None of these five fields is ever derived
+ * from page content or task text; they are generated locally by the extension's own session,
+ * capture and state-token layers, and PII shape-matching a random identifier is only ever a false
+ * positive. (Other opaque identifiers — `fp`, `eid` — share the same risk in principle but are
+ * unmeasured; this exclusion covers only the field this incident actually reproduced with.)
  */
+const PROTOCOL_ENVELOPE_PATHS = new Set(['$.session', '$.capture_id', '$.schema', '$.state_token', '$.mode']);
 function* walkStrings(value: unknown, path = '$'): Generator<{ path: string; value: string }> {
   if (typeof value === 'string') {
-    if (path === '$.image') return;
+    if (path === '$.image' || PROTOCOL_ENVELOPE_PATHS.has(path)) return;
     yield { path, value };
   } else if (Array.isArray(value)) {
     for (const [i, item] of value.entries()) yield* walkStrings(item, `${path}[${i}]`);
