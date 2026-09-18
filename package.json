@@ -31,7 +31,7 @@
     "gen:policy": "node scripts/gen-policy.mjs",
     "gen:validator": "node scripts/gen-validator.mjs",
     "gen:all": "pnpm run gen:types && pnpm run gen:policy && pnpm run gen:validator",
-    "e2e:firefox": "pnpm --filter aegis-extension build:firefox && uv run scripts/firefox/e2e.py",
+    "e2e:firefox": "WXT_SERVER_URL=http://localhost:8001 pnpm --filter aegis-extension build:firefox && uv run scripts/firefox/e2e.py",
     "model:probe": "uv run --project server python eval/model_probe/probe.py"
   },
   "devDependencies": {

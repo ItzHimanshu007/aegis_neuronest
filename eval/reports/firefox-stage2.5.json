@@ -128,9 +128,29 @@
       "notes": "{\"nameRoundTripped\": true, \"stopped\": true}"
     },
     {
+      "item": "Agent loop: kyc_submit \u2014 L5 approval gates the commit, form submitted after Approve",
+      "status": "PASS",
+      "notes": "{\"submitted\": true}"
+    },
+    {
+      "item": "Agent loop: login_credential \u2014 L4 + L5 both approved, signed in, raw password never left the browser",
+      "status": "PASS",
+      "notes": "{\"signedIn\": true, \"sessionEnded\": true, \"passwordNeverSent\": true}"
+    },
+    {
+      "item": "Agent loop: stale_state \u2014 mismatched state_token rejected client-side, never acted on",
+      "status": "PASS",
+      "notes": "{\"nameUntouched\": true}"
+    },
+    {
+      "item": "Agent loop: Stop mid-task aborts promptly, calls endSession cleanly, leaves no stale UI",
+      "status": "PASS",
+      "notes": "{\"stoppedPromptly\": true, \"noValueLeak\": true, \"noStaleDialog\": true, \"cleanEndSessionBody\": true}"
+    },
+    {
       "item": "WebP quality:1 pixel identity (raw + redacted, kyc.html + pii-zoo.html) \u2014 measurement only, see notes",
       "status": "PASS",
-      "notes": "kyc.html/raw: identical=True 1606x1632 mismatches=0/10483968 maxDelta=0 png=171643 webp=49868 ratio=0.291; kyc.html/redacted: identical=False 1260x1280 mismatches=1260/6451200 maxDelta=6 png=115358 webp=50610 ratio=0.439; pii-zoo.html/raw: identical=True 1606x1632 mismatches=0/10483968 maxDelta=0 png=272753 webp=67848 ratio=0.249; pii-zoo.html/redacted: identical=False 1260x1280 mismatches=1256/6451200 maxDelta=6 png=207095 webp=76920 ratio=0.371"
+      "notes": "kyc.html/raw: identical=True 1606x1632 mismatches=0/10483968 maxDelta=0 png=171643 webp=49868 ratio=0.291; kyc.html/redacted: identical=False 1260x1280 mismatches=1260/6451200 maxDelta=6 png=115358 webp=50610 ratio=0.439; pii-zoo.html/raw: identical=True 1606x1632 mismatches=0/10483968 maxDelta=0 png=272753 webp=67848 ratio=0.249; pii-zoo.html/redacted: identical=False 1260x1280 mismatches=1256/6451200 maxDelta=6 png=206986 webp=76870 ratio=0.371"
     }
   ]
 }

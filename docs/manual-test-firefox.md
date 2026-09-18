@@ -1,7 +1,7 @@
-# Firefox verification — Stage 2.5
+# Firefox verification — Stage 2.5 through Stage 3B Part II
 
-Measured on macOS, Firefox **156.0**, geckodriver **0.37.1**, Selenium **4.49.0**, 2026-09-17.
-`pnpm e2e:firefox` passed all 21 recorded checks against the unmodified generated MV3 manifest.
+Measured on macOS, Firefox **156.0**, geckodriver **0.37.1**, Selenium **4.49.0**, 2026-09-18.
+`pnpm e2e:firefox` passed all 30 recorded checks against the unmodified generated MV3 manifest.
 The machine-readable result is [firefox-stage2.5.json](../eval/reports/firefox-stage2.5.json).
 
 ## Reproduce
@@ -10,7 +10,7 @@ The machine-readable result is [firefox-stage2.5.json](../eval/reports/firefox-s
 pnpm install --frozen-lockfile
 pnpm portal                 # separate terminal, port 5174
 pnpm portal:alt             # separate terminal, port 5175
-pnpm run server             # mock API on port 8000 (needed for Chromium send test)
+pnpm run server             # mock API on port 8000 (needed for Chromium send test AND this one)
 pnpm e2e:firefox
 ```
 
@@ -24,6 +24,17 @@ Classic WebDriver/BiDi do not expose Firefox's auxiliary sidebar as a normal tab
 temporary install, the harness addresses the sidebar through Firefox's existing Marionette actor
 with geckodriver `--allow-system-access`. It does not patch the manifest, the app, or its permissions.
 Checks return booleans/counts; raw values and image pixels are inspected inside the browser.
+
+**Stage 3B Part II's scenario proxy.** Selenium/Firefox has no equivalent of Playwright's
+`context.route()` (which is how Chromium's `extension/e2e/fixtures/task.ts -> forceScenario()`
+injects `X-Aegis-Mock-Scenario`), so the agent-loop checks below that need a specific deterministic
+scenario (`kyc_submit`, `login_credential`, `stale_state`) go through a small local reverse proxy
+`scripts/firefox/e2e.py` starts on `127.0.0.1:8001`, sitting in front of the real mock server on
+`:8000` and injecting the header only while `force_scenario()` has armed one. `pnpm e2e:firefox`
+builds the Firefox extension with `WXT_SERVER_URL=http://localhost:8001` for exactly this reason
+(see `package.json`); the real server still only ever needs to run on `:8000`, unchanged from
+before. When no scenario is armed, every byte passes through unmodified — the file's original
+default-plan check (no scenario forcing at all) is what actually proves that.
 
 ## Results
 
@@ -49,6 +60,12 @@ Checks return booleans/counts; raw values and image pixels are inspected inside 
 | Capture burst | PASS | Four concurrent Observe requests completed |
 | Alignment 100%, 125%, 67% | PASS | Pixel colors matched at 1, 1, 2 visible calibration-square centers respectively |
 | Alignment after scroll, 100% | PASS | Center square matched |
+| Agent loop: default plan round-trip | PASS | Consent → planner client → Authority Gate → executor → reacquire/rehydrate → verify, with no scenario forced; name round-tripped, task stopped from the ask_user question |
+| Agent loop: kyc_submit | PASS | L5 approval dialog shown before the commit; form actually submitted after Approve |
+| Agent loop: login_credential | PASS | L4 (type) then L5 (click) both approved; signed in; session ended cleanly; raw password never appeared in anything the proxy relayed to the server |
+| Agent loop: stale_state | PASS | Mismatched `state_token` rejected client-side on every attempt; name field never touched |
+| Agent loop: Stop mid-task | PASS | Aborted in under 3s while a fill was in flight; `endSession` called with only `{session}`; no raw value leaked into panel text; no stale dialog |
+| WebP quality:1 pixel identity | measurement only | Raw screenshots identical in both browsers; **redacted** images are NOT pixel-identical in Firefox (≈1,260/6.45M channel values differ, max delta 6/255) — the reason PNG stays the shipped format; see `docs/architecture.md` and `eval/reports/stage3-tasks.md` |
 
 Firefox capture requires **`activeTab` or `<all_urls>`**, not just a host permission for the current
 site, at the tested operating point. A toolbar click can confer activeTab; a sidebar Observe click

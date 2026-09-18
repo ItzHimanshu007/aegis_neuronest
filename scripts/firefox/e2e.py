@@ -7,16 +7,82 @@
 Selenium installs the add-on. Firefox's Marionette actor addresses the remote sidebar
 because Classic frame switching and BiDi do not expose that auxiliary content context.
 Inspection stays in the browser; only booleans, counts and API errors leave it.
-Run from repository root: pnpm e2e:firefox (portals :5174/:5175 must be running).
+Run from repository root: pnpm e2e:firefox (portals :5174/:5175 and the mock server on :8000
+must be running).
 """
 from pathlib import Path
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
+import threading
 import time
+import urllib.error
+import urllib.request
 from selenium import webdriver
 from selenium.webdriver.firefox.service import Service
 
 ROOT = Path(__file__).resolve().parents[2]
+
+# Selenium/Firefox has no equivalent of Playwright's `context.route()` (this file's own comments
+# already note Firefox's remote protocol doesn't expose the sidebar the way Chromium's does), so
+# there is no way to inject the `X-Aegis-Mock-Scenario` header per-request the way
+# `extension/e2e/fixtures/task.ts -> forceScenario()` does. A tiny local reverse proxy stands in
+# for it instead: it sits between the Firefox build (pointed at it via `WXT_SERVER_URL`, see
+# `package.json`'s `e2e:firefox` script) and the real mock server on :8000, and injects the header
+# on `/v1/plan` only while a scenario is armed — every other request, and every request once
+# `clear_scenario()` is called, passes through byte-for-byte unmodified, which is what keeps the
+# existing default-plan check below working exactly as it did before this existed.
+REAL_SERVER = 'http://127.0.0.1:8000'
+PROXY_PORT = 8001
+_current_scenario = {'name': None}
+_session_end_bodies = []
+
+
+class _ScenarioProxy(BaseHTTPRequestHandler):
+    def log_message(self, *args):
+        pass  # keep stdout to this script's own PASS/FAIL lines
+
+    def _forward(self):
+        length = int(self.headers.get('Content-Length', 0) or 0)
+        body = self.rfile.read(length) if length else None
+        if self.path.startswith('/v1/session/end') and body:
+            _session_end_bodies.append(body.decode('utf-8'))
+        headers = {k: v for k, v in self.headers.items() if k.lower() not in ('host', 'content-length')}
+        if _current_scenario['name'] and self.path.startswith('/v1/plan'):
+            headers['X-Aegis-Mock-Scenario'] = _current_scenario['name']
+        req = urllib.request.Request(REAL_SERVER + self.path, data=body, headers=headers, method=self.command)
+        try:
+            with urllib.request.urlopen(req) as resp:
+                status, resp_headers, payload = resp.status, resp.getheaders(), resp.read()
+        except urllib.error.HTTPError as e:
+            status, resp_headers, payload = e.code, e.headers.items(), e.read()
+        except urllib.error.URLError as e:
+            self.send_response(502)
+            self.end_headers()
+            self.wfile.write(f'scenario proxy: real server on :8000 unreachable: {e}'.encode())
+            return
+        self.send_response(status)
+        for k, v in resp_headers:
+            if k.lower() not in ('content-length', 'transfer-encoding', 'connection'):
+                self.send_header(k, v)
+        self.send_header('Content-Length', str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
+    do_GET = do_POST = do_PUT = do_DELETE = do_OPTIONS = _forward
+
+
+def force_scenario(name):
+    _current_scenario['name'] = name
+
+
+def clear_scenario():
+    _current_scenario['name'] = None
+
+
+_proxy = ThreadingHTTPServer(('127.0.0.1', PROXY_PORT), _ScenarioProxy)
+threading.Thread(target=_proxy.serve_forever, daemon=True).start()
+
 ACTOR = "document.getElementById('sidebar').contentDocument.querySelector('browser').browsingContext.currentWindowGlobal.getActor('MarionetteCommands')"
 opt = webdriver.FirefoxOptions()
 opt.binary_location = os.environ.get('FIREFOX_BINARY', '/Applications/Firefox.app/Contents/MacOS/firefox')
@@ -68,6 +134,24 @@ def click_panel(label):
           .then(done,e=>done({{harnessError:String(e)}}));
     """, label)
     assert not isinstance(r, dict) or 'harnessError' not in r, r
+
+
+def set_value(selector, value, proto='HTMLInputElement'):
+    """Sets a controlled React input's value through its native setter and fires `input`, the same
+    two-step dance the existing task-input check above already needed — React's own value tracking
+    ignores a plain `el.value = ...` assignment."""
+    d.set_context('chrome')
+    panel(f"""const el=document.querySelector({json.dumps(selector)});
+      Object.getOwnPropertyDescriptor(window.{proto}.prototype,'value').set.call(el, {json.dumps(value)});
+      el.dispatchEvent(new Event('input',{{bubbles:true}}));""")
+
+
+def select_value(selector, value):
+    """Same as `set_value`, but for a `<select>` — React listens for `change`, not `input`, there."""
+    d.set_context('chrome')
+    panel(f"""const el=document.querySelector({json.dumps(selector)});
+      Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype,'value').set.call(el, {json.dumps(value)});
+      el.dispatchEvent(new Event('change',{{bubbles:true}}));""")
 
 
 def toolbar():
@@ -305,14 +389,15 @@ try:
         record(f'Screenshot alignment at {round(zoom*100)}%' + (' scrolled' if scrolled else ''), f"{aligned['samples']} visible calibration squares")
 
     # --- Stage 3B: the agent loop / TaskPanel end to end ----------------------------------------
-    # No mock-scenario header here (Selenium/Firefox has no equivalent of Playwright's context-wide
-    # request interception, which is how extension/e2e/task-kyc.spec.ts forces one on Chromium) —
+    # No mock-scenario header here — deliberately, even though `force_scenario()` exists below —
     # this exercises MockAdapter's plain default plan instead: type the pre-filled Full name field
     # back into itself, then ask_user. That is a smaller plan than the Chromium checkpoint test, but
     # it is real proof the whole NEW path — consent, planner client, Authority Gate, the content
     # script's EXECUTE_ACTION/PREPARE_ACTION handlers, reacquire(), rehydrate() and verify() —
     # actually runs in Firefox, not just Chromium (CLAUDE.md: a change that only works in one
-    # browser is not done).
+    # browser is not done), through the UNMODIFIED default request path (`_current_scenario` unset,
+    # so the scenario proxy passes every byte through) — this check's own proof that the proxy
+    # introduced below doesn't change ordinary behavior when it isn't armed.
     navigate('kyc.html')
     panel("""const el=document.getElementById('task-input');
       Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype,'value').set
@@ -332,6 +417,163 @@ try:
     task = {'nameRoundTripped': name_value == 'Asha Verma', 'stopped': True}
     assert all(task.values()), task
     record('Agent loop: consent, executor, rehydrate, verify round-trip', json.dumps(task))
+
+    # --- Stage 3B Part II: agent-loop core flows, mirroring the Chromium coverage in
+    # extension/e2e/agent-scenarios.spec.ts and agent-stop.spec.ts — not the whole matrix (that
+    # stays Chromium-only), just the flows CLAUDE.md's "both browsers are supported targets" rule
+    # makes non-negotiable: an L5 approval actually gating a commit, a credential round-trip, a
+    # stale state_token being rejected client-side, and Stop actually aborting in-flight work.
+    # `force_scenario()`/`clear_scenario()` route through the local proxy set up above — the same
+    # deterministic scenarios Chromium's `forceScenario()` uses, here because Firefox has no
+    # per-request header injection of its own.
+
+    # kyc_submit: L5 approval gates the actual commit.
+    force_scenario('kyc_submit')
+    navigate('kyc.html')
+    d.set_context('content')
+    kyc_submit_start = {
+        'name': d.find_element('id', 'full-name').get_attribute('value'),
+        'email': d.find_element('id', 'email').get_attribute('value'),
+        'alreadySubmitted': len(d.find_elements('id', 'kyc-submitted-status')) > 0,
+    }
+    assert kyc_submit_start == {'name': 'Asha Verma', 'email': '', 'alreadySubmitted': False}, kyc_submit_start
+    d.set_context('chrome')
+    # Same span-exceeds-viewport problem Chromium's zoomOut() documents (extension/e2e/fixtures/
+    # task.ts): Full name (top) to Submit (bottom) doesn't fit one screen at this window size
+    # either. Real browser zoom, the same `browser.tabs.setZoom` WebExtension API, fixes it here
+    # exactly as it does on Chromium — this isn't a Chromium-only API.
+    panel("return browser.tabs.query({active:true,currentWindow:true}).then(([tab])=>browser.tabs.setZoom(tab.id,0.67))")
+    d.set_context('content')
+    d.execute_script('window.scrollTo(0,0)')
+    d.set_context('chrome')
+    set_value('#task-input', 'Fill in the form and submit it.', 'HTMLTextAreaElement')
+    select_value('[aria-label="Data type 1"]', 'EMAIL')
+    set_value('[aria-label="Data value 1"]', 'priya@example.test')
+    click_panel('Start')
+    wait(lambda: panel('return !!document.querySelector(\'[aria-label="Task consent"]\')'))
+    click_panel('Continue with selected')
+    wait(lambda: panel('return !!document.querySelector(\'[aria-label="Action approval"]\')'), timeout=30)
+    approval_text = panel('return document.querySelector(\'[aria-label="Action approval"]\').textContent')
+    assert 'L5' in approval_text, approval_text
+    click_panel('Approve')
+    d.set_context('content')
+    wait(lambda: d.find_elements('id', 'kyc-submitted-status'), timeout=20)
+    submitted = len(d.find_elements('id', 'kyc-submitted-status')) > 0
+    d.set_context('chrome')
+    panel("return browser.tabs.query({active:true,currentWindow:true}).then(([tab])=>browser.tabs.setZoom(tab.id,1))")
+    # Submit is now hidden, not gone (same shape as login_credential below), so the task keeps
+    # re-observing/re-proposing rather than reaching 'done' on its own — stop it explicitly so the
+    # next check starts from a genuinely idle panel (the top-level Stop button, not a dialog's
+    # "Stop task", since whether another approval dialog is up yet at this exact instant is a race).
+    click_panel('Stop')
+    wait(lambda: panel('return document.querySelector(\'[data-testid="task-status"]\')?.textContent===\'stopped\''))
+    clear_scenario()
+    assert submitted, {'submitted': submitted}
+    record('Agent loop: kyc_submit — L5 approval gates the commit, form submitted after Approve', json.dumps({'submitted': submitted}))
+
+    # login_credential: credential round-trip through consent, L4 type + L5 commit both approved.
+    force_scenario('login_credential')
+    navigate('login.html')
+    d.set_context('content')
+    login_start = {
+        'password': d.find_element('id', 'password').get_attribute('value'),
+        'dashboardVisible': d.find_element('id', 'dashboard').is_displayed(),
+    }
+    assert login_start == {'password': '', 'dashboardVisible': False}, login_start
+    d.set_context('chrome')
+    set_value('#task-input', 'Sign in and show me the dashboard.', 'HTMLTextAreaElement')
+    click_panel('Start')
+    wait(lambda: panel('return !!document.querySelector(\'[aria-label="Task consent"]\')'))
+    # The credential row only renders because the page's password field puts PASSWORD in this
+    # task's categories — filling it here is the only place the raw password ever comes from.
+    set_value('[aria-label="Credential"]', 'sup3r-s3cr3t-firefox-only', proto='HTMLInputElement')
+    click_panel('Continue with selected')
+    wait(lambda: panel('return !!document.querySelector(\'[aria-label="Action approval"]\')'), timeout=30)
+    type_approval = panel('return document.querySelector(\'[aria-label="Action approval"]\').textContent')
+    assert 'L4' in type_approval, type_approval
+    click_panel('Approve')
+    wait(lambda: panel('return !!document.querySelector(\'[aria-label="Action approval"]\')'), timeout=30)
+    click_approval = panel('return document.querySelector(\'[aria-label="Action approval"]\').textContent')
+    assert 'L5' in click_approval, click_approval
+    click_panel('Approve')
+    d.set_context('content')
+    wait(lambda: d.find_element('id', 'dashboard').is_displayed(), timeout=20)
+    signed_in = 'Signed in successfully' in d.find_element('id', 'dashboard-status').text
+    d.set_context('chrome')
+    # login.html hides the whole form once signed in, so the password field carries no `input_type`
+    # in the next outbound payload at all (extension/scene/index.ts's visible-only rule) — the
+    # scenario's own `next(el for el in payload.elements if el.input_type == "password")` then
+    # finds nothing and returns a clean `fail` plan (NO_PASSWORD_FIELD), which is what actually
+    # ends the task and fires endSession — nothing here stops it explicitly.
+    wait(lambda: panel('return document.querySelector(\'[data-testid="task-status"]\')?.textContent===\'failed\''), timeout=20)
+    login_result = {
+        'signedIn': signed_in,
+        # The actual proof: the raw password is nowhere in what the proxy relayed to the server,
+        # across the WHOLE run, now that the session has genuinely ended.
+        'sessionEnded': len(_session_end_bodies) > 0,
+        'passwordNeverSent': all('sup3r-s3cr3t-firefox-only' not in b for b in _session_end_bodies),
+    }
+    clear_scenario()
+    assert all(login_result.values()), login_result
+    record('Agent loop: login_credential — L4 + L5 both approved, signed in, raw password never left the browser', json.dumps(login_result))
+
+    # stale_state: a mismatched state_token is rejected client-side, never acted on.
+    force_scenario('stale_state')
+    navigate('kyc.html')
+    d.set_context('content')
+    assert d.find_element('id', 'full-name').get_attribute('value') == 'Asha Verma'
+    d.set_context('chrome')
+    set_value('#task-input', 'Fill in my name.', 'HTMLTextAreaElement')
+    select_value('[aria-label="Data type 1"]', 'NAME')
+    set_value('[aria-label="Data value 1"]', 'Priya Sharma')
+    click_panel('Start')
+    wait(lambda: panel('return !!document.querySelector(\'[aria-label="Task consent"]\')'))
+    click_panel('Continue with selected')
+    wait(lambda: panel('return !!document.querySelector(\'[aria-label="Task question"]\')'), timeout=30)
+    click_panel('Stop task')
+    wait(lambda: panel('return document.querySelector(\'[data-testid="task-status"]\')?.textContent===\'stopped\''))
+    d.set_context('content')
+    name_untouched = d.find_element('id', 'full-name').get_attribute('value') == 'Asha Verma'
+    d.set_context('chrome')
+    clear_scenario()
+    assert name_untouched, {'nameUntouched': name_untouched}
+    record('Agent loop: stale_state — mismatched state_token rejected client-side, never acted on', json.dumps({'nameUntouched': name_untouched}))
+
+    # Stop mid-task: aborts promptly, calls endSession with only a session id, leaves nothing behind.
+    force_scenario('kyc_fill')
+    navigate('kyc.html')
+    d.set_context('content')
+    assert d.find_element('id', 'email').get_attribute('value') == ''
+    d.set_context('chrome')
+    set_value('#task-input', 'Fill my name and email, then stop before submitting.', 'HTMLTextAreaElement')
+    select_value('[aria-label="Data type 1"]', 'NAME')
+    set_value('[aria-label="Data value 1"]', 'Priya Sharma')
+    select_value('[aria-label="Data type 2"]', 'EMAIL')
+    set_value('[aria-label="Data value 2"]', 'priya@example.test')
+    _session_end_bodies.clear()
+    click_panel('Start')
+    wait(lambda: panel('return !!document.querySelector(\'[aria-label="Task consent"]\')'))
+    click_panel('Continue with selected')
+    # Stop WHILE the fill is genuinely in flight, not at a natural pause.
+    d.set_context('content')
+    wait(lambda: d.find_element('id', 'full-name').get_attribute('value') != 'Asha Verma', timeout=20)
+    d.set_context('chrome')
+    stop_clicked_at = time.monotonic()
+    click_panel('Stop')
+    wait(lambda: panel('return document.querySelector(\'[data-testid="task-status"]\')?.textContent===\'stopped\''), timeout=3)
+    stop_elapsed = time.monotonic() - stop_clicked_at
+    panel_text = panel('return document.body.innerText')
+    wait(lambda: len(_session_end_bodies) > 0, timeout=5)
+    end_body = json.loads(_session_end_bodies[-1])
+    stop_result = {
+        'stoppedPromptly': stop_elapsed < 3,
+        'noValueLeak': 'Priya Sharma' not in panel_text and 'priya@example.test' not in panel_text,
+        'noStaleDialog': not panel('return !!document.querySelector(\'[role="dialog"]\')'),
+        'cleanEndSessionBody': list(end_body.keys()) == ['session'] and isinstance(end_body.get('session'), str),
+    }
+    assert all(stop_result.values()), stop_result
+    clear_scenario()
+    record('Agent loop: Stop mid-task aborts promptly, calls endSession cleanly, leaves no stale UI', json.dumps(stop_result))
 
     # --- Stage 3B Part II: WebP quality:1 pixel identity (Chromium half: extension/e2e/webp-pixel-identity.spec.ts) ---
     # Measurement, not a regression gate (matches timings.spec.ts's own convention): the pipeline
@@ -382,5 +624,6 @@ try:
 
 finally:
     d.quit()
+    _proxy.shutdown()
     report = ROOT / 'eval/reports/firefox-stage2.5.json'
-    report.write_text(json.dumps({'firefoxVersion': d.capabilities.get('browserVersion'), 'complete': len(results) >= 26, 'results': results}, indent=2) + '\n')
+    report.write_text(json.dumps({'firefoxVersion': d.capabilities.get('browserVersion'), 'complete': len(results) >= 30, 'results': results}, indent=2) + '\n')
