@@ -12,7 +12,7 @@ type Prompt = { kind:'consent'; request:ConsentRequest; resolve:(reply:ConsentRe
   {kind:'approval'; request:ApprovalRequest; resolve:(reply:ApprovalReply)=>void} |
   {kind:'question'; text:string; resolve:(reply:{choice:'retry'|'hint'|'stop';hint?:string})=>void};
 interface DisplayPart { text:string; origins?:string[] }
-const CATEGORIES:Category[]=['NAME','EMAIL','PHONE','ADDRESS','DOB','AADHAAR','PAN','CARD_NUMBER','BANK_ACCOUNT','UPI_ID','VOTER_ID','PASSPORT','DRIVING_LICENCE','ABHA','UAN','CITY','PIN_CODE','PRIVATE_GENERIC'];
+const CATEGORIES:Category[]=['NAME','EMAIL','PHONE','ADDRESS','DOB','AADHAAR','PAN','CARD_NUMBER','BANK_ACCOUNT','UPI_ID','VOTER_ID','PASSPORT','DRIVING_LICENCE','ABHA','UAN','CITY','PIN_CODE','FINANCIAL_VALUE','PRIVATE_GENERIC'];
 
 /** Values and prompts live in this document only. Model text is rendered through React text nodes. */
 export function TaskPanel() {

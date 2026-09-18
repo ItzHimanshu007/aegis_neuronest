@@ -4,7 +4,14 @@ export type TaskState = typeof TASK_STATES[number];
 const NEXT: Record<TaskState, readonly TaskState[]> = {
   idle: ['observing'], consenting: ['observing', 'checking'], observing: ['consenting', 'planning', 'checking', 'verifying', 'recovering'],
   planning: ['checking', 'recovering'], checking: ['awaiting_approval', 'executing', 'verifying', 'observing', 'asking_user', 'done', 'failed', 'recovering'],
-  awaiting_approval: ['checking', 'executing', 'recovering', 'consenting'], executing: ['observing', 'verifying', 'recovering'],
+  // 'observing': after an approval, runAgentLoop.ts re-observes before re-checking the action —
+  // the page may have changed while the human was deciding, and it must never execute from a
+  // stale snapshot. Missing here, this transition threw on every single approved action, which
+  // crashed the whole task to 'failed' right after Approve — found by actually driving an L5
+  // approval through the real agent loop (Stage 3B Part II), not by a unit test alone: the pure
+  // reducer's own tests exercised 'awaiting_approval' only via 'checking', never via the
+  // observe-after-approval path runAgentLoop.ts actually takes.
+  awaiting_approval: ['checking', 'executing', 'recovering', 'consenting', 'observing'], executing: ['observing', 'verifying', 'recovering'],
   verifying: ['checking', 'observing', 'recovering', 'done'], recovering: ['observing', 'asking_user', 'failed'],
   asking_user: ['observing', 'failed', 'done'], done: [], failed: [], stopped: [],
 };

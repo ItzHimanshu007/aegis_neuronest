@@ -21,6 +21,7 @@ export default defineConfig({
         piiZoo: resolve(rootDir, 'pii-zoo.html'),
         search: resolve(rootDir, 'search.html'),
         injection: resolve(rootDir, 'injection.html'),
+        login: resolve(rootDir, 'login.html'),
       },
     },
   },

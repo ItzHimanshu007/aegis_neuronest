@@ -333,7 +333,54 @@ try:
     assert all(task.values()), task
     record('Agent loop: consent, executor, rehydrate, verify round-trip', json.dumps(task))
 
+    # --- Stage 3B Part II: WebP quality:1 pixel identity (Chromium half: extension/e2e/webp-pixel-identity.spec.ts) ---
+    # Measurement, not a regression gate (matches timings.spec.ts's own convention): the pipeline
+    # still ships PNG, so a non-identical result here is an expected, already-acted-on finding
+    # (see docs/architecture.md and eval/reports/stage3-tasks.md), not a suite failure to fix.
+    webp_rows = []
+    webp_all_identical = True
+    for page_name in ['kyc.html', 'pii-zoo.html']:
+        navigate(page_name)
+        observe(sanitize=True)
+        for label, prop in [('raw', 'rawImageDataUrl'), ('redacted', 'redactedImageDataUrl')]:
+            outcome = panel(f"""return (async()=>{{
+              const url = window.__aegisLastProcessResult.preview.{prop};
+              if (!url) return {{missing:true}};
+              const decode = async (u) => {{
+                const img = new Image(); img.src = u; await img.decode();
+                const c = new OffscreenCanvas(img.naturalWidth, img.naturalHeight);
+                const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0);
+                const d = ctx.getImageData(0, 0, c.width, c.height);
+                return {{w: c.width, h: c.height, data: d.data}};
+              }};
+              const source = await decode(url);
+              const sourceCanvas = new OffscreenCanvas(source.w, source.h);
+              sourceCanvas.getContext('2d').putImageData(new ImageData(source.data, source.w, source.h), 0, 0);
+              const pngBlob = await sourceCanvas.convertToBlob({{type:'image/png'}});
+              const webpBlob = await sourceCanvas.convertToBlob({{type:'image/webp', quality:1}});
+              const webpUrl = URL.createObjectURL(webpBlob);
+              const decoded = await decode(webpUrl);
+              URL.revokeObjectURL(webpUrl);
+              let mismatches = 0, maxDelta = 0;
+              if (decoded.w === source.w && decoded.h === source.h) {{
+                for (let i = 0; i < source.data.length; i++) {{
+                  const delta = Math.abs(source.data[i] - decoded.data[i]);
+                  if (delta !== 0) {{ mismatches++; maxDelta = Math.max(maxDelta, delta); }}
+                }}
+              }} else {{ mismatches = -1; }}
+              return {{width: source.w, height: source.h, decodedWidth: decoded.w, decodedHeight: decoded.h,
+                total: source.data.length, mismatches, maxDelta, pngBytes: pngBlob.size, webpBytes: webpBlob.size}};
+            }})()""")
+            if outcome.get('missing'):
+                continue
+            identical = outcome['mismatches'] == 0 and outcome['decodedWidth'] == outcome['width'] and outcome['decodedHeight'] == outcome['height']
+            webp_all_identical = webp_all_identical and identical
+            ratio = outcome['webpBytes'] / outcome['pngBytes'] if outcome['pngBytes'] else float('nan')
+            webp_rows.append(f"{page_name}/{label}: identical={identical} {outcome['width']}x{outcome['height']} mismatches={outcome['mismatches']}/{outcome['total']} maxDelta={outcome['maxDelta']} png={outcome['pngBytes']} webp={outcome['webpBytes']} ratio={ratio:.3f}")
+    record('WebP quality:1 pixel identity (raw + redacted, kyc.html + pii-zoo.html) — measurement only, see notes', '; '.join(webp_rows))
+    print('[WEBP-IDENTITY][firefox][table]\n' + '\n'.join(webp_rows), flush=True)
+
 finally:
     d.quit()
     report = ROOT / 'eval/reports/firefox-stage2.5.json'
-    report.write_text(json.dumps({'firefoxVersion': d.capabilities.get('browserVersion'), 'complete': len(results) >= 25, 'results': results}, indent=2) + '\n')
+    report.write_text(json.dumps({'firefoxVersion': d.capabilities.get('browserVersion'), 'complete': len(results) >= 26, 'results': results}, indent=2) + '\n')

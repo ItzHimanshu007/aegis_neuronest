@@ -173,7 +173,15 @@ export class TaskRunner {
       main: while(!this.signal.aborted) {
         if(this.budget()){if(!await this.recover('BUDGET_EXHAUSTED')) break;}
         this.steps++;
-        await this.observe(); await this.consent();
+        // Same messaging race as the post-execution observe() below, but at the top of a replan:
+        // caught once, in the full e2e suite (never in isolation, where the content script isn't
+        // under the load of 50+ preceding tests' tabs) — kyc_submit's Deny path threw here on its
+        // third replan and fell straight to 'failed' via the outer catch, with no approval dialog
+        // ever shown. Recoverable the same way: a transient runtime-messaging error is not the
+        // model's fault, so it should retry through recover(), not kill the task.
+        try {await this.observe();}
+        catch {this.signal.throwIfAborted();if(await this.recover('EXEC_FAILED'))continue main;break main;}
+        await this.consent();
         // Consent may have added a credential token; re-seal before the first send on this origin.
         this.move('planning');this.modelCalls++;this.emit();
         let response;
@@ -243,7 +251,16 @@ export class TaskRunner {
           catch {this.signal.throwIfAborted();if(await this.recover('EXEC_FAILED'))continue main;break main;}
           const executionMs=performance.now()-executionStart;
           if(!execution.ok){if(await this.recover((execution.code??'EXEC_FAILED') as FailureCode))continue main;break main;}
-          await this.observe(true);this.move('verifying');const verifyStart=performance.now();
+          // The action itself may have navigated the page (a form-submitting Enter, a real
+          // link/submit click) — the content script instance the previous capture came from can
+          // be destroyed mid-navigation, which throws a generic runtime-messaging error, not one
+          // of the FailureCode-shaped errors executeLocal() itself throws. Uncaught, that crashed
+          // the whole task instead of recovering: found by driving a real Enter-submitted search
+          // form through the agent loop (Stage 3B Part II) — kyc_submit's own click never hit
+          // this because it calls preventDefault() and never actually navigates.
+          try {await this.observe(true);}
+          catch {this.signal.throwIfAborted();if(await this.recover('EXEC_FAILED'))continue main;break main;}
+          this.move('verifying');const verifyStart=performance.now();
           const result=verify(action.expect,this.session.scene!,action,execution);
           const pass=result.verdict==='PASS'||(result.verdict==='UNVERIFIABLE'&&Number(authority.level.slice(1))<3);
           const code=result.verdict==='PASS'?undefined:result.code;

@@ -124,6 +124,37 @@ def test_kyc_fill_prefers_a_task_supplied_token_over_the_page_echo(kyc_payload):
     assert fill.text == task_token
 
 
+def test_fill_actions_skip_an_already_correct_field_the_task_did_not_ask_about(kyc_payload):
+    # E12 (Full name) already has a value in the fixture and the task text below carries no NAME
+    # token — a real model has no reason to retype it, and re-proposing it anyway is exactly what
+    # caused a real bug: on a page taller than one viewport, typing a near-top field the task
+    # doesn't care about can scroll a later click target (kyc_submit's Submit button) out of frame
+    # before the client ever gets to it, and once genuinely retyped, repeating the identical
+    # no-op action forever trips the loop/no-progress detector before later actions in the same
+    # plan run. Only EMAIL (empty, so it needs SOME value regardless of task data) should still
+    # appear.
+    payload = PayloadV2.model_validate({**kyc_payload, "task": "Submit the verification form"})
+    name = next(el for el in payload.elements if el.label == "Full name")
+    email = next(el for el in payload.elements if el.label == "Email address")
+    result = run_scenario("kyc_submit", payload)
+    targeted = {a.target.eid for a in result.plan if a.target}
+    assert name.eid not in targeted
+    assert email.eid in targeted
+
+
+def test_fill_actions_still_retype_a_field_the_task_explicitly_supplies(kyc_payload):
+    # The skip above must not swallow a task that genuinely wants a DIFFERENT name than what's on
+    # the page — only "already correct AND the task never asked" is skipped.
+    task_token = "[[PII:NAME:zzzzzzzz]]"
+    payload = PayloadV2.model_validate(
+        {**kyc_payload, "task": f"Submit the verification form\nTask data: {task_token}"}
+    )
+    name = next(el for el in payload.elements if el.label == "Full name")
+    result = run_scenario("kyc_fill", payload)
+    fill = next(a for a in result.plan if a.target and a.target.eid == name.eid)
+    assert fill.text == task_token
+
+
 def test_stale_state_does_not_echo_the_state_token(payload):
     # The whole point of this scenario: checkPlan must reject it as STALE_PLAN.
     assert run_scenario("stale_state", payload).state_token != payload.state_token

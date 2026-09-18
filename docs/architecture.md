@@ -65,11 +65,43 @@ untagged rather than marked wrongly.
 
 ## Image encoding
 
-The sanitized image is lossless PNG. Lossless keeps mask verification trivially sound — the pixels
-`verifyMasks()` samples are the pixels that were drawn — at roughly 3x the bytes of WebP. Measured
-on Stage 3A captures, WebP q85 is 0.27-0.31x of PNG and WebP **lossless** is 0.28-0.32x, so the
-saving does not actually require giving up bit-exact pixels. Stage 8 owns that change; see
-`shared/config.ts`.
+The sanitized image is lossless PNG, and stays that way: Stage 3B Part II re-measured the
+lossless-WebP switch this doc used to flag as a Stage 8 candidate, by encoding real `kyc.html` and
+`pii-zoo.html` captures with `convertToBlob({ type: 'image/webp', quality: 1 })` and diffing every
+channel of the decoded result against the source, in both browsers, on both the raw screenshot and
+the actual redacted image `seal()` ships (`extension/e2e/webp-pixel-identity.spec.ts`,
+`scripts/firefox/e2e.py`'s "WebP quality:1 pixel identity" check).
+
+**Chromium** was bit-exact on every image (0 mismatched channels). **Firefox was not**: the
+*redacted* image (the one that actually ships) came back with ~1,260 of 6,451,200 channels
+differing by up to 6/255 — small, but not the zero this pipeline's whole soundness argument
+(`verifyMasks()` samples the exact bytes that ship) requires. Firefox's *raw* screenshot was
+bit-exact, which is the misleading part: measuring only the raw capture — plausibly what an
+earlier "0.28-0.32x lossless" measurement did — would have missed the one case that matters.
+
+Size did not favour switching either, even ignoring the Firefox result. The earlier "roughly 3x"
+(0.28-0.32x lossless) claim held only for Firefox's *raw* screenshot ratio (0.25-0.29x, measured
+this round); on the *redacted* image — small solid-fill rects on a mostly-uniform background,
+which PNG already compresses well — lossless WebP was 0.37-0.44x on Firefox and, on Chromium,
+**larger than PNG** (0.88-1.52x). Measured sizes (bytes, `quality: 1` WebP vs PNG, current
+`AEGIS_CONFIG` capture size):
+
+| Page | Image | Browser | PNG | WebP (lossless) | Ratio | Pixel-identical |
+| --- | --- | --- | ---: | ---: | ---: | :-: |
+| kyc.html | raw | Chromium | 149,465 | 190,814 | 1.28x | yes |
+| kyc.html | redacted | Chromium | 68,419 | 103,810 | 1.52x | yes |
+| kyc.html | raw | Firefox | 171,643 | 49,868 | 0.29x | yes |
+| kyc.html | redacted | Firefox | 115,358 | 50,610 | 0.44x | **no** (1,260/6,451,200 channels, maxΔ=6) |
+| pii-zoo.html | raw | Chromium | 245,838 | 234,666 | 0.96x | yes |
+| pii-zoo.html | redacted | Chromium | 128,382 | 112,792 | 0.88x | yes |
+| pii-zoo.html | raw | Firefox | 272,753 | 67,848 | 0.25x | yes |
+| pii-zoo.html | redacted | Firefox | 207,095 | 76,920 | 0.37x | **no** (1,256/6,451,200 channels, maxΔ=6) |
+
+PNG stays. Conditions: this machine, `AEGIS_CONFIG`'s default capture size, Chromium (Playwright's
+bundled build) and Firefox 156.0/geckodriver 0.37.1, one run each — not a generalization claim,
+and not a browser-version guarantee (a future Firefox WebP encoder could change this). If encoding
+is revisited, it needs a real fallback story for Firefox landing on a byte-identical encoder later
+than Chromium, not just a repeat of this measurement.
 
 ## Consent and recovery
 

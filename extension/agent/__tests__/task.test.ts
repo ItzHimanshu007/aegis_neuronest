@@ -7,12 +7,24 @@ import { consentRequest } from '../../agentHost/task/consent';
 import { PrivacySession } from '../../agentHost/session';
 import { TokenVault } from '../../privacy/vault';
 
-const path = ['idle','observing','consenting','observing','planning','checking','awaiting_approval','executing','observing','verifying','checking','verifying','done'] as const;
+// Matches runAgentLoop.ts's real post-approval sequence: awaiting_approval -> observing (a fresh
+// capture, "a human may have changed the page while deciding") -> checking (re-check the action
+// against it) -> executing, not straight to executing.
+const path = ['idle','observing','consenting','observing','planning','checking','awaiting_approval','observing','checking','executing','observing','verifying','checking','verifying','done'] as const;
 describe('task state machine',()=>{
   it('runs the consent, approval, execution and verification path',()=>{
     let state:typeof TASK_STATES[number]='idle';
     for(const next of path.slice(1)) state=taskReducer(state,next);
     expect(state).toBe('done');
+  });
+  it('re-observes after an approval before re-checking the action — runAgentLoop.ts\'s actual sequence, not just a checking round-trip',()=>{
+    // Regression: runAgentLoop.ts calls observe(true) (which itself calls move('observing'))
+    // directly from 'awaiting_approval' — "a human may have changed the page while deciding,
+    // never execute from a stale snapshot" — not move('checking') first. That transition was
+    // missing from NEXT, so approving ANY L4/L5 action threw and crashed the whole task to
+    // 'failed' immediately after Approve. Found by actually driving an approval through the real
+    // agent loop (Stage 3B Part II); the `path` test below predates this and never exercised it.
+    expect(taskReducer('awaiting_approval','observing')).toBe('observing');
   });
   it.each(TASK_STATES.filter(s=>!['done','failed','stopped'].includes(s)))('Stop interrupts %s',state=>expect(taskReducer(state,'stopped')).toBe('stopped'));
   it.each(['done','failed','stopped'] as const)('terminal %s cannot restart',state=>expect(()=>taskReducer(state,'observing')).toThrow());

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aegis Demo &mdash; Sign in</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header>
+      <p class="badge">DEMO &mdash; SYNTHETIC DATA. No field on this page identifies a real person.</p>
+    </header>
+
+    <main class="page">
+      <h1>Sign in</h1>
+      <p><a href="/index.html">&larr; back</a></p>
+      <p>
+        Exercises credential handling end to end: the password never comes from the page (the user
+        types it into the Aegis panel at task start), the "Sign in" submit is a commit (L5) like any
+        other, and signing in reveals a dashboard with an account balance &mdash; the thing a task
+        like "sign in and tell me my balance" actually needs.
+      </p>
+
+      <form id="login-form" autocomplete="off">
+        <div class="field">
+          <label for="username">Username</label>
+          <input id="username" name="username" type="text" value="asha.verma" data-gt="PRIVATE_GENERIC" />
+        </div>
+
+        <div class="field">
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="new-password" value="" placeholder="never pre-filled" />
+        </div>
+
+        <button id="sign-in" type="submit">Sign in</button>
+        <p id="login-error" class="field-error" hidden>Incorrect password.</p>
+      </form>
+
+      <section id="dashboard" hidden>
+        <h2>Account dashboard</h2>
+        <table class="account-summary">
+          <caption>Account summary</caption>
+          <tbody>
+            <tr>
+              <th scope="row">Signed in as</th>
+              <td id="dashboard-user">asha.verma</td>
+            </tr>
+            <tr>
+              <th scope="row">Account number</th>
+              <td>xxxx-xxxx-4471</td>
+            </tr>
+            <tr>
+              <th scope="row">Balance</th>
+              <td id="dashboard-balance">&#8377; 42,318.00</td>
+            </tr>
+          </tbody>
+        </table>
+        <p id="dashboard-status">Signed in successfully.</p>
+      </section>
+    </main>
+
+    <script type="module" src="/src/login.ts"></script>
+  </body>
+</html>

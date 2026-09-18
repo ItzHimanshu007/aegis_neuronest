@@ -13,8 +13,11 @@
 import { consumeSealed, isRegisteredSealed, sha256Hex, type SanitizedPayload } from '../privacy/sealedRegistry';
 import type { HealthResult } from '../shared/messages';
 
-// TODO(stage-3): read from WXT env / import.meta.env.WXT_SERVER_URL properly once the build
-// pipeline threads it through; default matches the Stage 0 server dev command.
+// Read from a `WXT_`-prefixed env var — WXT sets Vite's `envPrefix` to `['VITE_', 'WXT_']`, so
+// any `WXT_SERVER_URL` in extension/.env (see .env.example) reaches `import.meta.env` at build
+// time with no extra config; verified empirically (Stage 3B Part II) by building with an
+// override and confirming the built bundle contains it. Falls back to the Stage 0 server dev
+// command's port when unset, which covers ordinary development with no .env file at all.
 const SERVER_URL = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.WXT_SERVER_URL ?? 'http://localhost:8000';
 
 export interface SendResult {
