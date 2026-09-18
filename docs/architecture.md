@@ -119,6 +119,103 @@ Unknown commit-like actions default to L5. Duplicate identity uncertainty blocks
 The remote agent can request context with a reason and a kind, never hidden/redacted EIDs or region
 identifiers. Only the local router can choose a minimum policy-compliant expansion under budget.
 
+Consent is scoped **per origin**, not per task: `TaskRunner` keeps a `Map<origin, Set<Category>>`
+(`this.grants`), and a task that touches a second origin — a cross-origin iframe, a real navigation
+mid-task — gets asked again for that origin specifically before anything on it can be acted on.
+Nothing about a grant on origin A implicitly extends to origin B; this falls directly out of the map
+being keyed by origin, not out of any check that has to remember to look one up.
+
+## Task loop state machine
+
+`extension/agent/runAgentLoop.ts` (`TaskRunner`) drives one task through the pure reducer in
+`extension/agentHost/task/state.ts`; illegal transitions throw rather than being silently
+coerced, which is what caught a real bug this stage (see below). This is the common path, not
+every edge in the transition table — `state.ts` is the source of truth.
+
+```mermaid
+stateDiagram-v2
+    [*] --> idle
+    idle --> observing
+    observing --> consenting: new origin, no grant yet
+    consenting --> observing
+    observing --> planning
+    planning --> checking: "/v1/plan response"
+    checking --> executing: PASS, no approval needed
+    checking --> awaiting_approval: PASS, L5 or ungranted category
+    awaiting_approval --> executing: Approve
+    awaiting_approval --> observing: re-observe before re-checking
+    executing --> verifying
+    verifying --> checking: next action in the same plan
+    verifying --> observing: plan exhausted / NEW_SCREEN
+    verifying --> done: verified 'done'
+    checking --> done: 'answer' / 'extract'
+    checking --> failed: 'fail' action
+    checking --> recovering: any FailureCode
+    awaiting_approval --> recovering: Skip
+    verifying --> recovering: FAIL, or LOOP_DETECTED / NO_PROGRESS
+    recovering --> observing: silent replan, budget remains
+    recovering --> asking_user: streak > MAX_REPLANS, or budget exhausted
+    asking_user --> observing: user retries or gives a hint
+    asking_user --> failed: budget exhausted after asking
+    recovering --> failed: budget exhausted, decide() says ask_user
+    done --> [*]
+    failed --> [*]
+```
+
+Stop is reachable from every non-terminal state (`taskReducer` special-cases `next === 'stopped'`
+regardless of the current state) and always wins: it aborts the in-flight step's signal, clears the
+vault and task text, and calls `endSession` — there is no state this can leave a task stuck in.
+
+**A bug this exact diagram exists because of.** `awaiting_approval -> observing` was missing from
+the transition table until Stage 3B Part II: `runAgentLoop.ts` re-observes after every approval
+(the human may have changed the page while deciding, and it must never execute from a stale
+snapshot), but the reducer had no path for that specific transition, so `taskReducer` threw, and
+the loop's own top-level catch turned that into a hard `failed` — on the very first approved L4 or
+L5 action of *any* task. It survived review and the reducer's own unit tests because those tests
+exercised `awaiting_approval` only via `checking` (the "reject" edge), never via the
+observe-after-approval edge the real loop actually takes. Found by driving an approval through the
+real extension in a real browser, not by reasoning about the reducer in isolation — the same reason
+this diagram is checked against `state.ts` rather than the other way around.
+
+## Executor limitations
+
+`extension/agent/executor.ts`'s own docstring: *"Synthetic events are `isTrusted=false`; no
+debugger access."* Two concrete consequences:
+
+- Every event the executor dispatches (`click`, `pointerdown`/`up`, `input`, `change`, `keydown`
+  et al.) is a synthetic `Event`/`PointerEvent`/`KeyboardEvent`, not a real OS-level input event.
+  Page script that branches on `event.isTrusted` can distinguish Aegis's actions from a real user's,
+  and some browser-gated behaviors (a native `<input type=file>` picker, a payment-sheet API, a
+  popup blocked without a trusted gesture) simply will not fire from a synthetic event at all — not
+  a bypass Aegis chooses not to use, a capability the browser itself withholds from any extension
+  that isn't using `chrome.debugger` (which Aegis deliberately does not use; AGENTS.md invariant).
+- `EXEC_UNTRUSTED_REJECTED` (`verifier.ts`) is the verifier's own name for the resulting failure
+  mode: an `expect` that doesn't hold and `execution.changed === false` — the page visibly declined
+  to react to the synthetic event, rather than the action targeting the wrong thing. Recovery
+  treats this like any other verify failure (replan, then ask), not a special case, but it is worth
+  reading correctly when it shows up: it usually means the control needs a real user gesture, not
+  that the plan or the target was wrong.
+
+## Verifier result codes
+
+`extension/agent/verifier.ts -> verify()` returns one of three verdicts. `PASS` needs no code.
+`UNVERIFIABLE` (code `UNVERIFIABLE`) means the action carried no `expect` the verifier knows how to
+check — treated as a pass only below L3, since a low-authority action has little to verify and
+blocking progress on it would cost more than the small risk. `FAIL` carries one of:
+
+| Code | Meaning |
+| --- | --- |
+| `VALUE_MISMATCH` | A `type` action's own execution reported `match: false` — what actually landed in the field doesn't match what was sent, checked before `expect` is even consulted. |
+| `EXPECT_FAILED` | One or more of the action's `expect` conditions (`visible`, `enabled`, `has_value`, `modal_open`, `text_present`, `url_path_prefix`, `no_validation_error`) evaluated false against the current scene. |
+| `EXEC_UNTRUSTED_REJECTED` | Same failed conditions, but `execution.changed === false` — see "Executor limitations" above. |
+
+These are verifier-internal; the broader set of `FailureCode`s recovery and the Authority Gate deal
+with (`TARGET_MISSING`, `FP_MISMATCH`, `TOKEN_TYPE_MISMATCH`, `CONTEXT_DENIED`, `LOOP_DETECTED`,
+...) lives in `agent/checks.ts` and `agent/recovery.ts`, enumerated in full in
+`shared/schema/payload.v2.d.ts`'s `HistoryEntry['code']` union — every one of the seven Stage 3A
+adversarial scenarios maps to a specific code there, re-verified through the full agent loop in
+`extension/e2e/agent-malicious.spec.ts` and recorded in `eval/reports/stage3-tasks.md`.
+
 ## Runtime and trust boundary
 
 The privacy pipeline, vault and session live in the side panel/sidebar document, never in Chrome's

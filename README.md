@@ -8,23 +8,32 @@ only ever sees tokens and redacted pixels, and only ever proposes actions — th
 reacquires, re-hydrates and executes them. See [`docs/architecture.md`](docs/architecture.md) for
 the full design and [`AGENTS.md`](AGENTS.md) for the invariants every change must respect.
 
-This repository is currently at **Stage 3A** (see [`docs/STAGES.md`](docs/STAGES.md)). Stages 0-2
-built the repo, the observation pipeline and the privacy core; Stage 2.5 added the Privacy Scene
-Graph, stable element IDs, state tokens, schema v2, the authority classifier and Firefox bring-up.
+This repository is currently at **Stage 3B, complete** (see [`docs/STAGES.md`](docs/STAGES.md)).
+Stages 0-2 built the repo, the observation pipeline and the privacy core; Stage 2.5 added the
+Privacy Scene Graph, stable element IDs, state tokens, schema v2 and Firefox bring-up; Stage 3A
+added the Privacy Set-of-Marks, the server reasoning adapter and deterministic mock scenarios.
 
-Stage 3A adds the pieces the agent loop will call into:
+Stage 3B adds the agent loop itself:
 
-- a **Privacy Set-of-Marks** — each outbound element's EID drawn on the sanitized image, never
-  inside a mask, so the model can name what it can see;
-- a **server reasoning adapter** for any OpenAI-compatible endpoint with image input, with schema
-  validation, a single repair pass and server-side grounding checks;
-- deterministic **mock scenarios**, including adversarial ones with a test recording which layer
-  refuses each;
-- a **model probe** that measures a candidate endpoint against this pipeline.
+- **consent and credential UI**, scoped per origin, with a separate row for any password a task
+  genuinely needs (typed once into the panel, never read back from the page);
+- the **agent loop** (`extension/agent/runAgentLoop.ts`) — observe, plan, gate, execute, verify,
+  recover, repeat — driving a pure task-lifecycle state machine (see
+  [`docs/architecture.md`](docs/architecture.md)'s state diagram);
+- **reacquisition and re-hydration** — every action is re-found by EID/fingerprint immediately
+  before it runs, and a token resolves to its real value only inside a `type` action, into a
+  type-matched field, on a consented origin;
+- the **Authority Gate**, **executor**, **postcondition verifier** and **recovery** (silent replan,
+  then ask the user, never more than a bounded number of times);
+- every Stage 3A adversarial scenario re-run through this *entire* loop, not just the schema layer,
+  recording which client-side check actually stops each one
+  (`extension/e2e/agent-malicious.spec.ts`, `eval/reports/stage3-tasks.md`);
+- the same core flows proven again in real Firefox (`scripts/firefox/e2e.py`,
+  [`docs/manual-test-firefox.md`](docs/manual-test-firefox.md)).
 
 Everything the extension observes is **local only** — branded `LocalOnly<T>` (see
 [`extension/observe/types.ts`](extension/observe/types.ts)) and provably unable to reach
-`net/network.ts`. The agent loop, executor and consent UI land in Stage 3B.
+`net/network.ts`.
 
 **Where the privacy pipeline runs matters.** The detection cascade, the policy engine and the token
 vault all live in the **side panel document**, not the background service worker: Chrome can
@@ -63,10 +72,21 @@ Serves on `http://localhost:8000`. `GET /health` and `POST /v1/plan` are availab
 Copy `server/.env.example` to `server/.env` and set `AEGIS_ADAPTER=openai_compat`. The default
 there points at a local Ollama (`AEGIS_LLM_BASE_URL=http://localhost:11434/v1`,
 `AEGIS_LLM_MODEL=qwen2.5vl:7b`) — see [`eval/reports/model-probe-qwen2.5vl-7b.md`](eval/reports/model-probe-qwen2.5vl-7b.md)
-for its measured numbers. To use a hosted open-weight vision endpoint instead (faster/more
-reliable, e.g. for a live demo recording), point the same three variables at it —
-`AEGIS_LLM_BASE_URL` to its OpenAI-compatible base URL, `AEGIS_LLM_MODEL` to its model id, and
-`AEGIS_LLM_API_KEY` to your key — no code change required.
+for single-call numbers (schema validity, grounding, latency) and
+[`eval/reports/stage3-tasks.md`](eval/reports/stage3-tasks.md) for two full multi-step tasks run
+against it end to end through the real agent loop. On ordinary local hardware this model is slow
+(measured p50 ≈ 43s, p95 ≈ 88s **per model call**, so a several-step task takes real minutes) — set
+expectations accordingly before driving a live demo through it. To use a hosted open-weight vision
+endpoint instead (faster/more reliable, e.g. for a live demo recording), point the same three
+variables at it — `AEGIS_LLM_BASE_URL` to its OpenAI-compatible base URL, `AEGIS_LLM_MODEL` to its
+model id, and `AEGIS_LLM_API_KEY` to your key — no code change required.
+
+For deterministic, instant responses instead of a real model — what every e2e test in this repo
+uses — leave `AEGIS_ADAPTER=mock` (the default) and send `X-Aegis-Mock-Scenario: <name>` on a
+`POST /v1/plan` request. See `server/app/vlm/mock_scenarios.py` for the full list (`kyc_fill`,
+`kyc_submit`, `login_credential`, `banner_first`, `answer_balance`, `stale_state`, `loop`,
+`impossible`, `search_enter`, `form_enter`, and seven `evil_*` adversarial ones) and
+`extension/e2e/fixtures/task.ts -> forceScenario()` for how the Chromium suite drives it.
 
 ### Demo portal (Vite)
 
@@ -80,6 +100,10 @@ Serves on `http://localhost:5174`. **All data on these pages is synthetic** — 
 | Page | What it exercises |
 | ---- | ----------------- |
 | `/kyc.html` | Synthetic KYC form (Aadhaar, PAN, password, photo/ID placeholders). `?banner=1` adds a cookie banner over Submit |
+| `/login.html` | Username + password + Sign in, leading to a dashboard — credential handling end to end |
+| `/search.html` | A real search box (Enter → GET, L2, no approval) next to a look-alike transfer form (Enter → POST, L5, always gated) |
+| `/pii-zoo.html` | Every PII category in one page, plus a canvas, an image, a cross-origin iframe region, planted fake token strings, and a field that mutates mid-capture |
+| `/injection.html` | Planted prompt-injection text (a fake system note, an instruction inside a label, 1px text, off-screen text) around an ordinary "save a draft" task |
 | `/calibration.html` | Coloured squares at known positions — the screenshot/coordinate alignment gate |
 | `/shadow.html` | Form fields inside open **and closed** shadow roots |
 | `/frames.html` | A same-origin iframe and a cross-origin one (needs `pnpm portal:alt`) |
