@@ -101,12 +101,19 @@ export interface SealResult {
  * from page content or task text; they are generated locally by the extension's own session,
  * capture and state-token layers, and PII shape-matching a random identifier is only ever a false
  * positive. (Other opaque identifiers — `fp`, `eid` — share the same risk in principle but are
- * unmeasured; this exclusion covers only the field this incident actually reproduced with.)
+ * unmeasured; this exclusion covers only the fields this has actually reproduced with.)
+ *
+ * `redactions[].rid`/`visual_regions[].rid` (`${capture_id}-${counter}-${suffix}`, scene/index.ts)
+ * reproduced the identical failure (Stage 3B Part II, e2e/probe-fixtures.spec.ts, once in dozens
+ * of runs): a rid landing on 12 consecutive digits, matching AADHAAR's shape purely by chance. Same
+ * reasoning as capture_id — never derived from page content, matched by path suffix rather than one
+ * exact path per array index since an array can hold any number of redactions.
  */
 const PROTOCOL_ENVELOPE_PATHS = new Set(['$.session', '$.capture_id', '$.schema', '$.state_token', '$.mode']);
+const OPAQUE_ID_SUFFIX = /\.rid$/;
 function* walkStrings(value: unknown, path = '$'): Generator<{ path: string; value: string }> {
   if (typeof value === 'string') {
-    if (path === '$.image' || PROTOCOL_ENVELOPE_PATHS.has(path)) return;
+    if (path === '$.image' || PROTOCOL_ENVELOPE_PATHS.has(path) || OPAQUE_ID_SUFFIX.test(path)) return;
     yield { path, value };
   } else if (Array.isArray(value)) {
     for (const [i, item] of value.entries()) yield* walkStrings(item, `${path}[${i}]`);

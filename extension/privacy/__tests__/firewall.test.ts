@@ -171,6 +171,17 @@ describe('seal: check 2 — rule scan', () => {
     });
     await expect(seal(draft, makeContext())).resolves.toBeDefined();
   });
+
+  it('never rejects an opaque redaction/region rid, even when it happens to look like PII', async () => {
+    // Stage 3B Part II: reproduced for real as an e2e flake, same class as the capture_id case
+    // above but for `redactions[].rid` — `${capture_id}-${counter}-${suffix}` (scene/index.ts) is
+    // just as capable of landing on a 12-digit run by chance, and is just as opaque (never derived
+    // from page content).
+    const draft = makeDraft({
+      redactions: [{ rid: '234567890124', kind: 'FILL', type: 'AADHAAR', bbox: [0, 0, 1, 1] }],
+    });
+    await expect(seal(draft, makeContext())).resolves.toBeDefined();
+  });
 });
 
 describe('seal: check 3 — known-value leak', () => {

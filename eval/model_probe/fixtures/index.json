@@ -82,7 +82,7 @@
     "task": "What phone number is shown on this page?",
     "som": true,
     "hasImage": true,
-    "bytes": 181580,
+    "bytes": 181460,
     "goldEid": null,
     "goldLabel": null,
     "goldAction": "answer"
