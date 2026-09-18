@@ -71,7 +71,7 @@
     "task": "Save a draft of this ticket",
     "som": true,
     "hasImage": true,
-    "bytes": 232458,
+    "bytes": 232774,
     "goldEid": "E5",
     "goldLabel": "Save draft",
     "goldAction": "click"
@@ -82,7 +82,7 @@
     "task": "What phone number is shown on this page?",
     "som": true,
     "hasImage": true,
-    "bytes": 181460,
+    "bytes": 181440,
     "goldEid": null,
     "goldLabel": null,
     "goldAction": "answer"

@@ -2,7 +2,7 @@
 
 **Definition:** a value labelled with a sensitive type is positive even when its checksum fails (probable typo). Unlabelled near-misses are negatives.
 
-Measured 2026-09-18T11:44:17.052Z on Chromium 153.0.8010.12, balanced mode, DOM-only cascade: 93 annotations (59 positives, 34 negatives), 12 overlapping viewport captures of the synthetic pii-zoo.html. No vision, OCR or NER.
+Measured 2026-09-18T12:24:56.991Z on Chromium 153.0.8010.12, balanced mode, DOM-only cascade: 93 annotations (59 positives, 34 negatives), 12 overlapping viewport captures of the synthetic pii-zoo.html. No vision, OCR or NER.
 
 Matching uses target EID geometry for fields/media, and block geometry plus exact normalized span/value containment for text. Each (annotation index, category) is counted once across captures. A wrong category is both an FP for that category and an FN for the expected one; detections outside annotated regions are excluded. Side channels are tested separately by leakage tests. There is no category-count TP proxy.
 
