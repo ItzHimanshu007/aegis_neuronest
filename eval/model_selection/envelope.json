@@ -1,0 +1,17 @@
+{
+  "schema": "aegis-model-selection-envelope/1",
+  "source": "User-adopted proxy, 2026-09-18; SIH26171 states no numeric hardware limits",
+  "units": "bytes; GiB = 1073741824 bytes",
+  "scope": "Entire local deployment including OS, browser, extension, API, Ollama and runners",
+  "targets": {
+    "A": { "system_ram_bytes": 17179869184, "vram_bytes": 4294967296, "gpu_inference": true },
+    "B": { "system_ram_bytes": 17179869184, "vram_bytes": 0, "gpu_inference": false }
+  },
+  "swap_allowed_bytes": 0,
+  "oom_allowed": false,
+  "minimum_runs_per_task_per_target": 12,
+  "p90_method": "nearest rank: sorted values[ceil(0.90*N)-1]",
+  "selection": "Both targets must pass; any blocking failure disqualifies; then largest parameter count",
+  "baseline_model": "qwen2.5vl:7b",
+  "candidate_tags": ["qwen2.5vl:7b", "qwen2.5vl:7b-q4_K_M", "qwen2.5vl:3b", "qwen2.5vl:3b-q4_K_M"]
+}

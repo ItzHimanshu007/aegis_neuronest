@@ -1,0 +1,218 @@
+{
+  "schema": "aegis-model-selection-preflight/1",
+  "recorded_at_utc": "2026-09-18T12:50:28.362560+00:00",
+  "repo_commit": "3f34aa35be3607774f88a09bf3481b8009600a0e",
+  "envelope": {
+    "schema": "aegis-model-selection-envelope/1",
+    "source": "User-adopted proxy, 2026-09-18; SIH26171 states no numeric hardware limits",
+    "units": "bytes; GiB = 1073741824 bytes",
+    "scope": "Entire local deployment including OS, browser, extension, API, Ollama and runners",
+    "targets": {
+      "A": {
+        "system_ram_bytes": 17179869184,
+        "vram_bytes": 4294967296,
+        "gpu_inference": true
+      },
+      "B": {
+        "system_ram_bytes": 17179869184,
+        "vram_bytes": 0,
+        "gpu_inference": false
+      }
+    },
+    "swap_allowed_bytes": 0,
+    "oom_allowed": false,
+    "minimum_runs_per_task_per_target": 12,
+    "p90_method": "nearest rank: sorted values[ceil(0.90*N)-1]",
+    "selection": "Both targets must pass; any blocking failure disqualifies; then largest parameter count",
+    "baseline_model": "qwen2.5vl:7b",
+    "candidate_tags": [
+      "qwen2.5vl:7b",
+      "qwen2.5vl:7b-q4_K_M",
+      "qwen2.5vl:3b",
+      "qwen2.5vl:3b-q4_K_M"
+    ]
+  },
+  "host": {
+    "os": "Darwin",
+    "os_version": "25.5.0",
+    "architecture": "arm64",
+    "errors": [],
+    "cpu": "Apple M2",
+    "system_ram_bytes": 17179869184,
+    "memory_architecture": "unified",
+    "swap_source": "total = 6144.00M  used = 5388.56M  free = 755.44M  (encrypted)",
+    "swap_used_bytes": 5650314690,
+    "vm_stat_raw": "Mach Virtual Memory Statistics: (page size of 16384 bytes)\nPages free:                                     3996.\nPages active:                                 268135.\nPages inactive:                               265745.\nPages speculative:                              1502.\nPages throttled:                                   0.\nPages wired down:                             153021.\nPages purgeable:                                9456.\n\"Translation faults\":                     2627348556.\nPages copy-on-write:                        56124305.\nPages zero filled:                        1410424223.\nPages reactivated:                         721334360.\nPages purged:                               63840817.\nFile-backed pages:                            184244.\nAnonymous pages:                              351138.\nPages stored in compressor:                  1402116.\nPages occupied by compressor:                 319235.\nDecompressions:                            738958471.\nCompressions:                              824538475.\nPageins:                                    57658664.\nPageouts:                                    2401081.\nSwapins:                                     7261485.\nSwapouts:                                    9746911.",
+    "dedicated_vram_bytes": null
+  },
+  "inference_started": false,
+  "peak_ram_bytes": null,
+  "peak_vram_bytes": null,
+  "ollama": {
+    "version": {
+      "version": "0.33.3"
+    },
+    "tags": {
+      "models": [
+        {
+          "name": "qwen3-vl:4b",
+          "model": "qwen3-vl:4b",
+          "modified_at": "2026-09-17T21:16:19.194615409+05:30",
+          "size": 3295636135,
+          "digest": "1343d82ebee38e26a4dd6b0180b915eb91550184e67c505dea97509571c8f683",
+          "details": {
+            "parent_model": "",
+            "format": "gguf",
+            "family": "qwen3vl",
+            "families": [
+              "qwen3vl"
+            ],
+            "parameter_size": "4.4B",
+            "quantization_level": "Q4_K_M",
+            "context_length": 262144,
+            "embedding_length": 2560
+          },
+          "capabilities": [
+            "vision",
+            "completion",
+            "tools",
+            "thinking"
+          ]
+        },
+        {
+          "name": "qwen2.5vl:7b",
+          "model": "qwen2.5vl:7b",
+          "modified_at": "2026-09-04T17:27:18.299320777+05:30",
+          "size": 5969245856,
+          "digest": "5ced39dfa4bac325dc183dd1e4febaa1c46b3ea28bce48896c8e69c1e79611cc",
+          "details": {
+            "parent_model": "",
+            "format": "gguf",
+            "family": "qwen25vl",
+            "families": [
+              "qwen25vl"
+            ],
+            "parameter_size": "8.3B",
+            "quantization_level": "Q4_K_M",
+            "context_length": 128000,
+            "embedding_length": 3584
+          },
+          "capabilities": [
+            "vision",
+            "completion"
+          ]
+        }
+      ]
+    },
+    "ps": {
+      "models": []
+    },
+    "candidate_details": {
+      "qwen2.5vl:7b": {
+        "details": {
+          "parent_model": "",
+          "format": "gguf",
+          "family": "qwen25vl",
+          "families": [
+            "qwen25vl"
+          ],
+          "parameter_size": "8.3B",
+          "quantization_level": "Q4_K_M"
+        },
+        "model_info": {
+          "general.architecture": "qwen25vl",
+          "general.file_type": 15,
+          "general.parameter_count": 8292166656,
+          "general.quantization_version": 2,
+          "qwen25vl.attention.head_count": 28,
+          "qwen25vl.attention.head_count_kv": 4,
+          "qwen25vl.attention.layer_norm_rms_epsilon": 1e-06,
+          "qwen25vl.block_count": 28,
+          "qwen25vl.context_length": 128000,
+          "qwen25vl.embedding_length": 3584,
+          "qwen25vl.feed_forward_length": 18944,
+          "qwen25vl.rope.freq_base": 1000000,
+          "qwen25vl.rope.mrope_section": null,
+          "qwen25vl.vision.attention.head_count": 16,
+          "qwen25vl.vision.attention.layer_norm_epsilon": 1e-06,
+          "qwen25vl.vision.block_count": 32,
+          "qwen25vl.vision.embedding_length": 1280,
+          "qwen25vl.vision.fullatt_block_indexes": null,
+          "qwen25vl.vision.num_channels": 3,
+          "qwen25vl.vision.patch_size": 14,
+          "qwen25vl.vision.rope.freq_base": 10000,
+          "qwen25vl.vision.spatial_merge_size": 2,
+          "qwen25vl.vision.spatial_patch_size": 14,
+          "qwen25vl.vision.temporal_patch_size": 2,
+          "qwen25vl.vision.window_size": 112,
+          "tokenizer.ggml.add_eos_token": false,
+          "tokenizer.ggml.add_padding_token": false,
+          "tokenizer.ggml.eos_token_id": 151645,
+          "tokenizer.ggml.merges": null,
+          "tokenizer.ggml.model": "gpt2",
+          "tokenizer.ggml.padding_token_id": 151643,
+          "tokenizer.ggml.pre": "qwen2",
+          "tokenizer.ggml.scores": null,
+          "tokenizer.ggml.token_type": null,
+          "tokenizer.ggml.tokens": null
+        },
+        "capabilities": [
+          "completion",
+          "vision"
+        ]
+      }
+    }
+  },
+  "registry": {
+    "7b": {
+      "url": "https://registry.ollama.ai/v2/library/qwen2.5vl/manifests/7b",
+      "error": "URLError"
+    },
+    "7b-q4_K_M": {
+      "url": "https://registry.ollama.ai/v2/library/qwen2.5vl/manifests/7b-q4_K_M",
+      "error": "URLError"
+    },
+    "3b": {
+      "url": "https://registry.ollama.ai/v2/library/qwen2.5vl/manifests/3b",
+      "error": "URLError"
+    },
+    "3b-q4_K_M": {
+      "url": "https://registry.ollama.ai/v2/library/qwen2.5vl/manifests/3b-q4_K_M",
+      "error": "URLError"
+    }
+  },
+  "targets": {
+    "A": {
+      "status": "FAIL",
+      "failures": [
+        "PREEXISTING_SWAP"
+      ],
+      "blockers": [
+        "NO_SEPARATE_VRAM_ENVELOPE"
+      ],
+      "limits": {
+        "system_ram_bytes": 17179869184,
+        "vram_bytes": 4294967296,
+        "gpu_inference": true
+      },
+      "model_fit": "NOT_MEASURED",
+      "physical_limit_enforced": false,
+      "gpu_inference_disabled_verified": false
+    },
+    "B": {
+      "status": "FAIL",
+      "failures": [
+        "PREEXISTING_SWAP"
+      ],
+      "blockers": [],
+      "limits": {
+        "system_ram_bytes": 17179869184,
+        "vram_bytes": 0,
+        "gpu_inference": false
+      },
+      "model_fit": "NOT_MEASURED",
+      "physical_limit_enforced": false,
+      "gpu_inference_disabled_verified": false
+    }
+  }
+}

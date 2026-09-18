@@ -23,8 +23,8 @@ and the action type it should use. Grounding is scored against that.
 ## Running the probe
 
 ```sh
-pnpm model:probe              # one call per fixture
-pnpm model:probe -- --runs 3  # repeat for a latency spread
+pnpm model:probe                         # 12 calls per fixture
+pnpm model:probe --runs 12 --out /tmp/aegis-probe.md
 ```
 
 For real numbers it needs a live endpoint: set `AEGIS_ADAPTER=openai_compat`,
@@ -35,13 +35,21 @@ report still lands — but the mock returns a fixed plan, so the report opens wi
 its scores describe the mock and say nothing about any model. A mock run scores 0% grounding by
 construction; that is the harness working, not a finding.
 
-Output goes to `eval/reports/model-probe-<model>.md`.
+Output defaults to a timestamped `eval/reports/model-probe-<model>-<UTC>.md`.
+Sibling `.jsonl` and `.meta.json` files retain each attempted call, errors, settings, source commit,
+probe/prompt hashes and fixture hashes. Existing outputs are never overwritten. `--runs < 12`
+is rejected. Each attempt is flushed to disk immediately, so interruption does not erase earlier
+evidence. Exceptions and adapter refusals remain failed attempts in the grounding/action denominator.
+
+Run this only after the relevant hardware gate has passed for a model-selection experiment; see
+[`docs/model-selection.md`](../../docs/model-selection.md). This script does **not** enforce memory
+limits and cannot certify task completion or the full adversarial matrix.
 
 ## What it measures
 
 Reachability, whether the image was accepted, JSON validity before and after the repair pass,
 schema validity, `state_token` echo rate, first-action EID grounding, action-type match,
-server-side enforcement pass rate, latency p50/p95, and prompt/completion tokens.
+server-side enforcement pass rate, per-fixture latency median/p90/min/max, and prompt/completion tokens.
 
 Plus two things worth their own sections:
 
@@ -59,3 +67,8 @@ Plus two things worth their own sections:
 These are authored demo pages, not a held-out set, and grounding is scored on the first action
 only. Nothing here is a generalization claim — Stage 4 introduces held-out splits and owns that
 question.
+
+Latency includes failed calls and repairs; timeout durations are censored, not completed-task
+latencies. Accuracy is counted across every repetition, not just its final result. Exact success
+counts are shown rather than rounded percentages. The first-action probe is supplementary to the
+full browser task suite; it must never be relabelled as end-to-end task success.
