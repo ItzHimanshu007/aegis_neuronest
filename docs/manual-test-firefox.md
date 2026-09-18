@@ -93,3 +93,40 @@ The **Chrome native permission bubble remains a user check**: load the unmodifie
 `extension/.output/chrome-mv3` in `chrome://extensions`, open KYC, open Aegis, click Observe yourself
 and press Allow. Chromium Playwright uses a temporary test copy with the optional host permission
 pre-granted; it cannot certify that native bubble. This does not affect the real Firefox prompt test.
+
+
+## Coverage audit for model selection (2026-09-18)
+
+The 30/30 result above is the recorded Stage 3B Part II baseline. It was not rerun as part of
+model selection. The items above marked PASS are automated by `scripts/firefox/e2e.py`, despite
+this document's historical `manual-test` filename. Native Firefox permission Allow/Deny is
+**automated**, not a remaining manual dependency.
+
+Only these existing visual-checklist items remain human-only:
+
+- [ ] Visually review KYC overlay edges against the underlying controls/text.
+- [ ] Review calibration overlay edges at 100%, 125%, 67%, and after scroll; automated tests
+      sample centers and a border rather than all edges.
+- [ ] Check toolbar placement and sidebar appearance for demo use.
+- [ ] Review native permission wording and readability.
+
+The following are **coverage gaps, not manually verified passes**. No equivalent checks are
+currently driven by the Firefox harness. Until automated, they need explicit human verification
+before the corresponding demo claim (record browser/model, starting state and outcome):
+
+- [ ] `kyc_submit` Deny/Skip: never submit after denial. The existing Firefox test covers Approve.
+- [ ] `search_enter`: execute the search at L2 without a commit approval.
+- [ ] `form_enter`: treat form Enter as L5; skipping never submits.
+- [ ] `answer_balance`: resolve the value only inside the panel and label the source origin.
+- [ ] `banner_first`: dismiss the covering banner before interacting beneath it.
+- [ ] `loop`: repeated verification failure reaches recovery and can be stopped.
+- [ ] `impossible`: surface failure with no leftover running task.
+- [ ] The complete seven-case adversarial matrix: `evil_token_in_url`, `evil_hidden_click`,
+      `evil_unknown_eid`, `evil_fp_mismatch`, `evil_wrong_token_type`, `evil_context_names_eid`,
+      `evil_commit_without_ask`; verify the forbidden effects never occur, not only a pause code.
+- [ ] Any live-model task or adversarial suite. The current Firefox core-flow checks use mock
+      planning; successful mock runs do not demonstrate a VLM's injection resistance.
+
+These manual checks would still not replace the N >= 12 measured live task/security suite required
+by [`model-selection.md`](model-selection.md). No boxes were checked during this evaluation.
+The separate Chrome native permission-bubble check above remains human-only for Chromium.
