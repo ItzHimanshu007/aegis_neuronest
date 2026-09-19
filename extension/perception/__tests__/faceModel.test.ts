@@ -5,7 +5,7 @@
 // same-origin/CORS emulation on top of `fetch` and blocks the cross-port localhost request this
 // suite's local HTTP server needs (a real browser extension page has no such restriction fetching
 // its own bundled `chrome-extension://` resources).
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createServer, type Server } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -38,10 +38,12 @@ const WASM_PATH = resolve(__dirname, '../../node_modules/onnxruntime-web/dist/or
 
 let server: Server;
 let source: FaceModelSource;
+let serverHits = 0;
 
 beforeAll(async () => {
   const wasmBytes = readFileSync(WASM_PATH);
   server = createServer((_req, res) => {
+    serverHits += 1;
     res.writeHead(200, { 'Content-Type': 'application/wasm' });
     res.end(wasmBytes);
   });
@@ -56,6 +58,61 @@ beforeAll(async () => {
 afterAll(async () => {
   releaseFaceModel();
   await new Promise((done) => server.close(done));
+});
+
+describe('no remote fetch at runtime (demo-readiness Part A2)', () => {
+  // AGENTS.md invariant 2/7: models are bundled, never fetched as remote code at runtime. The one
+  // real risk this session identified (see docs/architecture.md's Stage 5A notes) is
+  // `onnxruntime-web` itself: it resolves its WASM binary from a public CDN (jsdelivr) by default
+  // whenever `ort.env.wasm.wasmPaths` is left unset, and that fetch happens INSIDE the library,
+  // never through `extension/net/network.ts` — so the ESLint rule banning `fetch` outside that one
+  // file cannot see it, and a regression that dropped `faceModel.ts`'s `wasmPaths` assignment would
+  // silently start reaching the network at runtime with no test failing anywhere else in the suite.
+  //
+  // This spies on every `fetch` call made during a real, fresh model load + inference (same
+  // assertion shape as the credential-leak test in `extension/e2e/agent-scenarios.spec.ts`: capture
+  // every relevant call across a real run, assert a forbidden thing never appears in any of them —
+  // here, any host other than this test's own local stand-in for the extension's bundled origin).
+  //
+  // Deliberately the FIRST test in this file to touch `detectFaces`/`getSession()`: once
+  // `onnxruntime-web` has compiled the WASM module once in this process, it does not re-fetch it
+  // for a later session even after `releaseFaceModel()`, which would make this assertion pass
+  // vacuously (zero fetches seen, not zero *remote* fetches) if it ran after any other test below.
+  it('never fetches the model or WASM runtime from anywhere but its own bundled/local source', async () => {
+    expect(isFaceModelLoaded()).toBe(false); // must be the very first load in this process
+
+    const originalFetch = globalThis.fetch;
+    const captured: string[] = [];
+    const fetchSpy = vi.fn((input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      captured.push(typeof input === 'string' ? input : input.toString());
+      return originalFetch(input, init);
+    });
+    vi.stubGlobal('fetch', fetchSpy);
+
+    try {
+      const dims = { width: 160, height: 160 };
+      const rgba = readFileSync(resolve(__dirname, 'fixtures/face-160x160.rgba'));
+      await detectFaces(rgba, dims, 4, source);
+    } finally {
+      vi.unstubAllGlobals();
+      // Leave the module in the same "not loaded" state the next describe block's first test
+      // expects — this test loading first is an implementation detail of fetch-capture ordering,
+      // not something later tests should have to know about.
+      releaseFaceModel();
+    }
+
+    // Sanity: this proves the spy actually saw ORT's real internal fetch, rather than passing
+    // vacuously because nothing was intercepted — every request that hit the local server must
+    // also have been captured here.
+    expect(captured.length).toBeGreaterThan(0);
+    expect(captured.length).toBe(serverHits);
+
+    const localOrigin = new URL(source.wasmBinaryUrl).origin;
+    for (const url of captured) {
+      expect(url.startsWith(localOrigin)).toBe(true);
+      expect(url).not.toMatch(/jsdelivr|unpkg|cdn\.|githubusercontent|amazonaws/i);
+    }
+  }, 20_000);
 });
 
 describe('modelInputDims', () => {

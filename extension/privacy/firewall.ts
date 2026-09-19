@@ -100,17 +100,33 @@ export interface SealResult {
  * for a reason that has nothing to do with the page. None of these five fields is ever derived
  * from page content or task text; they are generated locally by the extension's own session,
  * capture and state-token layers, and PII shape-matching a random identifier is only ever a false
- * positive. (Other opaque identifiers — `fp`, `eid` — share the same risk in principle but are
- * unmeasured; this exclusion covers only the fields this has actually reproduced with.)
+ * positive.
  *
  * `redactions[].rid`/`visual_regions[].rid` (`${capture_id}-${counter}-${suffix}`, scene/index.ts)
  * reproduced the identical failure (Stage 3B Part II, e2e/probe-fixtures.spec.ts, once in dozens
  * of runs): a rid landing on 12 consecutive digits, matching AADHAAR's shape purely by chance. Same
  * reasoning as capture_id — never derived from page content, matched by path suffix rather than one
  * exact path per array index since an array can hold any number of redactions.
+ *
+ * `elements[].fp` (demo-readiness session) is the same risk left unmeasured when `rid` was fixed
+ * above: a 16-hex-char fingerprint (`fp_a1b2c3d4e5f60718`-shaped, `minLength: 1` in the schema, no
+ * further pattern), exactly as capable of landing on an all-digit 12-character run as
+ * `capture_id`/`rid` were, and just as opaque — assigned locally by the Scene Graph registry
+ * (`scene/registry.ts`), never derived from page content.
+ *
+ * `elements[].eid` was named alongside `fp` as sharing this risk "in principle" when `rid` was
+ * fixed, but on inspection it is not actually reachable: the schema pins it to `^E[0-9]{1,6}$`
+ * (checked in `walkStrings` at check 1, before check 2 ever runs), so its longest possible digit
+ * run is 6 — shorter than every UNCONDITIONAL_RULES pattern's own minimum length (AADHAAR 12,
+ * PAN/CARD_NUMBER/IFSC 10+), and CONTEXT_ONLY_RULES (which includes the one 6-digit rule, PIN_CODE)
+ * never fire here because `runRules(scannable, {})` passes no `fieldCategory` and every
+ * context-gated rule requires one. `eid` is excluded anyway, for the same reason `capture_id` and
+ * `rid` are unconditionally excluded regardless of today's rule lengths: it is structurally
+ * impossible for it to be page content, so a future shorter rule colliding with it would be a
+ * false positive by the same argument, not a real leak.
  */
 const PROTOCOL_ENVELOPE_PATHS = new Set(['$.session', '$.capture_id', '$.schema', '$.state_token', '$.mode']);
-const OPAQUE_ID_SUFFIX = /\.rid$/;
+const OPAQUE_ID_SUFFIX = /\.(rid|fp|eid)$/;
 function* walkStrings(value: unknown, path = '$'): Generator<{ path: string; value: string }> {
   if (typeof value === 'string') {
     if (path === '$.image' || PROTOCOL_ENVELOPE_PATHS.has(path) || OPAQUE_ID_SUFFIX.test(path)) return;

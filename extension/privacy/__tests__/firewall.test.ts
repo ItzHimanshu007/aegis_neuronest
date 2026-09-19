@@ -182,6 +182,17 @@ describe('seal: check 2 — rule scan', () => {
     });
     await expect(seal(draft, makeContext())).resolves.toBeDefined();
   });
+
+  it('never rejects an opaque element fingerprint, even when it happens to look like PII', async () => {
+    // Demo-readiness session: `fp` was named alongside `rid` as sharing the same risk "in
+    // principle" but left unmeasured (see the walkStrings docblock). Same reasoning and same
+    // synthetic Verhoeff-valid 12-digit value as the capture_id/rid tests above — a fingerprint
+    // is never derived from page content, so PII-shape-matching one is only ever a false positive.
+    const draft = makeDraft({
+      elements: [{ eid: 'E0', fp: '234567890124', role: 'textbox', label: 'Full name', bbox: [0, 0, 1, 1], visible: true, enabled: true }],
+    });
+    await expect(seal(draft, makeContext())).resolves.toBeDefined();
+  });
 });
 
 describe('seal: check 3 — known-value leak', () => {
