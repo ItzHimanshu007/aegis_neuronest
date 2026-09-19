@@ -64,6 +64,10 @@ export class TaskRunner {
   private running = false;
   constructor(readonly tabId: number, private task: string, private mode: Mode, private readonly ui: TaskUI) {}
   get signal(): AbortSignal { return this.controller.signal; }
+  /** The most recent step's full privacy-pipeline result (payload + preview), for the Privacy
+   * Receipt panel view. Local-only — never sent anywhere; `payload.bytes` is the exact sealed
+   * bytes `firewall.seal()` shipped for this step, not a re-serialization. */
+  get lastProcessResult(): ProcessResult | undefined { return this.last; }
   snapshot(): TaskSnapshot {
     return { state: this.state, steps: this.steps, modelCalls: this.modelCalls, replans: this.recovery.replans,
       humanWaitMs: this.humanWaitMs, latencyMs: Math.max(0, performance.now()-this.started-this.humanWaitMs),

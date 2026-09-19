@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { TaskRunner, type TaskSnapshot, type TaskData } from '../../agent/runAgentLoop';
+import type { ProcessResult } from '../../agentHost';
 import type { ConsentRequest, ConsentReply } from '../../agentHost/task/consent';
 import type { ApprovalRequest, ApprovalReply } from '../../agent/approval';
 import type { Category } from '../../privacy/categoryTypes';
@@ -7,6 +8,7 @@ import type { Mode } from '../../privacy/redactor';
 import { requestSiteAccess } from '../../shared/permissions';
 import { TOKEN_PATTERN } from '../../shared/schema/tokens';
 import { unwrapForPanelRender } from '../../privacy/vault';
+import { PrivacyReceipt } from './PrivacyReceipt';
 
 type Prompt = { kind:'consent'; request:ConsentRequest; resolve:(reply:ConsentReply)=>void } |
   {kind:'approval'; request:ApprovalRequest; resolve:(reply:ApprovalReply)=>void} |
@@ -21,6 +23,7 @@ export function TaskPanel() {
   const [rows,setRows]=useState<TaskData[]>([{category:'NAME',value:''},{category:'EMAIL',value:''}]);
   const [mode,setMode]=useState<Mode>('balanced');
   const [snapshot,setSnapshot]=useState<TaskSnapshot|null>(null);
+  const [receipt,setReceipt]=useState<ProcessResult|null>(null);
   const [prompt,setPrompt]=useState<Prompt|null>(null);
   const [selected,setSelected]=useState<Category[]>([]);
   const [answer,setAnswer]=useState<DisplayPart[]>([]);
@@ -34,7 +37,7 @@ export function TaskPanel() {
 
   const start=async()=>{
     if(active)return;
-    setError('');setAnswer([]);setShownValue('');
+    setError('');setAnswer([]);setShownValue('');setReceipt(null);
     try {
       const [access,[tab]]=await Promise.all([requestSiteAccess(),browser.tabs.query({active:true,currentWindow:true})]);
       if(!access.granted||!tab?.id)throw new Error('Screen access is required to start.');
@@ -44,7 +47,7 @@ export function TaskPanel() {
         setPrompt(create(value=>{signal.removeEventListener('abort',abort);setPrompt(null);setShownValue('');resolve(value);}));
       });
       const current=new TaskRunner(tab.id,task,mode,{
-        update:value=>{setSnapshot(value);},
+        update:value=>{setSnapshot(value);setReceipt(current.lastProcessResult??null);},
         consent:(request,signal)=>{setSelected(request.medium);return pending(signal,resolve=>({kind:'consent',request,resolve}));},
         approve:(request,signal)=>pending(signal,resolve=>({kind:'approval',request,resolve})),
         ask:(text,signal)=>pending(signal,resolve=>({kind:'question',text,resolve})),
@@ -117,6 +120,7 @@ export function TaskPanel() {
       <div style={{whiteSpace:'pre-wrap'}}>{answer.map((part,i)=><span key={i}>{part.text}{part.origins&&<small> [source: {part.origins.join(', ')}{part.origins.some(o=>o!==answerOrigin)?' — different site from this task':''}]</small>}</span>)}</div>
       <button onClick={()=>navigator.clipboard.writeText(answer.map(p=>p.text).join(''))}>Copy answer</button>
     </section>}
+    {receipt&&<PrivacyReceipt result={receipt} />}
     {snapshot&&<details><summary>Task summary and timeline</summary><pre data-testid="task-summary">{JSON.stringify(snapshot,null,2)}</pre>
       <button onClick={()=>{const blob=new Blob([JSON.stringify(snapshot,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='aegis-task-metrics.json';link.click();URL.revokeObjectURL(url);}}>Export Judge metrics</button>
     </details>}

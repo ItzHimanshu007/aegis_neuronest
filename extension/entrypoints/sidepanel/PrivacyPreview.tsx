@@ -22,7 +22,7 @@ const SEVERITY_CLASS: Record<string, string> = {
   non_pii: 'sev-allow',
 };
 
-function severityClass(category: Category, action: Action): string {
+export function severityClass(category: Category, action: Action): string {
   if (action === 'ALLOW') return 'sev-allow';
   return SEVERITY_CLASS[classOf(category)] ?? 'sev-allow';
 }

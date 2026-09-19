@@ -279,3 +279,25 @@ pre.error {
 .category-toggles input[disabled] + span {
   color: #999;
 }
+
+.receipt-counters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+  margin: 4px 0 10px;
+}
+
+.receipt-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 10px;
+}
+.receipt-tag {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  background: #f4f4f4;
+}
