@@ -100,7 +100,7 @@ export async function processObservation(options: ProcessOptions): Promise<Proce
 
   // --- detect ---------------------------------------------------------------------------------
   const detectStart = performance.now();
-  const cascade = runDetectionCascade({ observation, task, registry: session.registry, knownValues: session.vault.knownValues() });
+  const cascade = await runDetectionCascade({ observation, task, registry: session.registry, knownValues: session.vault.knownValues() });
 
   // One batched SPAN_RECTS call per capture (Stage 2 Part C.7).
   let detections: MergedDetection[] = cascade.detections;

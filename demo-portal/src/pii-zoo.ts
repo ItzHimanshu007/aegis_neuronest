@@ -16,6 +16,17 @@ if (canvas) {
   }
 }
 
+// Stage 5A: same synthetic AI-generated face as #zoo-face-profile, drawn into a canvas instead of
+// an <img> — the point is that a canvas is just as DOM-blind as an <img>, so the local face
+// detector has to find it the same way (crop the region's pixels, not read any DOM attribute).
+const faceCanvas = document.getElementById('zoo-face-canvas') as HTMLCanvasElement | null;
+if (faceCanvas) {
+  const ctx = faceCanvas.getContext('2d');
+  const img = new Image();
+  img.onload = () => ctx?.drawImage(img, 0, 0, faceCanvas.width, faceCanvas.height);
+  img.src = '/faces/profile-photo.jpg';
+}
+
 // Mutates the text between capture and SPAN_RECTS, so the span-rect service reports STALE and the
 // redactor falls back to masking the whole block (Stage 2 Part A3's fail-closed path).
 document.getElementById('mutate-btn')?.addEventListener('click', () => {

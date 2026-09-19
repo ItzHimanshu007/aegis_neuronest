@@ -275,6 +275,48 @@ describe('seal: check 5 — coverage', () => {
     const ctx = makeContext({ decisions: [{ detection: det({ target: { kind: 'task', ref: 'task' }, rects: [] }), action: 'TOKEN' }] });
     await expect(seal(makeDraft(), ctx)).resolves.toBeDefined();
   });
+
+  // Stage 5A: a FACE detection is a `media`-target BLUR decision, exactly like any other non-ALLOW
+  // detection — the coverage check above has no per-category or per-mask-kind special-casing, so
+  // these two tests exercise the same generic code path with `category: 'FACE'`/`action: 'BLUR'`
+  // rather than adding a face-specific check to firewall.ts.
+  it('fails closed when a detected face box is not actually covered by a mask', async () => {
+    const ctx = makeContext({
+      decisions: [{
+        detection: det({ category: 'FACE', source: 'visual', target: { kind: 'media', ref: 'media-0-face-0' }, rects: [{ x: 5, y: 5, width: 30, height: 40 }] }),
+        action: 'BLUR',
+      }],
+      redactResult: {
+        image: { dataUrl: 'data:image/png;base64,AAAA', pxW: 100, pxH: 100, capture_id: 'cap-1', masks: [] },
+        fullResolution: { canvas: {} as OffscreenCanvas, pxW: 100, pxH: 100 },
+        scaleX: 1,
+        scaleY: 1,
+      } as unknown as SealContext['redactResult'],
+    });
+    await expect(seal(makeDraft(), ctx)).rejects.toMatchObject({ reason: 'coverage' });
+  });
+
+  it('passes when a BLUR mask covers the detected face box', async () => {
+    const ctx = makeContext({
+      decisions: [{
+        detection: det({ category: 'FACE', source: 'visual', target: { kind: 'media', ref: 'media-0-face-0' }, rects: [{ x: 5, y: 5, width: 30, height: 40 }] }),
+        action: 'BLUR',
+      }],
+      redactResult: {
+        image: {
+          dataUrl: 'data:image/png;base64,AAAA',
+          pxW: 100,
+          pxH: 100,
+          capture_id: 'cap-1',
+          masks: [{ rid: 'media-0-face-0-0', kind: 'BLUR', type: 'FACE', pxRect: { x: 5, y: 5, width: 30, height: 40 } }],
+        },
+        fullResolution: { canvas: {} as OffscreenCanvas, pxW: 100, pxH: 100 },
+        scaleX: 1,
+        scaleY: 1,
+      } as unknown as SealContext['redactResult'],
+    });
+    await expect(seal(makeDraft(), ctx)).resolves.toBeDefined();
+  });
 });
 
 describe('seal: check 6 — mask integrity', () => {

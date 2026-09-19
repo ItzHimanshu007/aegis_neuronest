@@ -36,14 +36,14 @@ it.each(INDIAN_IDENTIFIER_RULES)('$category requires a label and rejects empty i
   expect(rule.find(positive[rule.category]!, {})).toEqual([]);
   expect(rule.find('', { fieldCategory: rule.category })).toEqual([]);
 });
-it('explicit UAN label wins over Verhoeff-valid Aadhaar shape', () => {
+it('explicit UAN label wins over Verhoeff-valid Aadhaar shape', async () => {
   const obs = observation([element({ name: 'UAN', labelText: 'UAN', value: '234567890124' })]);
-  expect(runDetectionCascade({ observation: obs }).detections.filter(d => d.target.kind === 'element').map(d => d.category)).toEqual(['UAN']);
+  expect((await runDetectionCascade({ observation: obs })).detections.filter(d => d.target.kind === 'element').map(d => d.category)).toEqual(['UAN']);
   expect(runRules('234567890124', { fieldCategory: 'UAN' }).every(d => d.category === 'UAN')).toBe(true);
 });
-it('empty fields do not mask; partial and filled fields both detect', () => {
+it('empty fields do not mask; partial and filled fields both detect', async () => {
   for (const [value, present] of [['',false],['a',true],['ash@example.test',true]] as const) {
-    const ds = runDetectionCascade({ observation: observation([element({ value, hasValue: present })]) }).detections.filter(d=>d.target.kind==='element');
+    const ds = (await runDetectionCascade({ observation: observation([element({ value, hasValue: present })]) })).detections.filter(d=>d.target.kind==='element');
     expect(ds.length > 0).toBe(present);
   }
 });

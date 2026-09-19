@@ -29,6 +29,16 @@ export default defineConfig({
       'storage',
       ...(browser === 'chrome' ? ['sidePanel' as const] : []),
     ],
+    // Stage 5A: MV3's default extension_pages CSP (`script-src 'self'; object-src 'self'`) blocks
+    // WebAssembly compilation outright (`WebAssembly.instantiate` throws `CompileError: Wasm code
+    // generation disallowed by embedder` without this) — this is Chrome's own MV3-specific
+    // restriction, not a general CSP default. `'wasm-unsafe-eval'` only lifts THAT one
+    // restriction; it does not permit `eval`/`new Function` (AGENTS.md invariant 7, still enforced
+    // by ESLint) and does not widen `script-src` to any other host. ONNX Runtime Web's WASM
+    // execution provider (extension/perception/faceModel.ts) needs it to load the bundled model.
+    content_security_policy: {
+      extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
+    },
     // F2: no required <all_urls>. `http://localhost/*` is required only so DOM reads
     // (scripting.executeScript) work on the demo portal out of the box, without an extra
     // permission prompt, during development. `optional_host_permissions: ['<all_urls>']` is

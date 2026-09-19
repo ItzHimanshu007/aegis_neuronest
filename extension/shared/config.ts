@@ -135,6 +135,29 @@ export const AEGIS_CONFIG = {
    * size on text-heavy pages; text blocks beyond the budget are simply omitted, fail-closed
    * (never truncated mid-token, which could split a token pattern and make it unparseable). */
   TEXT_BUDGET_CHARS: 4000,
+
+  // --- Stage 5A: local face detection (extension/perception/faceModel.ts) --------------------
+
+  /** Long-side cap (px) for the region fed to the face detector, before rounding up to the
+   * nearest multiple of 32 (the model's 3 output strides are 8/16/32; the ONNX graph errors on
+   * non-multiples). Small on purpose — this only ever runs on individual DOM-blind regions
+   * (img/canvas/unmapped-frame/embed bounding boxes), never the whole screenshot, so metric 4
+   * (client resource use) is bounded by the size of one region, not the page. */
+  FACE_DETECT_INPUT_MAX_SIDE: 160,
+  /** YuNet's own reference demo default (`opencv_zoo`'s `yunet.py`, `confThreshold`). Score is
+   * `sqrt(cls * obj)`, both already sigmoid outputs from the graph. */
+  FACE_DETECT_CONF_THRESHOLD: 0.6,
+  /** YuNet's own reference demo default (`nmsThreshold`) — greedy IoU suppression across all 3
+   * strides' raw candidates. */
+  FACE_DETECT_NMS_THRESHOLD: 0.3,
+  /** Regions smaller than this on either side (CSS px) are skipped without running the model —
+   * a 1x1 tracking pixel or a hairline decorative <img> cannot contain a legible face, and
+   * loading/upscaling the model for it would cost latency for zero possible signal. */
+  FACE_DETECT_MIN_REGION_PX: 16,
+  /** How long the ONNX Runtime session is kept warm after its last inference before being
+   * released, so a burst of captures over several regions/steps doesn't reload the model every
+   * time, but an idle side panel doesn't hold ~14MB of WASM memory forever. */
+  FACE_MODEL_IDLE_UNLOAD_MS: 30_000,
 } as const;
 
 export type AegisConfig = typeof AEGIS_CONFIG;

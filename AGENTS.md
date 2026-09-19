@@ -25,7 +25,10 @@ frequently contain user data.
   enough to get past it.
 - `health()` permits `GET /health`, carrying no page data.
 - `endSession(sessionId)` permits `POST /v1/session/end` with only the random session ID.
-  These three requests all live in `extension/net/network.ts`.
+- `loadBundledAsset(url)` (Stage 5A) permits loading this extension's OWN bundled resources
+  (model weights, the ONNX Runtime WASM binary) — checked against `browser.runtime.getURL('/')`,
+  so it can never be pointed at a remote host, and never reaches the server.
+  These four requests all live in `extension/net/network.ts`.
 
 ### 3. Tokens
 

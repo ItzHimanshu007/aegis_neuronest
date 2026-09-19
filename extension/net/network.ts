@@ -8,6 +8,11 @@
  * never a re-serialization of an object (re-serializing would let key order, number formatting or
  * a mutated field diverge from what was actually checked and digested). It recomputes the digest
  * over those bytes before sending, and a sealed payload is single-use — replaying one throws.
+ *
+ * Four requests live here in total: `send()` (page data, to the server), `health()` and
+ * `endSession()` (server liveness/cleanup, no page data), and `loadBundledAsset()` (Stage 5A: this
+ * extension's own bundled model/WASM bytes, checked against `browser.runtime.getURL('/')` so it
+ * can never be pointed at a remote host).
  */
 
 import { consumeSealed, isRegisteredSealed, sha256Hex, type SanitizedPayload } from '../privacy/sealedRegistry';
@@ -92,4 +97,25 @@ export async function endSession(sessionId: string): Promise<void> {
     body: JSON.stringify({ session: sessionId }), signal: AbortSignal.timeout(5000),
   });
   if (!response.ok) throw new Error("Session cleanup failed");
+}
+
+/**
+ * The fourth and last sanctioned use of `fetch` in this file (AGENTS.md invariant 2, Stage 5A):
+ * loads a bundled extension asset — model weights, the ONNX Runtime WASM binary — as raw bytes.
+ * Restricted to THIS extension's own `browser.runtime.getURL(...)` origin, checked at the top of
+ * the function rather than trusted from the caller, so this can never become a general-purpose
+ * fetch for a caller that passes a page/remote URL by mistake. Carries no page data and never
+ * reaches `SERVER_URL` — it is a local resource load, not a network request to the server this
+ * file otherwise guards; it is still routed through here (rather than left to `fetch` calls
+ * scattered anywhere) so `fetch` remains textually confined to this one file, which is what the
+ * ESLint rule actually checks.
+ */
+export async function loadBundledAsset(url: string): Promise<ArrayBuffer> {
+  const ownOrigin = browser.runtime.getURL('/');
+  if (!url.startsWith(ownOrigin)) {
+    throw new Error('network.loadBundledAsset() refused: not this extension\'s own bundled resource');
+  }
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Bundled asset fetch failed: ${response.status}`);
+  return response.arrayBuffer();
 }

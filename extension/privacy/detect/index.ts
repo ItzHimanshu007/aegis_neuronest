@@ -10,10 +10,14 @@ import { EIDRegistry } from '../../scene/registry';
  *   6. hooks (hooks.ts)                  — visual/NER/OCR, all `[]` until Stages 6/7
  *   7. merge (merge.ts)                  — overlapping detections on one target collapse
  *
- * Deliberately SYNCHRONOUS and pure: text-span detections come back with `rects: []` plus a
- * matching entry in `spanLookups`, which the caller resolves in ONE batched SPAN_RECTS message
- * (Part C.7's "one batched call per capture") via `applySpanRects` below. That split keeps the
- * whole cascade unit-testable without any browser messaging.
+ * Deliberately synchronous and pure for layers 1-5: text-span detections come back with
+ * `rects: []` plus a matching entry in `spanLookups`, which the caller resolves in ONE batched
+ * SPAN_RECTS message (Part C.7's "one batched call per capture") via `applySpanRects` below. That
+ * split keeps those layers unit-testable without any browser messaging.
+ *
+ * The one exception is `visualDetect` (layer 6, Stage 5A): local vision inference is
+ * unavoidably async (ONNX Runtime Web's `session.run` and the canvas crop it needs both are), so
+ * the cascade itself is `async` and awaits it — every other layer is still synchronous underneath.
  */
 
 import { findKnownValues, type KnownDetectionValue } from './knownValues';
@@ -50,7 +54,7 @@ export interface CascadeInput {
   knownValues?: KnownDetectionValue[];
 }
 
-export function runDetectionCascade(input: CascadeInput): CascadeResult {
+export async function runDetectionCascade(input: CascadeInput): Promise<CascadeResult> {
   const { observation, task } = input;
   const registry = input.registry ?? new EIDRegistry();
   registry.reconcile(observation);
@@ -220,7 +224,7 @@ export function runDetectionCascade(input: CascadeInput): CascadeResult {
 
   // --- 5/6: media and later-stage hooks -------------------------------------------------------
   raw.push(...detectUnscannedMedia(observation.media, captureId, idFor));
-  raw.push(...visualDetect(observation, captureId));
+  raw.push(...(await visualDetect(observation, captureId)));
   raw.push(...nerDetect(observation, captureId));
   raw.push(...ocrDetect(observation, captureId));
 

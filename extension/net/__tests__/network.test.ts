@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { send, health } from '../network';
+import { send, health, loadBundledAsset } from '../network';
 import { seal } from '../../privacy/firewall';
 import type { SanitizedPayload } from '../../privacy/firewall';
 import type { DraftPayload } from '../../privacy/payloadBuilder';
@@ -77,6 +77,39 @@ describe('network.send()', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('nope', { status: 500 })));
     const payload = await sealOne();
     await expect(send(payload)).rejects.toThrow(/500/);
+  });
+});
+
+describe('network.loadBundledAsset()', () => {
+  beforeEach(() => {
+    vi.stubGlobal('browser', { runtime: { getURL: (p: string) => `chrome-extension://abc123/${p.replace(/^\//, '')}` } });
+  });
+
+  it('fetches this extension\'s own bundled resource and returns its bytes', async () => {
+    const bytes = new Uint8Array([1, 2, 3, 4]).buffer;
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(bytes, { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const url = browser.runtime.getURL('/models/face-yunet/face_detection_yunet_2026may.onnx');
+    const result = await loadBundledAsset(url);
+
+    expect(new Uint8Array(result)).toEqual(new Uint8Array([1, 2, 3, 4]));
+    expect(fetchMock).toHaveBeenCalledWith(url);
+  });
+
+  it('refuses a URL that is not this extension\'s own origin — never a remote/page URL', async () => {
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(loadBundledAsset('https://evil.example.com/payload')).rejects.toThrow(/refused/i);
+    await expect(loadBundledAsset('chrome-extension://someOtherExtension/x')).rejects.toThrow(/refused/i);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('throws on a non-OK response', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('nope', { status: 404 })));
+    const url = browser.runtime.getURL('/models/face-yunet/face_detection_yunet_2026may.onnx');
+    await expect(loadBundledAsset(url)).rejects.toThrow(/404/);
   });
 });
 

@@ -30,6 +30,12 @@
       <p>
         Ground truth for the evaluation harness is carried in <code>data-gt="CATEGORY"</code> attributes.
         Detectors are forbidden from reading them &mdash; see the <code>data-gt</code> guard test.
+        The face section below uses a separate <code>data-face-gt</code> attribute instead of
+        <code>data-gt</code> on purpose: the Stage 2 DOM-only baseline eval
+        (<code>e2e/baseline.spec.ts</code>) scans every <code>[data-gt]</code> element and scores
+        it against that eval's own DOM-only detectors, which have no notion of faces at all — a
+        <code>data-gt="FACE"</code> would count as a guaranteed false negative there and corrupt
+        an unrelated, already-measured report.
       </p>
 
       <!-- ============ Rule positives ============ -->
@@ -245,6 +251,41 @@
           />
           <iframe id="zoo-frame" title="cross-origin frame" src="http://localhost:5175/frame-form.html"></iframe>
         </div>
+      </section>
+
+      <!-- ============ Faces (Stage 5A local face detector) ============ -->
+      <section>
+        <h2>Faces — synthetic, AI-generated (StyleGAN), no real person</h2>
+        <p>
+          Every face below is a StyleGAN-generated image with no real identity (public domain,
+          sourced from Wikimedia Commons — see <code>public/faces/PROVENANCE.md</code>). The local
+          face detector runs only on these DOM-blind regions (img/canvas), never on the whole
+          screenshot, and its boxes are irreversibly blurred — see
+          <code>eval/reports/stage5-face.md</code>.
+        </p>
+        <div class="media-row">
+          <figure>
+            <img id="zoo-face-profile" data-face-gt="FACE" alt="synthetic profile photo, AI-generated, no real person" width="180" height="180" src="/faces/profile-photo.jpg" />
+            <figcaption>Profile photo (whole-image face)</figcaption>
+          </figure>
+          <figure>
+            <img id="zoo-face-idcard" data-face-gt="FACE" alt="synthetic specimen ID card with an AI-generated photo box, no real person or document" width="300" height="186" src="/faces/id-card.png" />
+            <figcaption>Face inside a scanned-ID-card image</figcaption>
+          </figure>
+          <figure>
+            <img id="zoo-face-partial" data-face-gt="FACE" alt="small partial crop of a synthetic AI-generated face" width="48" height="64" src="/faces/partial-face-small.png" />
+            <figcaption>Small/partial face (honest miss expected — see the eval report)</figcaption>
+          </figure>
+        </div>
+        <p id="zoo-face-canvas-label">Same profile photo, drawn into a &lt;canvas&gt; instead of an &lt;img&gt; (DOM-blind either way):</p>
+        <canvas id="zoo-face-canvas" data-face-gt="FACE" width="180" height="180"></canvas>
+      </section>
+
+      <!-- ============ Face-free control (false-positive measurement) ============ -->
+      <section class="negatives">
+        <h2>Face-free control (measures false positives)</h2>
+        <p>Purely procedural shapes — no photographic content, no face, of any kind.</p>
+        <img id="zoo-face-control" data-face-gt="NONE" alt="synthetic control graphic with no face" width="180" height="180" src="/faces/control-no-face.png" />
       </section>
     </main>
 

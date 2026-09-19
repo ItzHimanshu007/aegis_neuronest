@@ -38,48 +38,48 @@ function observationWith(textBlocks: RawTextBlock[]): Observation {
   });
 }
 
-function categoriesFor(blockRef: string, obs: Observation): string[] {
-  return runDetectionCascade({ observation: obs, task: '' })
+async function categoriesFor(blockRef: string, obs: Observation): Promise<string[]> {
+  return (await runDetectionCascade({ observation: obs, task: '' }))
     .detections.filter((d) => d.target.kind === 'text_span' && d.target.ref === blockRef)
     .map((d) => d.category);
 }
 
 describe('labelled-value fallback', () => {
-  it('flags a <dd> whose <dt> names the category, with no rule match at all', () => {
+  it('flags a <dd> whose <dt> names the category, with no rule match at all', async () => {
     const obs = observationWith([
       block({ blockRef: '0:0', text: 'Blood group', role: 'term' }),
       block({ blockRef: '0:1', text: 'O positive', role: 'definition' }),
     ]);
-    expect(categoriesFor('0:1', obs)).toContain('HEALTH');
+    expect(await categoriesFor('0:1', obs)).toContain('HEALTH');
   });
 
-  it('flags a table cell whose row header names the category', () => {
+  it('flags a table cell whose row header names the category', async () => {
     const obs = observationWith([
       block({ blockRef: '0:0', text: 'City', role: 'rowheader' }),
       block({ blockRef: '0:1', text: 'Bengaluru', role: 'cell' }),
     ]);
-    expect(categoriesFor('0:1', obs)).toContain('CITY');
+    expect(await categoriesFor('0:1', obs)).toContain('CITY');
   });
 
-  it('flags a labelled value the rule rejects — the label outranks a failing checksum', () => {
+  it('flags a labelled value the rule rejects — the label outranks a failing checksum', async () => {
     const obs = observationWith([block({ blockRef: '0:0', text: 'Aadhaar: 2345 6789 0128' })]);
-    expect(categoriesFor('0:0', obs)).toContain('AADHAAR');
+    expect(await categoriesFor('0:0', obs)).toContain('AADHAAR');
   });
 
-  it('does not flag an unlabelled block', () => {
+  it('does not flag an unlabelled block', async () => {
     const obs = observationWith([block({ blockRef: '0:0', text: 'Shipping is free above 499.' })]);
-    expect(categoriesFor('0:0', obs)).toEqual([]);
+    expect(await categoriesFor('0:0', obs)).toEqual([]);
   });
 });
 
 describe('block-level privacy tags', () => {
-  it('flags a block inside a data-private wrapper', () => {
+  it('flags a block inside a data-private wrapper', async () => {
     const obs = observationWith([block({ blockRef: '0:0', text: 'Anything at all.', privacyAttrs: ['data-private'] })]);
-    expect(categoriesFor('0:0', obs)).toContain('PRIVATE_GENERIC');
+    expect(await categoriesFor('0:0', obs)).toContain('PRIVATE_GENERIC');
   });
 
-  it('flags a session-replay-masked block', () => {
+  it('flags a session-replay-masked block', async () => {
     const obs = observationWith([block({ blockRef: '0:0', text: 'Masked in replay.', privacyAttrs: ['rr-mask'] })]);
-    expect(categoriesFor('0:0', obs)).toContain('PRIVATE_GENERIC');
+    expect(await categoriesFor('0:0', obs)).toContain('PRIVATE_GENERIC');
   });
 });

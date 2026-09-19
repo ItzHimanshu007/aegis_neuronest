@@ -287,6 +287,12 @@ function isFillColour(r: number, g: number, b: number): boolean {
   return r <= FILL_TOLERANCE && g <= FILL_TOLERANCE && b <= FILL_TOLERANCE;
 }
 
+/** Whether a point falls inside a rect (used to exclude a FILL-family mask's ring samples from
+ * landing inside a DIFFERENT mask that legitimately overlaps it — see verifyMasks() below). */
+function pointInRect(px: number, py: number, rect: AppliedMask['pxRect']): boolean {
+  return px >= rect.x && px < rect.x + rect.width && py >= rect.y && py < rect.y + rect.height;
+}
+
 /**
  * Integrity check (Stage 2 Part F.2). For every FILL-family mask, samples a ring of pixels inside
  * the padded rect — but outside the centre where a label may be drawn — at FULL resolution and
@@ -294,6 +300,15 @@ function isFillColour(r: number, g: number, b: number): boolean {
  *
  * BLUR masks are excluded from the colour check by design (they're supposed to retain structure);
  * their correctness is that they are only ever applied to FACE/PHOTO, which the caller enforces.
+ *
+ * A sample point that falls inside a DIFFERENT mask's rect is skipped, not failed: masks are
+ * allowed to nest by design — a face detected inside an otherwise-unscanned image (Stage 5A)
+ * produces both the whole-region FILL_REGION (drawn first, fail-closed default) and a tight BLUR
+ * over just the face (drawn second, on top — see privacy/detect/hooks.ts). When the face nearly
+ * fills the region, as a close-up photo often does, the FILL_REGION's own edge ring can legitimately
+ * land inside that nested BLUR box; that pixel is correctly non-black by design, not a leak, and
+ * the BLUR mask's OWN coverage (checked as a normal non-ALLOW detection by firewall.ts's coverage
+ * check, not by this colour check) is what actually guards it.
  */
 export async function verifyMasks(result: RedactResult): Promise<VerifyResult> {
   const failures: VerifyResult['failures'] = [];
@@ -313,6 +328,8 @@ export async function verifyMasks(result: RedactResult): Promise<VerifyResult> {
     const { x, y, width, height } = mask.pxRect;
     if (width < 4 || height < 4) continue; // too small to sample a meaningful ring
 
+    const otherMasks = result.image.masks.filter((m) => m !== mask);
+
     // Ring: a few px inside each edge, avoiding the horizontal band where a label may sit.
     const inset = 2;
     const labelBandTop = y + height * 0.3;
@@ -324,7 +341,9 @@ export async function verifyMasks(result: RedactResult): Promise<VerifyResult> {
       { px: x + width - inset - 1, py: y + height - inset - 1 },
       { px: x + width / 2, py: y + inset },
       { px: x + width / 2, py: y + height - inset - 1 },
-    ].filter((p) => p.py < labelBandTop || p.py > labelBandBottom);
+    ]
+      .filter((p) => p.py < labelBandTop || p.py > labelBandBottom)
+      .filter((p) => !otherMasks.some((m) => pointInRect(p.px, p.py, m.pxRect)));
 
     for (const { px, py } of samplePoints) {
       const full = fullCtx.getImageData(Math.floor(px), Math.floor(py), 1, 1).data;

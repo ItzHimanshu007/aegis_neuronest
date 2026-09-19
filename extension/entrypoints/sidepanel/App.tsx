@@ -9,6 +9,8 @@ import { send } from '../../net/network';
 import type { Mode } from '../../privacy/redactor';
 import type { RawElement } from '../../observe/types';
 import { AEGIS_CONFIG } from '../../shared/config';
+import { isFaceModelLoaded } from '../../perception/faceModel';
+import { getLastFaceRegionTimings } from '../../privacy/detect/hooks';
 
 type ServerStatus = 'checking' | 'online' | 'offline';
 type Tab = 'agent' | 'judge';
@@ -92,6 +94,13 @@ export default function App() {
       cancelled = true;
       clearInterval(interval);
     };
+  }, []);
+
+  // Stage 5A, test-only: lets e2e assert the face model's lazy-load/idle-unload timing without
+  // reaching into module-private state (same convention as __aegisLastObserveResult below).
+  useEffect(() => {
+    (window as unknown as { __aegisIsFaceModelLoaded?: () => boolean }).__aegisIsFaceModelLoaded = isFaceModelLoaded;
+    (window as unknown as { __aegisLastFaceRegionTimings?: () => ReturnType<typeof getLastFaceRegionTimings> }).__aegisLastFaceRegionTimings = getLastFaceRegionTimings;
   }, []);
 
   /** Capture transport has no independent numbering. Only the session registry issues EIDs. */

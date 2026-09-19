@@ -8,6 +8,16 @@ is next and has not started. Implement one stage at a time; future implementatio
 `pnpm check`, browser checks and a stage report. Architecture describes intended interfaces, not
 claims that later-stage modules are already implemented.
 
+**Deliberate reordering (2026-09-18): Stage 4 deferred, not skipped or cancelled.** A narrow slice
+of Stage 5 — local face detection only, "Stage 5A" — is pulled forward ahead of Stage 4. Reason:
+the SIH26171 idea-submission deadline is two weeks out, and "a client-side vision model running in
+the browser that evaluates the current screen state" is the problem statement's first named
+deliverable. Stage 4 (held-out splits, impossible tasks, false-success rate) improves the rigor of
+numbers we already have; Stage 5A produces a capability the deck needs that does not exist yet.
+Stage 4 remains next in line once Stage 5A closes. The rest of the Stage 5-9 plan below is
+unchanged and unrenumbered — Stage 5A is a subset of Stage 5's scope (face detection only; coarse
+form-state classification and the remaining Stage 5 scope are still pending), not a new stage.
+
 | Stage | Scope |
 | --- | --- |
 | 0 | Foundations: WXT MV3 Chrome/Firefox, contracts, mock server, demo portal, enforcement |
