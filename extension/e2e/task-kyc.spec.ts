@@ -67,7 +67,7 @@ test('kyc.html: a task fills the pre-filled name and the empty email from task d
   await expect(panelPage.locator('[data-testid="task-status"]')).toHaveText('stopped');
 
   // The timeline records two PASS steps (type name, type email) with no false success.
-  await panelPage.getByText('Task summary and timeline').click(); // <details> starts collapsed
+  await panelPage.getByText('Everything Aegis recorded').click(); // <details> starts collapsed
   const summary = JSON.parse(await panelPage.locator('[data-testid="task-summary"]').innerText());
   const typeSteps = summary.timeline.filter((entry: { action: string }) => entry.action === 'type');
   expect(typeSteps).toHaveLength(2);

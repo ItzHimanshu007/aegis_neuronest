@@ -127,16 +127,21 @@ def click_panel(label):
     d.set_context('chrome')
     wait(lambda: panel('return [...document.querySelectorAll("button")].some(b=>b.textContent===' + json.dumps(label) + '&&!b.disabled)'))
     panel('delete window.__aegisLastObserveResult; delete window.__aegisLastProcessResult;')
-    # `actor.clickElement` is the raw MarionetteCommands actor method (not the standard WebDriver
-    # element-click endpoint Selenium normally issues), and it does not auto-scroll an
-    # out-of-viewport-but-laid-out target into view before checking interactability — which is
-    # exactly what a button newly revealed by expanding `<details class="dev-tools">` can be, on
-    # a sidebar viewport short enough that the expanded panel pushes it below the fold. Scroll it
-    # into view ourselves first, matching what a real click (and the standard WebDriver command)
-    # would do automatically.
+    # `actor.clickElement` is the raw MarionetteCommands actor method, not the standard WebDriver
+    # element-click endpoint, and it does not scroll a below-the-fold target into view before
+    # checking interactability. Expanding `<details class="dev-tools">` makes this panel taller
+    # than its own viewport, so the Stage-2 buttons genuinely do need scrolling to.
+    #
+    # Do that in *document* space, never with `scrollIntoView({block:"center"})`: this sidebar
+    # chrome context intermittently reports a zero-height scrollport (see `open_dev_tools()`), and
+    # centering against it parks the button's top at -height/2 — the scroll itself moves the target
+    # out of view. Measured both ways against 97f5a24: `center` failed at y=-17, no scroll at all
+    # failed at y=772 with scrollY=0. Positioning from `offsetTop` needs no viewport height and
+    # cannot overshoot past the top of the document.
     panel(
         'const b=[...document.querySelectorAll("button")].find(b=>b.textContent===' + json.dumps(label) + ');'
-        'b?.scrollIntoView({block:"center"});'
+        'if(b){const top=b.getBoundingClientRect().top+window.scrollY;'
+        'window.scrollTo(0,Math.max(0,top-40));}'
     )
     r = d.execute_async_script(f"""
         const done=arguments[arguments.length-1], actor={ACTOR};
@@ -190,21 +195,24 @@ def navigate(path):
 def open_dev_tools():
     """The Stage-2 pipeline controls sit inside a collapsed <details class="dev-tools"> so the panel
     opens on one task input. Marionette refuses to click a control with no layout box, so open it —
-    and then wait for the layout box to actually exist before returning: `setAttribute` lands
-    synchronously, but Marionette's interactability check can still run against a stale layout if
-    the click that follows lands before the next paint (hosted-inference session, Part D prep: this
-    was intermittently failing `click_panel('Observe')` with ElementNotInteractableError even with
-    the attribute set, because nothing here waited for the box to appear)."""
+    and then wait for the layout to actually settle before returning.
+
+    Waiting on the details' own box is not enough. Expanding it reflows the whole sidebar document,
+    and while that is in flight this chrome context reports `innerHeight`/`innerWidth` as 0 — a
+    zero-height scrollport, in which nothing is interactable and any viewport-relative scroll math
+    is garbage. That window is what made `click_panel` fail intermittently with
+    ElementNotInteractableError on a loaded machine, at different points on each run. Waiting for a
+    real viewport as well as a real box closes it."""
     panel('document.querySelector("details.dev-tools")?.setAttribute("open","")')
     wait(lambda: panel(
         'const d=document.querySelector("details.dev-tools");'
-        'return !!d && d.open && d.getBoundingClientRect().height > 0'
+        'return !!d && d.open && d.getBoundingClientRect().height > 0 && innerHeight > 0'
     ))
 
 
 def observe(sanitize=False):
     open_dev_tools()
-    click_panel('Observe & Sanitize' if sanitize else 'Observe')
+    click_panel('Check what would be sent' if sanitize else 'Observe')
     prop = '__aegisLastProcessResult' if sanitize else '__aegisLastObserveResult'
     try:
         wait(lambda: panel(f'return Boolean(window.{prop}) || Boolean(document.querySelector("pre.error"))'))

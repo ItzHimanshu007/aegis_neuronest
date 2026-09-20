@@ -17,7 +17,7 @@ import { classifyAction } from '../authority';
 import { checkPlan, checkAction } from './checks';
 import { rehydrate } from './rehydrate';
 import { verify } from './verifier';
-import { Recovery, type FailureCode } from './recovery';
+import { Recovery, FAILURE_REASON, type FailureCode } from './recovery';
 import type { ApprovalRequest, ApprovalReply } from './approval';
 import type { ExecutionRequest, ExecutionResult } from './executor';
 import { decideContextExpansion } from '../sensing/contextExpansion';
@@ -134,7 +134,7 @@ export class TaskRunner {
     this.move('recovering'); this.record('observe','FAIL',code);
     if(this.recovery.decide(code)==='replan' && !this.budget()) return true;
     this.move('asking_user');
-    const reply=await this.human(this.ui.ask(`Aegis paused: ${code}. Retry, give a hint, or stop.`,this.signal));
+    const reply=await this.human(this.ui.ask(`Aegis is stuck: ${FAILURE_REASON[code]}. You can reply with a hint, let it try again, or stop. (${code})`,this.signal));
     if(reply.choice==='stop') {this.stop();return false;}
     if(this.budget()) {this.move('failed');return false;}
     if(reply.hint) this.task += `\nUser hint: ${reply.hint}`;

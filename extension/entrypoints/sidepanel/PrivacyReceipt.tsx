@@ -5,6 +5,7 @@ import { isLockedCategory } from '../../privacy/policy';
 import { severityClass } from './PrivacyPreview';
 import { TOKEN_PATTERN } from '../../shared/schema/tokens';
 import { openReceiptTab, publishReceipt } from '../../shared/receiptBridge';
+import { categoryLabel, groupDigits, layerLabel } from './labels';
 
 /**
  * The privacy receipt (demo-readiness session, Part B): side by side, for the CURRENT step —
@@ -86,7 +87,7 @@ export function tallyLayers(detections: PreviewDetections): Array<[string, numbe
 /** Accepts anything with a `.preview` — the full ProcessResult (side panel) or just the preview
  * bundle on its own (the full-page tab, which never sees a `SanitizedPayload`; see
  * extension/entrypoints/receipt/App.tsx and shared/receiptBridge.ts). */
-export function PrivacyReceipt({ result }: { result: Pick<ProcessResult, 'preview'> }) {
+export function PrivacyReceipt({ result, expanded = false }: { result: Pick<ProcessResult, 'preview'>; expanded?: boolean }) {
   const [showJson, setShowJson] = useState(false);
   const { draftJson, size, detections, rawImageDataUrl } = result.preview;
 
@@ -105,8 +106,8 @@ export function PrivacyReceipt({ result }: { result: Pick<ProcessResult, 'previe
   if (!sealed) {
     return (
       <section className="receipt" aria-label="Privacy receipt">
-        <label>Privacy receipt</label>
-        <p className="error">Could not parse this step's sealed payload for display.</p>
+        <label>What left this device</label>
+        <p className="error">This step&rsquo;s sent data could not be read back for display.</p>
       </section>
     );
   }
@@ -114,91 +115,102 @@ export function PrivacyReceipt({ result }: { result: Pick<ProcessResult, 'previe
   return (
     <section className="receipt" aria-label="Privacy receipt">
       <div className="receipt-header">
-        <label>Privacy receipt — this step</label>
+        <label>What left this device, this step</label>
         <button className="btn btn-neutral btn-sm" onClick={() => void openReceiptTab()}>
           Open full view ↗
         </button>
       </div>
 
-      <div className="image-compare">
-        <figure>
-          <figcaption>What you see — never leaves the browser</figcaption>
-          {rawImageDataUrl ? <img src={rawImageDataUrl} alt="the live page, as captured locally" /> : <p>no capture</p>}
-        </figure>
-        <figure>
-          <figcaption>What the server received — the exact sealed bytes</figcaption>
-          {sealed.image ? <img src={sealed.image} alt="sealed, redacted page sent to the server" /> : <p>no image in this payload</p>}
-        </figure>
-      </div>
-
+      {/* The one strip that is always on screen. Everything on it changes every step; anything
+        * constant or historical lives in the expander below (Part B2's rule). Bytes sealed leads
+        * because it is the literal measure of what left the device. */}
       <div className="receipt-counters">
-        <span>
-          <b>{size}</b> <small>bytes sealed</small>
+        <span className="counter-lead" title="The exact size of the data sent to the server for this step">
+          <b>{groupDigits(size)}</b> <small>bytes sealed</small>
         </span>
-        <span>
+        <span title="Private values swapped for a placeholder before sending">
           <b>{tokenCount}</b> <small>token{tokenCount === 1 ? '' : 's'}</small>
         </span>
-        <span>
+        <span title="Areas painted over in the image before sending">
           <b>{sealed.redactions.length}</b> <small>redaction{sealed.redactions.length === 1 ? '' : 's'}</small>
         </span>
-        <span>
-          <b>{sealed.elements.length}</b> <small>element{sealed.elements.length === 1 ? '' : 's'}</small>
+        <span title="How many things on the page the server can see at all">
+          <b>{sealed.elements.length}</b> <small>elements the server sees</small>
         </span>
       </div>
 
-      <label>Categories redacted this step</label>
+      <div className="image-compare">
+        <figure>
+          <figcaption>On your screen — stays here</figcaption>
+          {rawImageDataUrl ? <img src={rawImageDataUrl} alt="the live page, as captured locally" /> : <p className="image-missing">Nothing captured this step</p>}
+        </figure>
+        <figure>
+          <figcaption>Sent to the server — exactly this</figcaption>
+          {sealed.image ? <img src={sealed.image} alt="sealed, redacted page sent to the server" /> : <p className="image-missing">No picture sent this step — the page had not changed</p>}
+        </figure>
+      </div>
+
+      <label>Hidden from the server this step</label>
       <div className="receipt-tags">
-        {categoryCounts.length === 0 && <span className="hint">Nothing sensitive this step.</span>}
+        {categoryCounts.length === 0 && <span className="hint">Nothing private on this screen.</span>}
         {categoryCounts.map(([category, count]) => (
           <span key={category} className={`receipt-tag ${severityClass(category, 'FILL')}`}>
-            {category}
+            {categoryLabel(category)}
             {isLockedCategory(category) ? ' 🔒' : ''} × {count}
           </span>
         ))}
       </div>
 
-      <label>Which layer produced each redaction</label>
-      <div className="receipt-tags">
-        {layerCounts.length === 0 && <span className="hint">Nothing sensitive this step.</span>}
-        {layerCounts.map(([source, count]) => (
-          <span key={source} className="receipt-tag sev-allow">
-            {source} × {count}
-          </span>
-        ))}
-      </div>
+      {/* One click away, per Part B2: which layer caught what, the full manifest, and the sealed
+        * bytes themselves. Open by default in the full-page view, which has the room for it. */}
+      <details className="receipt-detail" open={expanded}>
+        <summary>How Aegis worked this out</summary>
 
-      <label>Redaction manifest ({sealed.redactions.length})</label>
-      <div className="detections">
-        {sealed.redactions.map((r) => (
-          <div key={r.rid} className={`detection ${severityClass(r.type as Category, 'FILL')}`}>
-            <b>{r.type}</b> <span className="action">{r.kind}</span>
-            <br />
-            <span className="meta">
-              {r.rid}
-              {r.eid ? ` · ${r.eid}` : ''}
+        <label>What spotted each one</label>
+        <div className="receipt-tags">
+          {layerCounts.length === 0 && <span className="hint">Nothing private on this screen.</span>}
+          {layerCounts.map(([source, count]) => (
+            <span key={source} className="receipt-tag sev-allow">
+              {layerLabel(source)} × {count}
             </span>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
 
-      <label>Elements the server can see ({sealed.elements.length})</label>
-      <div className="detections">
-        {sealed.elements.map((el) => (
-          <div key={el.eid} className="detection sev-allow">
-            <b>{el.eid}</b> <span className="action">{el.role}</span>
-            <br />
-            <span className="meta">&quot;{el.label || '(no label)'}&quot;</span>
-          </div>
-        ))}
-      </div>
+        {/* Deliberately the raw `type` and `kind` from the sealed bytes, not a friendly rename:
+          * this list's whole claim is that it mirrors what was sent, field for field. */}
+        <label>Everything painted over ({sealed.redactions.length})</label>
+        <div className="detections">
+          {sealed.redactions.map((r) => (
+            <div key={r.rid} className={`detection ${severityClass(r.type as Category, 'FILL')}`}>
+              <b>{r.type}</b> <span className="action">{r.kind}</span>
+              <br />
+              <span className="meta">
+                {r.rid}
+                {r.eid ? ` · ${r.eid}` : ''}
+              </span>
+            </div>
+          ))}
+        </div>
 
-      <label>
-        Sealed payload{' '}
-        <button className="action" onClick={() => setShowJson((v) => !v)}>
-          {showJson ? 'hide' : 'show'}
-        </button>
-      </label>
-      {showJson && <pre className="payload-json">{JSON.stringify(JSON.parse(draftJson), null, 2)}</pre>}
+        <label>Everything the server can see ({sealed.elements.length})</label>
+        <div className="detections">
+          {sealed.elements.map((el) => (
+            <div key={el.eid} className="detection sev-allow">
+              <b>{el.eid}</b> <span className="action">{el.role}</span>
+              <br />
+              <span className="meta">&quot;{el.label || '(no label)'}&quot;</span>
+            </div>
+          ))}
+        </div>
+
+        <label>
+          The exact data sent{' '}
+          <button className="action" onClick={() => setShowJson((v) => !v)}>
+            {showJson ? 'hide' : 'show'}
+          </button>
+        </label>
+        {showJson && <pre className="payload-json">{JSON.stringify(JSON.parse(draftJson), null, 2)}</pre>}
+      </details>
     </section>
   );
 }

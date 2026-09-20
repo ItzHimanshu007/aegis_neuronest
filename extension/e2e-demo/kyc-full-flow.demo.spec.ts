@@ -72,7 +72,7 @@ test.describe('kyc full flow demo', () => {
       // split-screen still and this step's token count. Mock-only: the live model already needs
       // more steps than the mock's scripted plan for the plain two-field task (see below), and
       // adding a third field the model might also decide to "confirm" only compounds that.
-      await panelPage.getByRole('button', { name: 'Add task data' }).click();
+      await panelPage.getByRole('button', { name: 'Add another value' }).click();
       await panelPage.getByLabel('Data type 3').selectOption('AADHAAR');
       await panelPage.getByLabel('Data value 3').fill('2345 6789 0123');
     }

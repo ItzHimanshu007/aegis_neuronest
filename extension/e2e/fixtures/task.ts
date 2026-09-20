@@ -49,7 +49,7 @@ export async function startTask(
 
   await panelPage.getByLabel('Task', { exact: true }).fill(taskText);
   for (const [index, row] of data.entries()) {
-    if (index >= 2) await panelPage.getByRole('button', { name: 'Add task data' }).click();
+    if (index >= 2) await panelPage.getByRole('button', { name: 'Add another value' }).click();
     await panelPage.getByLabel(`Data type ${index + 1}`).selectOption(row.category);
     await panelPage.getByLabel(`Data value ${index + 1}`).fill(row.value);
   }
@@ -79,11 +79,11 @@ export async function acceptConsent(
   await dialog.getByRole('button', { name: 'Continue with selected' }).click();
 }
 
-/** Waits for the approval dialog and clicks Approve or Skip & replan. */
+/** Waits for the approval dialog and clicks Approve or the skip-and-replan button. */
 export async function respondToApproval(panelPage: Page, choice: 'approve' | 'skip'): Promise<void> {
   const dialog = panelPage.getByRole('dialog', { name: 'Action approval' });
   await dialog.waitFor({ state: 'visible', timeout: 15_000 });
-  await dialog.getByRole('button', { name: choice === 'approve' ? 'Approve' : 'Skip & replan' }).click();
+  await dialog.getByRole('button', { name: choice === 'approve' ? 'Approve' : 'Do something else' }).click();
 }
 
 /** Waits for the ask_user/recovery question dialog and stops the task from inside it. */
@@ -101,7 +101,7 @@ export async function readSnapshot(panelPage: Page): Promise<{
 }> {
   const details = panelPage.locator('[data-testid="task-summary"]');
   if (!(await details.isVisible())) {
-    await panelPage.getByText('Task summary and timeline').click();
+    await panelPage.getByText('Everything Aegis recorded').click();
   }
   return JSON.parse(await details.innerText());
 }

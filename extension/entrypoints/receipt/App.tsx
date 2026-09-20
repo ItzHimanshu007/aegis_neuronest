@@ -36,13 +36,13 @@ export default function App() {
 
   return (
     <main className="receipt-fullpage">
-      <h1>Aegis — Privacy Receipt</h1>
+      <h1>Aegis — what left this device</h1>
       {preview ? (
-        <PrivacyReceipt result={{ preview }} />
+        <PrivacyReceipt result={{ preview }} expanded />
       ) : (
         <p className="hint">
           {asked
-            ? 'No receipt available. Open the Aegis side panel, run a task step, then use “Open full view” again.'
+            ? 'Nothing to show yet. Open the Aegis side panel, start a task, then use “Open full view” again.'
             : 'Loading…'}
         </p>
       )}

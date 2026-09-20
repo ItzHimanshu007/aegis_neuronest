@@ -165,7 +165,7 @@ test.describe('kyc.html: the Stage 1 page still sanitizes cleanly', () => {
     });
     test.skip(!serverUp, 'requires the mock server (pnpm server) to be running');
 
-    await panelPage.getByRole('button', { name: 'Send to server (mock)' }).click();
+    await panelPage.getByRole('button', { name: 'Send this to the server' }).click();
     await expect(panelPage.locator('pre', { hasText: 'sent' })).toBeVisible({ timeout: 15_000 });
 
     const sentText = await panelPage.locator('pre', { hasText: 'sent' }).innerText();

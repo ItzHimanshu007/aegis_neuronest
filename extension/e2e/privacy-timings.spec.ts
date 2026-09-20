@@ -29,8 +29,8 @@ function stat(values: number[]): { median: number; p95: number } {
 async function setMode(panelPage: Page, mode: string): Promise<void> {
   // Not `.locator('select').first()`: TaskPanel (Stage 3B) now renders its own `<select>`s
   // (task-data category, task mode) ahead of this one in the DOM, so position is no longer
-  // unique. "Mode" (this measurement UI's own select) and TaskPanel's "Task mode" both contain
-  // "mode", so this needs an exact match.
+  // unique. "Mode" is this measurement UI's own select; the task panel's equivalent is labelled
+  // "How carefully to look", so an exact match on "Mode" resolves to this one.
   await panelPage.getByLabel('Mode', { exact: true }).selectOption(mode);
 }
 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { ProcessResult } from '../../agentHost';
 import type { Action, Category } from '../../privacy/categoryTypes';
 import { classOf, isLockedCategory } from '../../privacy/policy';
+import { categoryLabel } from './labels';
 
 /**
  * Privacy Preview (Stage 2 Part G) — the seed of Judge Mode. Shows exactly what would leave the
@@ -41,7 +42,7 @@ export function PrivacyPreview({ result }: { result: ProcessResult }) {
   return (
     <div className="preview">
       <section>
-        <label>What left the device</label>
+        <label>Summary of what would be sent</label>
         <pre>
           {JSON.stringify(
             {
@@ -62,16 +63,16 @@ export function PrivacyPreview({ result }: { result: ProcessResult }) {
 
       <section>
         <label>
-          Raw (local only) vs redacted{' '}
-          <input type="checkbox" checked={showMasks} onChange={() => setShowMasks((v) => !v)} /> show masks
+          Before and after{' '}
+          <input type="checkbox" checked={showMasks} onChange={() => setShowMasks((v) => !v)} /> paint over the private parts
         </label>
         <div className="image-compare">
           <figure>
-            <figcaption>Raw — never leaves the browser</figcaption>
+            <figcaption>On your screen — stays here</figcaption>
             {preview.rawImageDataUrl ? <img src={preview.rawImageDataUrl} alt="raw capture" /> : <p>no capture</p>}
           </figure>
           <figure>
-            <figcaption>Redacted — what the server would see</figcaption>
+            <figcaption>What the server would get</figcaption>
             {preview.redactedImageDataUrl ? (
               <img src={showMasks ? preview.redactedImageDataUrl : preview.rawImageDataUrl} alt="redacted capture" />
             ) : (
@@ -82,7 +83,7 @@ export function PrivacyPreview({ result }: { result: ProcessResult }) {
       </section>
 
       <section>
-        <label>Seal checks</label>
+        <label>Checks run before anything can be sent</label>
         <pre>
           {[
             '1 schema                 PASS',
@@ -99,17 +100,17 @@ export function PrivacyPreview({ result }: { result: ProcessResult }) {
           ].join('\n')}
         </pre>
         <p className="hint">
-          All eight checks passed — `seal()` throws on the first failure, so a payload existing at all
-          means every check succeeded.
+          All eight passed. There is no way to get a half-checked payload: sealing stops at the first
+          failure, so data existing here at all means every check succeeded.
         </p>
       </section>
 
       <section>
-        <label>Detections ({preview.detections.length})</label>
+        <label>What Aegis found on this page ({preview.detections.length})</label>
         <div className="detections">
           {preview.detections.map((d) => (
             <div key={d.id} className={`detection ${severityClass(d.category, d.action)}`}>
-              <b>{d.category}</b>
+              <b>{categoryLabel(d.category)}</b>
               {isLockedCategory(d.category) ? <span className="locked" title="Locked class — user settings cannot downgrade this"> 🔒</span> : null}{' '}
               <span className="action">{d.action}</span>
               <br />
@@ -124,13 +125,13 @@ export function PrivacyPreview({ result }: { result: ProcessResult }) {
 
       {preview.spanFallbacks.length > 0 && (
         <section>
-          <label>Span-rect fallbacks (whole block masked instead)</label>
+          <label>Could not pin down exactly where — whole block painted over instead</label>
           <pre>{preview.spanFallbacks.map((f) => `${f.detectionId}: ${f.reason}`).join('\n')}</pre>
         </section>
       )}
 
       <section>
-        <label>Timings (ms)</label>
+        <label>How long each part took (ms)</label>
         <pre>
           {JSON.stringify(
             {
@@ -155,32 +156,31 @@ export function PrivacyPreview({ result }: { result: ProcessResult }) {
       </section>
 
       <section>
-        <label>Category settings</label>
+        <label>What Aegis protects</label>
         <div className="category-toggles">
           {CATEGORY_TOGGLES.map((category) => {
             const locked = isLockedCategory(category);
             return (
               <label
                 key={category}
-                title={locked ? `${category} is in a locked class (${classOf(category)}) — its protection can be made stricter, never weaker.` : `${category} protection can be adjusted.`}
+                title={locked ? `${category} can be made stricter, never weaker.` : `${category} protection can be adjusted.`}
               >
                 <input type="checkbox" checked readOnly disabled={locked} />
                 <span>
-                  {category} {locked ? '🔒 locked' : ''}
+                  {categoryLabel(category)} {locked ? '🔒 locked' : ''}
                 </span>
               </label>
             );
           })}
         </div>
         <p className="hint">
-          Locked categories are shown disabled on purpose: a user can make Aegis stricter, never looser
-          (docs/policy.yaml). Editing the unlocked ones lands with the consent screen in Stage 3.
+          The locked ones are disabled on purpose: you can make Aegis stricter, never looser.
         </p>
       </section>
 
       <section>
         <label>
-          Sealed payload{' '}
+          The exact data that would be sent{' '}
           <button className="action" onClick={() => setShowJson((v) => !v)}>
             {showJson ? 'hide' : 'show'}
           </button>

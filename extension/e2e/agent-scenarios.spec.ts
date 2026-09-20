@@ -282,7 +282,7 @@ test.describe('kyc_submit', () => {
     await expect(panelPage.locator('[data-testid="task-status"]')).toHaveText('stopped');
   });
 
-  test('Deny (Skip & replan): the form is never submitted', async ({ context, sidepanelUrl }) => {
+  test('Deny (Do something else): the form is never submitted', async ({ context, sidepanelUrl }) => {
     test.setTimeout(90_000);
     await forceScenario(context, 'kyc_submit');
     const targetPage = await context.newPage();

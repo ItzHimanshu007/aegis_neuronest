@@ -3,7 +3,7 @@ import type { ProcessResult } from '../../agentHost';
 import { openDevTools } from './observe';
 
 /**
- * Drives the Privacy Preview's "Observe & Sanitize" button and reads back the full ProcessResult
+ * Drives the Advanced section's "Check what would be sent" button and reads back the full ProcessResult
  * via the test-only `window.__aegisLastProcessResult` hook the panel sets.
  *
  * The click must be a real, Playwright-dispatched input event: `permissions.request()` inside the
@@ -20,7 +20,7 @@ export async function observeAndSanitize(panelPage: Page, targetPage: Page, task
     await panelPage.getByPlaceholder(/Fill in the KYC form/).fill(task);
   }
 
-  await panelPage.getByRole('button', { name: 'Observe & Sanitize' }).click();
+  await panelPage.getByRole('button', { name: 'Check what would be sent' }).click();
 
   await panelPage.waitForFunction(
     () => {
@@ -39,7 +39,7 @@ export async function observeAndSanitize(panelPage: Page, targetPage: Page, task
   // timeout (30s) waiting for an error that will never come.
   const errorCount = await panelPage.locator('pre.error').count();
   const error = errorCount > 0 ? await panelPage.locator('pre.error').first().textContent() : null;
-  throw new Error(`Observe & Sanitize failed: ${error ?? 'no result and no error shown'}`);
+  throw new Error(`Check what would be sent failed: ${error ?? 'no result and no error shown'}`);
 }
 
 /** Reads the sealed payload's exact bytes back as a string (what `send()` would transmit). */

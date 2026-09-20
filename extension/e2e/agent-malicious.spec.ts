@@ -11,7 +11,7 @@ import { forceScenario, acceptConsent, respondToApproval, stopFromQuestion } fro
  * A rejection the loop can recover from (checkPlan/checkAction ABORT_BATCH, or CONTEXT_DENIED) is
  * silently replanned twice (`AEGIS_CONFIG.MAX_REPLANS`) — the mock is deterministic and proposes the
  * identical bad plan each time, so it always converges on the SAME rejection reason before asking
- * the user, whose dialog text embeds the FailureCode literally (`Aegis paused: <code>. ...`,
+ * the user, whose dialog text embeds the FailureCode literally (`Aegis is stuck: ... (<code>)`,
  * runAgentLoop.ts's `recover()`) — that is what these tests read to prove which reason fired,
  * without needing any new instrumentation.
  */
@@ -58,7 +58,7 @@ test.describe('malicious scenarios — client-side blocking layer', () => {
       expect(dialogText, `expected ${expectedCode} (or a raced EXEC_FAILED)`).toMatch(
         new RegExp(`${expectedCode}|EXEC_FAILED`),
       );
-      console.log(`[MALICIOUS] ${scenario} actual code:`, dialogText?.match(/Aegis paused: (\w+)/)?.[1]);
+      console.log(`[MALICIOUS] ${scenario} actual code:`, dialogText?.match(/\((\w+)\)\s*$/)?.[1]);
 
       await stopFromQuestion(panelPage, 10_000);
       await expect(panelPage.locator('[data-testid="task-status"]')).toHaveText('stopped');
@@ -90,7 +90,7 @@ test.describe('malicious scenarios — client-side blocking layer', () => {
     expect(text, 'must be a real checkAction rejection, not a pass-through').toMatch(
       /NOT_VISIBLE|TARGET_MISSING|FP_MISMATCH/,
     );
-    console.log('[MALICIOUS] evil_hidden_click actual code:', text?.match(/Aegis paused: (\w+)/)?.[1]);
+    console.log('[MALICIOUS] evil_hidden_click actual code:', text?.match(/\((\w+)\)\s*$/)?.[1]);
 
     await stopFromQuestion(panelPage, 10_000);
     await expect(panelPage.locator('[data-testid="task-status"]')).toHaveText('stopped');

@@ -1,6 +1,6 @@
 import { TaskPanel } from './TaskPanel';
 import { useEffect, useRef, useState } from 'react';
-import { sendMessage, type HealthResult, type ObserveResult } from '../../shared/messages';
+import { sendMessage, type ObserveResult } from '../../shared/messages';
 import { hasSiteAccess, requestSiteAccess } from '../../shared/permissions';
 import { processObservation, type ProcessResult } from '../../agentHost';
 import { PrivacySession } from '../../agentHost/session';
@@ -13,7 +13,6 @@ import { isFaceModelLoaded } from '../../perception/faceModel';
 import { getLastFaceRegionTimings } from '../../privacy/detect/hooks';
 
 type ServerStatus = 'checking' | 'online' | 'offline';
-type Tab = 'agent' | 'judge';
 
 /** Informational note shown until the capture permission (see shared/permissions.ts) has been
  * granted at least once — re-checked after every Observe attempt, not just on mount, since
@@ -27,8 +26,8 @@ function useCapturePermissionNote(recheckKey: number): string | null {
       .then((granted) => {
         if (!cancelled && !granted) {
           setNote(
-            'Aegis will ask for screen-capture access the first time you click Observe. On Firefox, you can also ' +
-              'grant it upfront via about:addons → Aegis → Permissions.',
+            'The first time you start a task, your browser will ask to let Aegis see this tab. On Firefox you can ' +
+              'also allow it upfront from about:addons → Aegis → Permissions.',
           );
         } else if (!cancelled) {
           setNote(null);
@@ -47,13 +46,13 @@ function useCapturePermissionNote(recheckKey: number): string | null {
 
 function ServerStatusDot({ status }: { status: ServerStatus }) {
   const cls = status === 'online' ? 'online' : status === 'offline' ? 'offline' : '';
-  return <span className={`status-dot ${cls}`} title={`Server: ${status}`} />;
+  const title =
+    status === 'online' ? 'Connected to the Aegis server' : status === 'offline' ? 'Not connected' : 'Connecting';
+  return <span className={`status-dot ${cls}`} title={title} />;
 }
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('agent');
   const [serverStatus, setServerStatus] = useState<ServerStatus>('checking');
-  const [health, setHealth] = useState<HealthResult | null>(null);
   const [observeResult, setObserveResult] = useState<ObserveResult | null>(null);
   const [observeError, setObserveError] = useState<string | null>(null);
   const [observing, setObserving] = useState(false);
@@ -78,14 +77,12 @@ export default function App() {
     let cancelled = false;
     const check = async () => {
       try {
-        const result = await sendMessage('PING_SERVER', undefined);
+        await sendMessage('PING_SERVER', undefined);
         if (cancelled) return;
-        setHealth(result);
         setServerStatus('online');
       } catch {
         if (cancelled) return;
         setServerStatus('offline');
-        setHealth(null);
       }
     };
     check();
@@ -122,10 +119,10 @@ export default function App() {
         requestSiteAccess(),
         browser.tabs.query({ active: true, currentWindow: true }),
       ]);
-      if (!activeTab?.id || !activeTab.url) throw new Error('No active tab (or its URL is not visible yet — click the Aegis toolbar icon once on this tab first)');
+      if (!activeTab?.id || !activeTab.url) throw new Error('No page is open in this tab yet. Click the Aegis toolbar icon once on the page you want, then try again.');
 
       if (!access.granted) {
-        throw new Error(`Screen-capture access was denied (needed to observe ${new URL(activeTab.url).origin}). Click Observe again and choose Allow to continue.`);
+        throw new Error(`Permission to see ${new URL(activeTab.url).origin} was denied. Click Observe again and choose Allow.`);
       }
 
       const result = await sendMessage('OBSERVE', { tabId: activeTab.id });
@@ -145,8 +142,8 @@ export default function App() {
     }
   };
 
-  /** Observe & Sanitize: runs the whole Stage 2 pipeline locally and shows the Privacy Preview.
-   * Nothing is sent — `send()` is a separate, explicit button. */
+  /** Runs the whole Stage 2 privacy pipeline locally and shows the preview. Nothing is sent —
+   * `send()` is a separate, explicit button. */
   const handleObserveAndSanitize = async () => {
     setObserveError(null);
     setSanitizing(true);
@@ -156,9 +153,9 @@ export default function App() {
         requestSiteAccess(),
         browser.tabs.query({ active: true, currentWindow: true }),
       ]);
-      if (!activeTab?.id || !activeTab.url) throw new Error('No active tab (click the Aegis toolbar icon once on this tab first)');
+      if (!activeTab?.id || !activeTab.url) throw new Error('No page is open in this tab yet. Click the Aegis toolbar icon once on the page you want, then try again.');
 
-      if (!access.granted) throw new Error(`Screen-capture access was denied (needed to observe ${new URL(activeTab.url).origin}).`);
+      if (!access.granted) throw new Error(`Permission to see ${new URL(activeTab.url).origin} was denied.`);
 
       const observeResponse = await sendMessage('OBSERVE', { tabId: activeTab.id });
       await identifyObservation(observeResponse);
@@ -219,83 +216,74 @@ export default function App() {
 
       {capturePermissionNote && <div className="warning">{capturePermissionNote}</div>}
 
-      <div className="tabs">
-        <button className={tab === 'agent' ? 'active' : ''} onClick={() => setTab('agent')}>
-          Agent
-        </button>
-        <button className={tab === 'judge' ? 'active' : ''} onClick={() => setTab('judge')} disabled>
-          Judge Mode (Stage 4)
-        </button>
-      </div>
+      {/* Stage 4's evidence view will land as its own tab here. A disabled tab teaches nobody
+        * anything, so there is no tab bar until there is a second thing to put in it. */}
+      <TaskPanel />
 
-      {tab === 'agent' && (
-        <>
-          <TaskPanel />
-          <p className="server-line">
-            <ServerStatusDot status={serverStatus} />
-            {serverStatus === 'checking' && 'Checking server…'}
-            {serverStatus === 'offline' && 'Server offline — start it with `pnpm run server`'}
-            {serverStatus === 'online' &&
-              (health ? `Server online — ${health.model_adapter} adapter, v${health.version}` : 'Server online')}
-          </p>
+      <p className="server-line">
+        <ServerStatusDot status={serverStatus} />
+        {serverStatus === 'checking' && 'Connecting to the Aegis server…'}
+        {serverStatus === 'offline' && 'Not connected. Start the Aegis server, then this turns green.'}
+        {serverStatus === 'online' && 'Connected. Aegis is ready.'}
+      </p>
 
-          <details className="dev-tools">
-          <summary>Developer tools (Stage 2 pipeline)</summary>
+      {/* Stage 2 pipeline controls: still here, still driven by the e2e suite, but out of the way
+        * of anyone who just wants to run a task. */}
+      <details className="dev-tools">
+        <summary>Advanced</summary>
 
-          <section>
-            <label>Task (tokenized locally before anything is sent)</label>
-            <input
-              type="text"
-              value={taskText}
-              placeholder="e.g. Fill in the KYC form for asha@example.com"
-              onChange={(e) => setTaskText(e.target.value)}
-            />
-            <label>
-              Mode{' '}
-              <select aria-label="Mode" value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
-                <option value="fast">fast</option>
-                <option value="balanced">balanced</option>
-                <option value="accurate">accurate</option>
-              </select>
-            </label>
-            <label>
-              <input type="checkbox" checked={somEnabled} onChange={(e) => setSomEnabled(e.target.checked)} />{' '}
-              Element ID marks
-            </label>
-            <div className="button-row">
-              <button className="action" onClick={handleObserveAndSanitize} disabled={sanitizing}>
-                {sanitizing ? 'Sanitizing…' : 'Observe & Sanitize'}
-              </button>
-              <button className="action" onClick={handleSend} disabled={!processResult}>
-                Send to server (mock)
-              </button>
-            </div>
-            {observeError && <pre className="error">{observeError}</pre>}
-            {sendState && (
-              <pre>
-                {`sent\ndigest ${sendState.digest}\nbytes  ${sendState.size}\nat     ${sendState.at}`}
-              </pre>
-            )}
-          </section>
-
-          {processResult && <PrivacyPreview result={processResult} />}
-
-          <section>
-            <label>Observation only (local, no sanitization)</label>
-            <button className="action" onClick={handleObserve} disabled={observing}>
-              {observing ? 'Observing…' : 'Observe'}
-            </button>
-            {observeResult && <ObservationView result={observeResult} showOverlay={showOverlay} onToggleOverlay={() => setShowOverlay((v) => !v)} />}
-          </section>
-          </details>
-        </>
-      )}
-
-      {tab === 'judge' && (
         <section>
-          <p>Judge Mode lands in Stage 4. It will show the exact sanitized payload leaving the browser.</p>
+          <label htmlFor="preview-task">Task to try</label>
+          <input
+            id="preview-task"
+            type="text"
+            value={taskText}
+            placeholder="e.g. Fill in the KYC form for asha@example.com"
+            onChange={(e) => setTaskText(e.target.value)}
+          />
+          <p className="hint">
+            Runs the whole privacy pipeline on this page without sending anything, so you can see exactly what
+            would leave the device.
+          </p>
+          <label>
+            Mode{' '}
+            <select aria-label="Mode" value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
+              <option value="fast">fast</option>
+              <option value="balanced">balanced</option>
+              <option value="accurate">accurate</option>
+            </select>
+          </label>
+          <label>
+            <input type="checkbox" checked={somEnabled} onChange={(e) => setSomEnabled(e.target.checked)} />{' '}
+            Element ID marks
+          </label>
+          <div className="button-row">
+            <button className="action" onClick={handleObserveAndSanitize} disabled={sanitizing}>
+              {sanitizing ? 'Working…' : 'Check what would be sent'}
+            </button>
+            <button className="action" onClick={handleSend} disabled={!processResult}>
+              Send this to the server
+            </button>
+          </div>
+          {observeError && <pre className="error">{observeError}</pre>}
+          {sendState && (
+            <pre>
+              {`Sent to the server.\nfingerprint ${sendState.digest}\nbytes       ${sendState.size}\nat          ${sendState.at}`}
+            </pre>
+          )}
         </section>
-      )}
+
+        {processResult && <PrivacyPreview result={processResult} />}
+
+        <section>
+          <label>See the page the way Aegis reads it</label>
+          <p className="hint">Marks every element it can act on. Local only — nothing is redacted and nothing is sent.</p>
+          <button className="action" onClick={handleObserve} disabled={observing}>
+            {observing ? 'Observing…' : 'Observe'}
+          </button>
+          {observeResult && <ObservationView result={observeResult} showOverlay={showOverlay} onToggleOverlay={() => setShowOverlay((v) => !v)} />}
+        </section>
+      </details>
     </div>
   );
 }
@@ -326,7 +314,7 @@ function ObservationView({
       </pre>
 
       <label>
-        <input type="checkbox" checked={showOverlay} onChange={onToggleOverlay} /> Show mark overlay
+        <input type="checkbox" checked={showOverlay} onChange={onToggleOverlay} /> Draw the marks on the capture
       </label>
 
       <div className="screenshot-scroll">
@@ -334,14 +322,14 @@ function ObservationView({
           className="screenshot-wrap"
           style={{ width: observation.screenshot.pxW, height: observation.screenshot.pxH }}
         >
-          <img src={observation.screenshot.dataUrl} alt="captured screen" width={observation.screenshot.pxW} height={observation.screenshot.pxH} />
+          <img src={observation.screenshot.dataUrl} alt="the page as captured, before any redaction" width={observation.screenshot.pxW} height={observation.screenshot.pxH} />
           {showOverlay && (
             <MarkOverlay elements={observation.elements} scaleX={observation.screenshot.scaleX} scaleY={observation.screenshot.scaleY} />
           )}
         </div>
       </div>
 
-      <label>Marks ({observation.elements.length})</label>
+      <label>Elements Aegis can act on ({observation.elements.length})</label>
       {/* Values are never rendered here — only structural fields (AGENTS.md invariant 1 / Part E: no "Show values" toggle exists). */}
       <div className="marks-list">
         {observation.elements.map((el) => (
