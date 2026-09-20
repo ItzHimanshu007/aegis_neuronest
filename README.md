@@ -197,6 +197,29 @@ setup: `npx playwright install chromium`.
 Run `pnpm e2e:firefox` for the real Firefox MV3 suite. Setup, measured capability results and
 remaining human checks are in [`docs/manual-test-firefox.md`](docs/manual-test-firefox.md).
 
+### Demo recording path
+
+A separate, deliberately-out-of-`pnpm check`/`pnpm e2e` Playwright suite that drives one scripted,
+watchable-pace run of each full task flow (`kyc_submit`, then `login_credential`) end to end —
+consent → observe → detect+redact → seal → plan → approval → execute → verify → stop — for
+recording. It runs the packaged production build, not a dev server.
+
+```sh
+pnpm run server     # terminal 1 — http://localhost:8000 (mock adapter by default)
+pnpm portal          # terminal 2 — http://localhost:5174
+pnpm demo            # terminal 3 — builds the extension, then runs both scripted flows (mock, ~10s)
+```
+
+`pnpm demo:live` (sets `AEGIS_DEMO_LIVE=1`) runs the same two flows without forcing a mock
+scenario, so `/v1/plan` reaches whatever adapter `server/.env`'s `AEGIS_ADAPTER` is actually
+configured to — local Ollama, or a hosted `openai_compat` endpoint (Groq, OpenRouter; see
+"Running with a live model" above). Expect real model latency (p50 ≈ 43s, p95 ≈ 88s per call
+against the local baseline; hosted endpoints vary) — a live run can take several minutes per flow,
+and the model may take a different path than the deterministic mock script (see the docblock in
+`extension/e2e-demo/kyc-full-flow.demo.spec.ts` for what was actually observed running it live).
+`AEGIS_DEMO_SCREENSHOT_DIR=<dir>` saves the deck stills at the two moments that matter (redaction,
+and verified-done) instead of re-recording separately.
+
 ## Repository layout
 
 ```

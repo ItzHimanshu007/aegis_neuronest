@@ -13,6 +13,17 @@ inferring one. No papers or model cards were consulted — only this repository.
 > file's other rows still describe the repo state at `ec54529`, as stated; it was not
 > regenerated wholesale for this one change.
 
+> **Drift correction, 2026-09-20 (consolidation pass, commit `781479e`):** the `ec54529`
+> kyc.html photo swap (`a54f456`, demo-readiness work) changed byte sizes and per-stage timings on
+> every page that touches that image, and the reports below were regenerated against it
+> (`e548ddc`) without this file being regenerated in step — flagged in that commit's own message,
+> fixed here. Six numbers below were stale and are now corrected to match their cited source
+> file's current committed value, each marked inline: §2/§3.6's Chromium/Firefox/Vitest suite
+> sizes (grew with Stage 5A + demo-readiness), §3.1's kyc.html/pii-zoo.html per-stage timings,
+> §3.2's payload-size-by-mode table, and §3.3's capture count (12 → 15; the precision/recall
+> numbers themselves did not change). Everything else in this file was checked against its
+> current source in the same pass and still matches — no other correction was needed.
+
 ---
 
 ## 1. Stack — exact names and versions
@@ -68,7 +79,9 @@ All results below come from the Chromium Playwright suite (`extension/e2e/*.spec
 `pnpm e2e`) and the Firefox suite (`scripts/firefox/e2e.py`, run via `pnpm e2e:firefox`), both
 against the **mock** server adapter (deterministic, no live model) unless noted. Per
 `docs/STAGE-MODEL-SELECTION-REPORT.md`: **61/61 Chromium and 30/30 Firefox** checks passed as of
-2026-09-18 (commit `3f34aa3`, inherited unchanged into `ec54529`).
+2026-09-18 (commit `3f34aa3`, inherited unchanged into `ec54529`). **Grown since, as of
+2026-09-20 (commit `781479e`): 66/66 Chromium and 32/32 Firefox** — Stage 5A added face-detect
+checks to both suites, and demo-readiness added the two scripted demo flows.
 
 ### Confirmed in Chromium (`pnpm e2e`)
 
@@ -126,14 +139,17 @@ otherwise.
 Source: `eval/reports/stage2-timings.md` — Chromium, WXT dev build, `balanced` mode, mock adapter,
 10 observations/page, first `NEW_SCREEN` then repeats.
 
+Corrected 2026-09-20 (see drift-correction note above) — these moved after the kyc.html photo
+swap changed the byte size/cost of every stage that touches that image:
+
 | Page | Stage | Median (ms) | p95 (ms) |
 | --- | --- | ---: | ---: |
-| kyc.html | detect | 1.6 | 15.6 |
-| kyc.html | redact | 54.5 | 163 |
-| kyc.html | seal (total) | 78.5 | 204.6 |
-| pii-zoo.html | detect | 4.6 | 9.8 |
-| pii-zoo.html | redact | 59.6 | 95.9 |
-| pii-zoo.html | seal (total) | 88.8 | 436.2 |
+| kyc.html | detect | 78.3 | 575.5 |
+| kyc.html | redact | 71.2 | 90.3 |
+| kyc.html | seal (total) | 40.2 | 51.2 |
+| pii-zoo.html | detect | 4.6 | 9 |
+| pii-zoo.html | redact | 62.6 | 81.2 |
+| pii-zoo.html | seal (total) | 72.4 | 93.1 |
 
 Source: `eval/reports/stage3-tasks.md` — Chromium via Playwright 1.63.0, production build, mock
 adapter, `balanced` mode, n=11 measured steps across 4 real task scenarios run through the full
@@ -164,19 +180,22 @@ adapter, `balanced` mode:
 | p95 | 139,939 |
 | max | 139,939 |
 
-Source: `eval/reports/stage2-timings.md` — pii-zoo.html, fresh session per capture mode:
+Source: `eval/reports/stage2-timings.md` — pii-zoo.html, fresh session per capture mode.
+Corrected 2026-09-20 (see drift-correction note above):
 
 | Mode | Sealed bytes | Image (data-URL) bytes | Other bytes |
 | --- | ---: | ---: | ---: |
-| fast | 116,660 | 106,306 | 10,354 |
-| balanced | 181,504 | 171,146 | 10,358 |
-| accurate | 251,220 | 240,862 | 10,358 |
+| fast | 157,692 | 147,406 | 10,286 |
+| balanced | 245,896 | 235,606 | 10,290 |
+| accurate | 337,180 | 326,890 | 10,290 |
 
 ### 3.3 PII detection precision/recall
 
 Source: `eval/reports/stage2-baseline.md`. Test set: **93 hand-annotated instances (59 positive, 34
-negative)** across **12 overlapping viewport captures of `demo-portal/pii-zoo.html`**, on Chromium
-153.0.8010.12, `balanced` mode, **DOM-only cascade (no vision/OCR/NER)**.
+negative)** across **15 overlapping viewport captures of `demo-portal/pii-zoo.html`**
+(corrected 2026-09-20 from a stale 12 — see drift-correction note above; the instance/precision/
+recall numbers themselves are unchanged), on Chromium 153.0.8010.12, `balanced` mode, **DOM-only
+cascade (no vision/OCR/NER)**.
 
 **⚠ This test set is self-authored** — pii-zoo.html is a page written for this project and the
 annotations were made by the project itself. The report itself states this explicitly: *"This
@@ -236,15 +255,17 @@ check) and `qwen3-vl:4b` (schema-valid only 2/10, `MODEL_OUTPUT_INVALID` on 8/10
 
 ### 3.6 Test-suite scale (measured, not estimated)
 
-Source: `docs/STAGE-MODEL-SELECTION-REPORT.md`, `pnpm check` output, same repo state as this report:
+Source: `docs/STAGE-MODEL-SELECTION-REPORT.md`, `pnpm check` output, same repo state as this report.
+Corrected 2026-09-20 from stale 2026-09-18 figures (see drift-correction note above) — re-measured
+directly via `pnpm check`/`pnpm e2e`/`pnpm e2e:firefox` at commit `781479e`:
 
-| Suite | Result |
-| --- | --- |
-| Extension Vitest | 45 test files, **925 tests passed** |
-| Server pytest | **183 tests passed** |
-| Chromium E2E (`pnpm e2e`) | **61/61 passed** |
-| Firefox E2E (`pnpm e2e:firefox`) | **30/30 passed** |
-| ESLint / ruff / schema fixtures / typecheck | all PASS |
+| Suite | Result (2026-09-18) | Result (2026-09-20) |
+| --- | --- | --- |
+| Extension Vitest | 45 test files, 925 tests | **48 test files, 963 tests passed** |
+| Server pytest | 183 tests | **184 tests passed** (+1: hosted-API key-isolation test) |
+| Chromium E2E (`pnpm e2e`) | 61/61 | **66/66 passed** |
+| Firefox E2E (`pnpm e2e:firefox`) | 30/30 | **32/32 passed** |
+| ESLint / ruff / schema fixtures / typecheck | all PASS | all PASS |
 
 ### 3.7 Resource measurements
 

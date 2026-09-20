@@ -1,12 +1,10 @@
 # Aegis — Build stages (architecture v6)
 
-Current stage: **3B, complete** (checkpointed, then Part II: carry-overs, remaining demo scenarios,
-the malicious-scenario matrix re-run through the full agent loop, a Firefox core-flow pass, and
-task-level evaluation numbers — see `eval/reports/stage3-tasks.md` and the STAGE REPORT). Stage 4
-is next and has not started. Implement one stage at a time; future implementation is a throwing
-`TODO(stage-N)` stub where a silent default could be unsafe. Every stage adds tests and requires
-`pnpm check`, browser checks and a stage report. Architecture describes intended interfaces, not
-claims that later-stage modules are already implemented.
+Current stage: **3B, complete**, plus **Stage 5A, complete** (see below). Stage 4 remains
+deliberately deferred and has not started. Implement one stage at a time; future implementation is
+a throwing `TODO(stage-N)` stub where a silent default could be unsafe. Every stage adds tests and
+requires `pnpm check`, browser checks and a stage report. Architecture describes intended
+interfaces, not claims that later-stage modules are already implemented.
 
 **Deliberate reordering (2026-09-18): Stage 4 deferred, not skipped or cancelled.** A narrow slice
 of Stage 5 — local face detection only, "Stage 5A" — is pulled forward ahead of Stage 4. Reason:
@@ -17,6 +15,27 @@ numbers we already have; Stage 5A produces a capability the deck needs that does
 Stage 4 remains next in line once Stage 5A closes. The rest of the Stage 5-9 plan below is
 unchanged and unrenumbered — Stage 5A is a subset of Stage 5's scope (face detection only; coarse
 form-state classification and the remaining Stage 5 scope are still pending), not a new stage.
+
+**Stage 5A shipped (2026-09-18): local face detection.** YuNet (ONNX Runtime Web, WASM) ships in
+the extension bundle, gated to load only when a media region is actually encountered — see
+`eval/reports/stage5-face.md` for the detection/timing/bundle-size numbers and
+`docs/deck-facts.md`'s superseded-fact note. Since then, three rounds of cross-cutting,
+non-stage-numbered work landed on top of 3B/5A, all merged and verified (`pnpm check`, `pnpm e2e`,
+`pnpm e2e:firefox`, `pnpm demo`, `pnpm build`) as of 2026-09-20:
+
+- **Demo readiness**: a real synthetic face photo on `kyc.html` (replacing the placeholder SVG), a
+  watchable-pace/deck-sized Playwright fixture, and a separate `pnpm demo`/`demo:live` harness
+  driving the full `kyc_submit` and `login_credential` flows end to end for recording.
+- **UI legibility pass**: design tokens and dark mode; an elevated approval/consent/question dialog
+  with EID + authority-level badge; a full-page Privacy Receipt view; a visual step timeline; a
+  raised type-scale floor. Followed by a **panel consolidation**: the disabled Stage-3 placeholder
+  input is gone, the legacy Stage-2 pipeline controls (Task/Observe/Sanitize) now live inside a
+  collapsed developer-tools `<details>`, and the server status line is a single dot + summary.
+- **Hosted-inference option**: `server/.env.example` documents two hosted, open-weight-VLM
+  `openai_compat` targets (Groq, OpenRouter) alongside the local-Ollama default, wired through the
+  existing adapter with no code change — see `server/.env.example` and
+  `server/tests/test_adapter.py` for the proof the API key never reaches a request body, log, or
+  metrics record.
 
 | Stage | Scope |
 | --- | --- |
