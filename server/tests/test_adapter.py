@@ -278,6 +278,44 @@ async def test_neither_bodies_nor_the_api_key_are_ever_logged(payload, caplog):
 
 @respx.mock
 @pytest.mark.anyio
+async def test_api_key_reaches_only_the_authorization_header(payload, caplog):
+    """Hosted providers (AEGIS26171 hosted-inference work) need this checked as strictly as the
+    logging case above: the key must travel in exactly one place — the `Authorization` header of
+    the outbound request — and nowhere else this adapter produces. Same class of assertion as
+    `test_neither_bodies_nor_the_api_key_are_ever_logged`, extended to the request body itself and
+    to the per-call metrics record (the closest thing this adapter has to an audit record: it is
+    what `_record_and_annotate` in `app/api/plan.py` puts on the response as `X-Aegis-Timings`)."""
+    route = respx.post(COMPLETIONS).mock(return_value=completion(valid_plan(payload)))
+    with caplog.at_level(logging.DEBUG, logger="aegis.vlm"):
+        subject = adapter()
+        await subject.plan(payload)
+
+    request = route.calls[0].request
+
+    # Positive check first, so a future refactor that silently drops the header can't make the
+    # negative checks below pass vacuously.
+    assert request.headers["Authorization"] == f"Bearer {API_KEY}"
+
+    # The outbound JSON body (model, messages, response_format, ...) never carries the key.
+    assert API_KEY not in request.content.decode("utf-8")
+
+    # The per-call metrics record — the audit-record-shaped object this module hands back to the
+    # route — has no field that could carry it, checked structurally rather than by string search
+    # so a future field addition is caught even if nobody thinks to put the key in it by name.
+    from dataclasses import asdict
+
+    metrics_dict = asdict(subject.last_metrics)
+    assert "api_key" not in metrics_dict
+    assert API_KEY not in json.dumps(metrics_dict, default=str)
+
+    # And the log line already asserted above, restated here so this one test is a complete
+    # "no API key in payload, log, or audit record" check on its own.
+    logged = "\n".join(record.getMessage() for record in caplog.records)
+    assert API_KEY not in logged
+
+
+@respx.mock
+@pytest.mark.anyio
 async def test_metrics_record_shape_not_content(payload):
     respx.post(COMPLETIONS).mock(
         return_value=completion(
