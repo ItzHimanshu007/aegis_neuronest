@@ -61,14 +61,15 @@
         </form>
 
         <aside class="side-panel-demo">
-          <div class="photo-box" aria-label="Profile photo placeholder">
+          <div class="photo-box" aria-label="Profile photo">
             <img
-              src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Crect width='160' height='160' fill='%23cccccc'/%3E%3C/svg%3E"
-              alt="profile photo"
+              id="kyc-profile-photo"
+              data-face-gt="FACE"
+              src="/faces/profile-photo.jpg"
+              alt="synthetic profile photo, AI-generated, no real person"
               width="160"
               height="160"
             />
-            <!-- TODO(stage-6): replace with a synthetic generated face for face-detection testing -->
             <p class="caption">Profile photo</p>
           </div>
 

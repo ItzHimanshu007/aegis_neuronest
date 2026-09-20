@@ -70,7 +70,12 @@ export const test = base.extend<ExtensionFixtures>({
       // `window.innerWidth/innerHeight` report the real window size, matching what the native
       // capture actually sees (and matching normal real-desktop Chrome, where this cannot happen).
       viewport: null,
-      args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`, '--no-first-run', '--window-position=0,0', '--window-size=1000,650'],
+      // Demo-readiness session: AEGIS_DEMO_SLOWMO_MS/AEGIS_DEMO_WINDOW_SIZE let the scripted demo
+      // path (scripts/demo, package.json's `demo`/`demo:live`) reuse this exact same fixture at a
+      // human-watchable pace and a deck-screenshot-friendly window size, without duplicating this
+      // file. Both are undefined in the normal `pnpm e2e` run, so its behavior is unchanged.
+      slowMo: process.env.AEGIS_DEMO_SLOWMO_MS ? Number(process.env.AEGIS_DEMO_SLOWMO_MS) : undefined,
+      args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`, '--no-first-run', '--window-position=0,0', `--window-size=${process.env.AEGIS_DEMO_WINDOW_SIZE ?? '1000,650'}`],
       ignoreDefaultArgs: ['--enable-automation'],
     });
     await use(context);

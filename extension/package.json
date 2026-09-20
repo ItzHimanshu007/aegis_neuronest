@@ -14,7 +14,10 @@
     "typecheck": "wxt prepare && tsc --noEmit",
     "test": "vitest run",
     "pree2e": "wxt build --browser chrome",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "predemo": "wxt build --browser chrome",
+    "demo": "playwright test --config=playwright.demo.config.ts",
+    "demo:live": "wxt build --browser chrome && AEGIS_DEMO_LIVE=1 playwright test --config=playwright.demo.config.ts"
   },
   "dependencies": {
     "dom-accessibility-api": "^0.7.1",
