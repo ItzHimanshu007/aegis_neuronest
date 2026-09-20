@@ -1,118 +1,342 @@
+/* ============================================================================================
+ * Design tokens (UI legibility pass, demo-recording session).
+ *
+ * Every colour and font-size used below is a var() reference into this block — there used to be
+ * ~8 repeats of #ccc and 4 of #666 scattered through the file with no scale behind the type
+ * sizes at all. Restyling anything now means changing one token here, not hunting for literals.
+ *
+ * Type scale floor: nothing that carries substance (a category, a verdict, a byte count, a rect
+ * count) sits below --fs-2xs (12px). The one deliberate exception is --fs-3xs, used only for the
+ * EID marks drawn directly on the captured screenshot (small by design, so the mark doesn't
+ * obscure the element it's pointing at) — see .overlay-mark below for its contrast treatment.
+ * ============================================================================================ */
 :root {
   color-scheme: light dark;
+
+  /* Type scale (px) */
+  --fs-3xs: 9px; /* EID overlay marks on the screenshot ONLY — never for real content */
+  --fs-2xs: 12px; /* detection/receipt-tag meta, payload JSON, marks list */
+  --fs-xs: 13px; /* hints, secondary labels, tab bar */
+  --fs-sm: 14px; /* body copy: inputs, buttons, dialog paragraphs */
+  --fs-md: 16px; /* section labels emphasis, dialog titles, h1 */
+  --fs-lg: 20px; /* receipt counters — these are the numbers the recording is about */
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+
+  /* Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-pill: 999px;
+
+  /* Neutrals */
+  --color-bg: #ffffff;
+  --color-surface: #f5f5f5;
+  --color-surface-alt: #f4f4f4;
+  --color-border: #cccccc;
+  --color-border-soft: #eeeeee;
+  --color-text: #1a1a1a;
+  --color-text-secondary: #4d4d4d;
+  --color-text-muted: #6b6b6b;
+
+  /* Status */
+  --color-online: #178a4c;
+  --color-offline: #c0392b;
+
+  /* Buttons */
+  --color-btn-primary-bg: #15803d;
+  --color-btn-primary-bg-hover: #146c34;
+  --color-btn-primary-fg: #ffffff;
+  --color-btn-danger-bg: #b91c1c;
+  --color-btn-danger-bg-hover: #991b1b;
+  --color-btn-danger-fg: #ffffff;
+  --color-btn-neutral-bg: transparent;
+  --color-btn-neutral-bg-hover: #eaeaea;
+  --color-btn-neutral-fg: #333333;
+  --color-btn-neutral-border: #9a9a9a;
+
+  /* Banners */
+  --color-warning-bg: #fff3cd;
+  --color-warning-border: #ffe08a;
+  --color-warning-text: #7a5b00;
+  --color-error-bg: #ffeaea;
+  --color-error-border: #ffc9c9;
+  --color-error-text: #8b0000;
+
+  /* Severity — two treatments. Rows (.detection, longer text) get a soft tint + a heavier left
+   * border. Chips (.receipt-tag, small pills) get a SOLID fill + white text: a 1px-tinted pill
+   * measured almost invisible in a real render (verified against a captured screenshot during
+   * this pass) — a solid colour block is what actually survives video compression at chip size. */
+  --color-sev-high-border: #c0392b;
+  --color-sev-high-bg: #fbe0dd;
+  --color-sev-high-text: #7a1f14;
+  --color-sev-high-solid: #c0392b;
+  --color-sev-medium-border: #b8570f;
+  --color-sev-medium-bg: #fbe6d4;
+  --color-sev-medium-text: #6b3208;
+  --color-sev-medium-solid: #c1580f;
+  --color-sev-quasi-border: #8a6d00;
+  --color-sev-quasi-bg: #f7edc0;
+  --color-sev-quasi-text: #4d3d00;
+  --color-sev-quasi-solid: #8a6d00;
+  --color-sev-allow-border: #8a8a8a;
+  --color-sev-allow-bg: #ececec;
+  --color-sev-allow-text: #444444;
+  --color-sev-allow-solid: #6b6b6b;
+  --color-chip-fg: #ffffff;
+
+  /* Verdicts (step timeline) — solid chips, same reasoning as severity chips above. */
+  --color-verdict-pass-solid: #178a4c;
+  --color-verdict-fail-solid: #b91c1c;
+  --color-verdict-pending-solid: #8a6d00;
+
+  /* Authority-level badge, escalating by level — reuses the severity hues (L3~quasi, L4~medium,
+   * L5~high) so the same colour means the same thing everywhere in the panel. */
+  --color-level-default-solid: #6b6b6b;
+  --color-level-l3-solid: #8a6d00;
+  --color-level-l4-solid: #c1580f;
+  --color-level-l5-solid: #c0392b;
+
+  --overlay-backdrop: rgba(20, 20, 20, 0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #17181a;
+    --color-surface: #232427;
+    --color-surface-alt: #2a2b2e;
+    --color-border: #45464a;
+    --color-border-soft: #333437;
+    --color-text: #ececec;
+    --color-text-secondary: #c2c2c2;
+    --color-text-muted: #9a9a9a;
+
+    --color-online: #37c977;
+    --color-offline: #ef5350;
+
+    --color-btn-primary-bg-hover: #1c9a4a;
+    --color-btn-danger-bg-hover: #c62828;
+    --color-btn-neutral-bg-hover: #33343a;
+    --color-btn-neutral-fg: #e8e8e8;
+    --color-btn-neutral-border: #6a6b70;
+
+    --color-warning-bg: #4a3c07;
+    --color-warning-border: #7a5b00;
+    --color-warning-text: #ffe08a;
+    --color-error-bg: #4a1414;
+    --color-error-border: #8b0000;
+    --color-error-text: #ffb3b3;
+
+    --color-sev-high-border: #ef5350;
+    --color-sev-high-bg: #442020;
+    --color-sev-high-text: #ffb3ac;
+    --color-sev-medium-border: #f0954a;
+    --color-sev-medium-bg: #3d2b16;
+    --color-sev-medium-text: #ffc794;
+    --color-sev-quasi-border: #dcb636;
+    --color-sev-quasi-bg: #3a3213;
+    --color-sev-quasi-text: #f0dd8f;
+    --color-sev-allow-border: #8a8a8a;
+    --color-sev-allow-bg: #2c2d30;
+    --color-sev-allow-text: #cfcfcf;
+
+    /* Solid chips stay saturated-but-brighter in dark mode so they still pop off a dark page. */
+    --color-sev-high-solid: #e05a50;
+    --color-sev-medium-solid: #e0813a;
+    --color-sev-quasi-solid: #c9a227;
+    --color-sev-allow-solid: #8a8a8a;
+    --color-chip-fg: #17181a;
+
+    --color-verdict-pass-solid: #37c977;
+    --color-verdict-fail-solid: #e05a50;
+    --color-verdict-pending-solid: #c9a227;
+
+    --color-level-default-solid: #8a8a8a;
+    --color-level-l3-solid: #c9a227;
+    --color-level-l4-solid: #e0813a;
+    --color-level-l5-solid: #e05a50;
+
+    --overlay-backdrop: rgba(0, 0, 0, 0.65);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 body {
   margin: 0;
-  padding: 12px;
+  padding: var(--space-3);
   min-width: 280px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: var(--fs-sm);
 }
 
 h1 {
-  font-size: 16px;
-  margin: 0 0 12px;
+  font-size: var(--fs-md);
+  margin: 0 0 var(--space-3);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .status-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #999;
+  background: var(--color-text-muted);
   display: inline-block;
 }
 .status-dot.online {
-  background: #2ecc71;
+  background: var(--color-online);
 }
 .status-dot.offline {
-  background: #e74c3c;
+  background: var(--color-offline);
 }
 
 .tabs {
   display: flex;
-  gap: 4px;
-  margin-bottom: 12px;
-  border-bottom: 1px solid #ccc;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
 }
 .tabs button {
   border: none;
   background: none;
-  padding: 6px 10px;
+  color: var(--color-text);
+  padding: var(--space-2) var(--space-2);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--fs-xs);
 }
 .tabs button[disabled] {
   opacity: 0.5;
   cursor: not-allowed;
 }
 .tabs button.active {
-  border-bottom: 2px solid #2ecc71;
+  border-bottom: 2px solid var(--color-online);
   font-weight: 600;
 }
 
 section {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
 }
 
 label {
   display: block;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
+  color: var(--color-text);
 }
 
 .warning {
-  background: #fff3cd;
-  border: 1px solid #ffe08a;
-  color: #7a5b00;
-  padding: 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  margin-bottom: 12px;
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
+  color: var(--color-warning-text);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  margin-bottom: var(--space-3);
+}
+
+.error,
+p.error {
+  color: var(--color-error-text);
+  font-size: var(--fs-xs);
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
 }
 
 pre {
-  background: #f5f5f5;
-  padding: 8px;
-  border-radius: 4px;
-  font-size: 11px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-2xs);
   overflow-x: auto;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
+/* --- Buttons --------------------------------------------------------------------------------- */
+
 button.action {
-  padding: 6px 12px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  background: white;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--fs-xs);
 }
 button.action:hover {
-  background: #f0f0f0;
+  background: var(--color-surface);
+}
+
+.btn {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  line-height: 1.2;
+}
+.btn-sm {
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  padding: var(--space-1) var(--space-2);
+}
+.btn-primary {
+  background: var(--color-btn-primary-bg);
+  color: var(--color-btn-primary-fg);
+}
+.btn-primary:hover {
+  background: var(--color-btn-primary-bg-hover);
+}
+.btn-danger {
+  background: var(--color-btn-danger-bg);
+  color: var(--color-btn-danger-fg);
+}
+.btn-danger:hover {
+  background: var(--color-btn-danger-bg-hover);
+}
+.btn-neutral {
+  background: var(--color-btn-neutral-bg);
+  color: var(--color-btn-neutral-fg);
+  border-color: var(--color-btn-neutral-border);
+}
+.btn-neutral:hover {
+  background: var(--color-btn-neutral-bg-hover);
 }
 
 input[type='text'][disabled] {
   width: 100%;
-  box-sizing: border-box;
-  padding: 6px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  background: #f5f5f5;
-  color: #888;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
 }
 
 .screenshot-scroll {
   max-width: 100%;
   max-height: 320px;
   overflow: auto;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  margin: 8px 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  margin: var(--space-2) 0;
 }
 
 .screenshot-wrap {
@@ -123,44 +347,48 @@ input[type='text'][disabled] {
   display: block;
 }
 
+/* EID marks drawn on the raw screenshot itself. Deliberately small (--fs-3xs) so the label
+ * doesn't obscure the element it names — improved here with a solid background and heavier
+ * outline instead of a thin line, so it survives video compression at this size. */
 .overlay-mark {
   position: absolute;
-  border: 1.5px solid #2ecc71;
+  border: 2px solid var(--color-online);
   box-sizing: border-box;
   pointer-events: none;
 }
 .overlay-mark span {
   position: absolute;
-  top: -14px;
-  left: -1.5px;
-  background: #2ecc71;
+  top: -15px;
+  left: -2px;
+  background: var(--color-online);
   color: #fff;
-  font: 9px/12px monospace;
-  padding: 0 2px;
+  font: 700 var(--fs-3xs)/13px monospace;
+  padding: 0 3px;
   white-space: nowrap;
+  border-radius: 2px;
 }
 .overlay-mark-hidden {
   border-style: dashed;
 }
 .overlay-mark-blocked {
-  border-color: #e74c3c;
+  border-color: var(--color-offline);
 }
 .overlay-mark-blocked span {
-  background: #e74c3c;
+  background: var(--color-offline);
 }
 
 .marks-list {
   max-height: 200px;
   overflow-y: auto;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-family: monospace;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  padding: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1);
 }
 .mark-row {
-  padding: 2px 0;
-  border-bottom: 1px solid #eee;
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--color-border-soft);
   word-break: break-word;
 }
 
@@ -168,41 +396,44 @@ input[type='text'][disabled] {
 
 .button-row {
   display: flex;
-  gap: 8px;
-  margin: 8px 0;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
 }
 
 select {
-  padding: 4px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  font-size: 12px;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: var(--fs-xs);
 }
 
 input[type='text'] {
   width: 100%;
-  box-sizing: border-box;
-  padding: 6px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  font-size: 13px;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: var(--fs-sm);
 }
 
 pre.error {
-  background: #ffeaea;
-  border: 1px solid #ffc9c9;
-  color: #8b0000;
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  color: var(--color-error-text);
 }
 
 .hint {
-  font-size: 11px;
-  color: #666;
-  margin: 4px 0 0;
+  font-size: var(--fs-xs);
+  color: var(--color-text-muted);
+  margin: var(--space-1) 0 0;
 }
 
 .image-compare {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   overflow-x: auto;
 }
 .image-compare figure {
@@ -211,93 +442,378 @@ pre.error {
   min-width: 0;
 }
 .image-compare figcaption {
-  font-size: 10px;
-  color: #666;
-  margin-bottom: 4px;
+  font-size: var(--fs-2xs);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-1);
 }
 .image-compare img {
   width: 100%;
-  border: 1px solid #ccc;
-  border-radius: 3px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
 }
 
 .detections {
   max-height: 260px;
   overflow-y: auto;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
 }
 .detection {
-  padding: 5px 8px;
-  border-bottom: 1px solid #eee;
-  border-left: 4px solid transparent;
-  font-size: 11px;
+  padding: var(--space-2) var(--space-2);
+  border-bottom: 1px solid var(--color-border-soft);
+  border-left: 5px solid transparent;
+  font-size: var(--fs-2xs);
 }
 .detection .action {
   font-family: monospace;
-  font-size: 10px;
-  background: #eee;
-  padding: 1px 4px;
+  font-size: var(--fs-2xs);
+  background: var(--color-surface);
+  padding: 1px var(--space-1);
   border-radius: 3px;
 }
 .detection .meta {
-  color: #666;
-  font-size: 10px;
+  color: var(--color-text-secondary);
+  font-size: var(--fs-2xs);
 }
 .sev-high {
-  border-left-color: #e74c3c;
-  background: #fff5f5;
+  border-left-color: var(--color-sev-high-border);
+  background: var(--color-sev-high-bg);
+  color: var(--color-sev-high-text);
 }
 .sev-medium {
-  border-left-color: #e67e22;
-  background: #fffaf3;
+  border-left-color: var(--color-sev-medium-border);
+  background: var(--color-sev-medium-bg);
+  color: var(--color-sev-medium-text);
 }
 .sev-quasi {
-  border-left-color: #f1c40f;
-  background: #fffdf0;
+  border-left-color: var(--color-sev-quasi-border);
+  background: var(--color-sev-quasi-bg);
+  color: var(--color-sev-quasi-text);
 }
 .sev-allow {
-  border-left-color: #bbb;
+  border-left-color: var(--color-sev-allow-border);
+  background: var(--color-sev-allow-bg);
+  color: var(--color-sev-allow-text);
+}
+.detection.sev-high .meta,
+.detection.sev-medium .meta,
+.detection.sev-quasi .meta,
+.detection.sev-allow .meta {
+  color: inherit;
 }
 
 .payload-json {
   max-height: 300px;
   overflow: auto;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
 }
 
 .category-toggles {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
 }
 .category-toggles label {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   font-weight: 400;
   margin-bottom: 3px;
 }
 .category-toggles input[disabled] + span {
-  color: #999;
+  color: var(--color-text-muted);
+}
+
+.receipt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
 }
 
 .receipt-counters {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  font-size: 12px;
-  margin: 4px 0 10px;
+  gap: var(--space-4);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  margin: var(--space-2) 0 var(--space-3);
+}
+.receipt-counters span {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+}
+.receipt-counters b {
+  font-size: 1.15em;
+}
+.receipt-counters small {
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--color-text-muted);
 }
 
 .receipt-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin: 4px 0 10px;
+  gap: var(--space-2);
+  margin: var(--space-1) 0 var(--space-3);
 }
 .receipt-tag {
-  font-size: 11px;
-  padding: 2px 7px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
-  background: #f4f4f4;
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  padding: 3px var(--space-2);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-alt);
+}
+.receipt-tag.sev-high,
+.receipt-tag.sev-medium,
+.receipt-tag.sev-quasi,
+.receipt-tag.sev-allow {
+  border: none;
+  color: var(--color-chip-fg);
+}
+.receipt-tag.sev-high {
+  background: var(--color-sev-high-solid);
+}
+.receipt-tag.sev-medium {
+  background: var(--color-sev-medium-solid);
+}
+.receipt-tag.sev-quasi {
+  background: var(--color-sev-quasi-solid);
+}
+.receipt-tag.sev-allow {
+  background: var(--color-sev-allow-solid);
+}
+
+/* --- Dialogs (consent / approval / question): elevated, so they read as an interrupt --------- */
+
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-backdrop);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--space-4) var(--space-3);
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.dialog-card {
+  background: var(--color-bg);
+  color: var(--color-text);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  padding: var(--space-4);
+  width: 100%;
+  max-width: 420px;
+  margin-top: var(--space-4);
+}
+.dialog-card h3 {
+  margin: 0;
+  font-size: var(--fs-md);
+}
+.dialog-card p {
+  font-size: var(--fs-sm);
+  margin: var(--space-2) 0;
+}
+.dialog-card label {
+  font-size: var(--fs-xs);
+}
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.level-badge {
+  display: inline-block;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-level-default-solid);
+  color: var(--color-chip-fg);
+  white-space: nowrap;
+}
+.level-badge[data-level='L3'] {
+  background: var(--color-level-l3-solid);
+}
+.level-badge[data-level='L4'] {
+  background: var(--color-level-l4-solid);
+}
+.level-badge[data-level='L5'] {
+  background: var(--color-level-l5-solid);
+}
+
+.dialog-target {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.eid-chip {
+  font-family: monospace;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 1px 6px;
+}
+.category-chip {
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-pill);
+  padding: 1px var(--space-2);
+}
+.origin-text {
+  font-size: var(--fs-xs);
+  color: var(--color-text-muted);
+}
+.dialog-reason {
+  color: var(--color-text-secondary);
+}
+
+.dialog-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* --- Step timeline ----------------------------------------------------------------------------
+ * TimelineEntry already carries everything (step, action, EID, level, verdict, per-phase timing);
+ * this used to only be reachable as a collapsed JSON dump. Rendered here as one row per step so
+ * the agent's reasoning trail is actually watchable, not just exportable. */
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: 320px;
+  overflow-y: auto;
+}
+.timeline-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-left: 5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-2xs);
+  background: var(--color-surface);
+}
+.timeline-row[data-verdict='pass'] {
+  border-left-color: var(--color-verdict-pass-border);
+}
+.timeline-row[data-verdict='fail'] {
+  border-left-color: var(--color-verdict-fail-border);
+}
+.timeline-row[data-verdict='pending'] {
+  border-left-color: var(--color-verdict-pending-border);
+}
+.timeline-step {
+  font-weight: 700;
+  color: var(--color-text-muted);
+  min-width: 2.5em;
+}
+.timeline-action {
+  font-family: monospace;
+  font-weight: 700;
+}
+.timeline-eid {
+  font-family: monospace;
+  color: var(--color-text-muted);
+}
+.timeline-verdict {
+  font-weight: 700;
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-pill);
+}
+.timeline-verdict-pass {
+  background: var(--color-verdict-pass-solid);
+  color: var(--color-chip-fg);
+}
+.timeline-verdict-fail {
+  background: var(--color-verdict-fail-solid);
+  color: var(--color-chip-fg);
+}
+.timeline-verdict-pending {
+  background: var(--color-verdict-pending-solid);
+  color: var(--color-chip-fg);
+}
+.timeline-time {
+  margin-left: auto;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Narrow-width handling ----------------------------------------------------------------
+ * No media queries existed before this pass. Below ~360px the two-column raw/redacted compare
+ * degrades to a stacked layout instead of squeezing both images illegible-thin. */
+@media (max-width: 360px) {
+  .image-compare {
+    flex-direction: column;
+  }
+  .receipt-counters {
+    font-size: var(--fs-md);
+    gap: var(--space-3);
+  }
+  .dialog-card {
+    max-width: 100%;
+  }
+}
+
+/* --- Full-page Privacy Receipt (opened in its own tab) --------------------------------------
+ * Same PrivacyReceipt component and the same classes above — this scope just overrides the type
+ * scale and widens the layout so the side-by-side compare, the counters and the tags are legible
+ * without zooming. See extension/entrypoints/receipt/. */
+.receipt-fullpage {
+  --fs-2xs: 15px;
+  --fs-xs: 16px;
+  --fs-sm: 17px;
+  --fs-lg: 32px;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: var(--space-5);
+}
+.receipt-fullpage h1 {
+  font-size: 28px;
+  margin-bottom: var(--space-4);
+}
+.receipt-fullpage .receipt {
+  max-width: none;
+}
+.receipt-fullpage .image-compare {
+  gap: var(--space-4);
+}
+.receipt-fullpage .image-compare figcaption {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: var(--space-2);
+}
+.receipt-fullpage .image-compare figure {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+.receipt-fullpage .image-compare img {
+  border: none;
+}
+.receipt-fullpage .detections {
+  max-height: 420px;
+}
+.receipt-fullpage .payload-json {
+  max-height: 480px;
 }
