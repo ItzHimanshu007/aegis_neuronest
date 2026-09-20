@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ProcessResult } from '../../agentHost';
 import type { Category } from '../../privacy/categoryTypes';
 import { isLockedCategory } from '../../privacy/policy';
 import { severityClass } from './PrivacyPreview';
 import { TOKEN_PATTERN } from '../../shared/schema/tokens';
+import { openReceiptTab, publishReceipt } from '../../shared/receiptBridge';
 
 /**
  * The privacy receipt (demo-readiness session, Part B): side by side, for the CURRENT step —
@@ -82,7 +83,10 @@ export function tallyLayers(detections: PreviewDetections): Array<[string, numbe
   return [...counts.entries()].sort((a, b) => b[1] - a[1]);
 }
 
-export function PrivacyReceipt({ result }: { result: ProcessResult }) {
+/** Accepts anything with a `.preview` — the full ProcessResult (side panel) or just the preview
+ * bundle on its own (the full-page tab, which never sees a `SanitizedPayload`; see
+ * extension/entrypoints/receipt/App.tsx and shared/receiptBridge.ts). */
+export function PrivacyReceipt({ result }: { result: Pick<ProcessResult, 'preview'> }) {
   const [showJson, setShowJson] = useState(false);
   const { draftJson, size, detections, rawImageDataUrl } = result.preview;
 
@@ -90,6 +94,13 @@ export function PrivacyReceipt({ result }: { result: ProcessResult }) {
   const tokenCount = useMemo(() => countTokens(draftJson), [draftJson]);
   const categoryCounts = useMemo(() => tallyCategories(detections), [detections]);
   const layerCounts = useMemo(() => tallyLayers(detections), [detections]);
+
+  // Pushes this step's receipt to the full-page tab if one is open, and answers it directly if it
+  // asks (e.g. on its own mount). Local-only, in-memory (AGENTS.md invariant 8) — see
+  // shared/receiptBridge.ts's docblock for why this isn't chrome.storage.
+  useEffect(() => {
+    publishReceipt(result.preview);
+  }, [result.preview]);
 
   if (!sealed) {
     return (
@@ -102,7 +113,12 @@ export function PrivacyReceipt({ result }: { result: ProcessResult }) {
 
   return (
     <section className="receipt" aria-label="Privacy receipt">
-      <label>Privacy receipt — this step</label>
+      <div className="receipt-header">
+        <label>Privacy receipt — this step</label>
+        <button className="btn btn-neutral btn-sm" onClick={() => void openReceiptTab()}>
+          Open full view ↗
+        </button>
+      </div>
 
       <div className="image-compare">
         <figure>
@@ -117,16 +133,16 @@ export function PrivacyReceipt({ result }: { result: ProcessResult }) {
 
       <div className="receipt-counters">
         <span>
-          <b>{size}</b> bytes sealed
+          <b>{size}</b> <small>bytes sealed</small>
         </span>
         <span>
-          <b>{tokenCount}</b> token{tokenCount === 1 ? '' : 's'}
+          <b>{tokenCount}</b> <small>token{tokenCount === 1 ? '' : 's'}</small>
         </span>
         <span>
-          <b>{sealed.redactions.length}</b> redaction{sealed.redactions.length === 1 ? '' : 's'}
+          <b>{sealed.redactions.length}</b> <small>redaction{sealed.redactions.length === 1 ? '' : 's'}</small>
         </span>
         <span>
-          <b>{sealed.elements.length}</b> element{sealed.elements.length === 1 ? '' : 's'}
+          <b>{sealed.elements.length}</b> <small>element{sealed.elements.length === 1 ? '' : 's'}</small>
         </span>
       </div>
 
