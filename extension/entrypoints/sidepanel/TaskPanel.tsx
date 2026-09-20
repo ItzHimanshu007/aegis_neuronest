@@ -9,6 +9,7 @@ import { requestSiteAccess } from '../../shared/permissions';
 import { TOKEN_PATTERN } from '../../shared/schema/tokens';
 import { unwrapForPanelRender } from '../../privacy/vault';
 import { PrivacyReceipt } from './PrivacyReceipt';
+import { StepTimeline } from './StepTimeline';
 
 type Prompt = { kind:'consent'; request:ConsentRequest; resolve:(reply:ConsentReply)=>void } |
   {kind:'approval'; request:ApprovalRequest; resolve:(reply:ApprovalReply)=>void} |
@@ -95,34 +96,58 @@ export function TaskPanel() {
     <div className="button-row"><button onClick={start} disabled={active||!task.trim()}>Start</button><button onClick={()=>runner.current?.stop()} disabled={!active}>Stop</button></div>
     {error&&<p role="alert">{error}</p>}
     <p role="status" data-testid="task-status">{snapshot?.state??'idle'}</p>
-    {prompt?.kind==='consent'&&<section role="dialog" aria-label="Task consent">
+    {prompt?.kind==='consent'&&<div className="dialog-overlay"><section role="dialog" aria-label="Task consent" className="dialog-card">
       <h3>Allow this task on {prompt.request.origin}</h3>
       {!!prompt.request.medium.length&&<label><input type="checkbox" checked={prompt.request.medium.every(c=>selected.includes(c))} onChange={e=>setSelected(e.target.checked?[...new Set([...selected,...prompt.request.medium])]:selected.filter(c=>!prompt.request.medium.includes(c)))} /> Medium types: {prompt.request.medium.join(', ')}</label>}
       {prompt.request.high.map(c=><label key={c}><input type="checkbox" checked={selected.includes(c)} onChange={e=>setSelected(e.target.checked?[...selected,c]:selected.filter(v=>v!==c))}/>{c}</label>)}
       {prompt.request.credential&&<label>Credential for {prompt.request.origin}<input aria-label="Credential" ref={credential} type="password" autoComplete="off" placeholder="Optional — only from you, never read from the page"/></label>}
-      <p>Grants expire when this task ends. Commits always ask again.</p>
-      <button onClick={confirmConsent}>Continue with selected</button><button onClick={()=>prompt.resolve({categories:[]})}>Decline all</button><button onClick={()=>runner.current?.stop()}>Stop task</button>
-    </section>}
-    {prompt?.kind==='approval'&&<section role="dialog" aria-label="Action approval">
-      <h3>Approve {prompt.request.action} · {prompt.request.level}</h3>
-      <p>{prompt.request.label} · {prompt.request.category??'No private value'} · {prompt.request.origin}</p>
-      <p>Model says… {prompt.request.reason||'No reason provided.'}</p>
-      {prompt.request.token&&<button onClick={()=>{const session=runner.current?.session;if(session?.vault.hasToken(prompt.request.token!))setShownValue(unwrapForPanelRender(session.vault.resolveForDisplay(prompt.request.token!)));}}>Show value locally</button>}
+      <p className="hint">Grants expire when this task ends. Commits always ask again.</p>
+      <div className="dialog-actions">
+        <button className="btn btn-primary" onClick={confirmConsent}>Continue with selected</button>
+        <button className="btn btn-neutral" onClick={()=>prompt.resolve({categories:[]})}>Decline all</button>
+        <button className="btn btn-danger" onClick={()=>runner.current?.stop()}>Stop task</button>
+      </div>
+    </section></div>}
+    {prompt?.kind==='approval'&&<div className="dialog-overlay"><section role="dialog" aria-label="Action approval" className="dialog-card">
+      <div className="dialog-header">
+        <span className="level-badge" data-level={prompt.request.level}>{prompt.request.level}</span>
+        <h3>Approve {prompt.request.action}</h3>
+      </div>
+      <p className="dialog-target">
+        {prompt.request.eid&&<span className="eid-chip">{prompt.request.eid}</span>}
+        <b>{prompt.request.label||'(unlabeled element)'}</b>
+        <span className="category-chip">{prompt.request.category??'No private value'}</span>
+        <span className="origin-text">{prompt.request.origin}</span>
+      </p>
+      <p className="dialog-reason">Model says… {prompt.request.reason||'No reason provided.'}</p>
+      {prompt.request.token&&<button className="btn btn-neutral btn-sm" onClick={()=>{const session=runner.current?.session;if(session?.vault.hasToken(prompt.request.token!))setShownValue(unwrapForPanelRender(session.vault.resolveForDisplay(prompt.request.token!)));}}>Show value locally</button>}
       {shownValue&&<pre>{shownValue}</pre>}
-      <button onClick={()=>prompt.resolve('approve')}>Approve</button><button onClick={()=>prompt.resolve('skip')}>Skip &amp; replan</button><button onClick={()=>runner.current?.stop()}>Stop task</button>
-    </section>}
-    {prompt?.kind==='question'&&<section role="dialog" aria-label="Task question">
-      <h3>Model says…</h3><p style={{whiteSpace:'pre-wrap'}}>{prompt.text}</p><p>This is untrusted plain text.</p>
+      <div className="dialog-actions">
+        <button className="btn btn-primary" onClick={()=>prompt.resolve('approve')}>Approve</button>
+        <button className="btn btn-neutral" onClick={()=>prompt.resolve('skip')}>Skip &amp; replan</button>
+        <button className="btn btn-danger" onClick={()=>runner.current?.stop()}>Stop task</button>
+      </div>
+    </section></div>}
+    {prompt?.kind==='question'&&<div className="dialog-overlay"><section role="dialog" aria-label="Task question" className="dialog-card">
+      <h3>Model says…</h3><p style={{whiteSpace:'pre-wrap'}}>{prompt.text}</p><p className="hint">This is untrusted plain text.</p>
       <input aria-label="Your reply" value={hint} onChange={e=>setHint(e.target.value)} autoComplete="off"/>
-      <button onClick={()=>prompt.resolve({choice:'retry'})}>Retry</button><button onClick={()=>{prompt.resolve({choice:'hint',hint});setHint('');}}>Send reply</button><button onClick={()=>runner.current?.stop()}>Stop task</button>
-    </section>}
+      <div className="dialog-actions">
+        <button className="btn btn-neutral" onClick={()=>prompt.resolve({choice:'retry'})}>Retry</button>
+        <button className="btn btn-primary" onClick={()=>{prompt.resolve({choice:'hint',hint});setHint('');}}>Send reply</button>
+        <button className="btn btn-danger" onClick={()=>runner.current?.stop()}>Stop task</button>
+      </div>
+    </section></div>}
     {!!answer.length&&<section aria-label="Model answer"><h3>Model says…</h3><p>Untrusted plain text</p>
       <div style={{whiteSpace:'pre-wrap'}}>{answer.map((part,i)=><span key={i}>{part.text}{part.origins&&<small> [source: {part.origins.join(', ')}{part.origins.some(o=>o!==answerOrigin)?' — different site from this task':''}]</small>}</span>)}</div>
       <button onClick={()=>navigator.clipboard.writeText(answer.map(p=>p.text).join(''))}>Copy answer</button>
     </section>}
     {receipt&&<PrivacyReceipt result={receipt} />}
-    {snapshot&&<details><summary>Task summary and timeline</summary><pre data-testid="task-summary">{JSON.stringify(snapshot,null,2)}</pre>
-      <button onClick={()=>{const blob=new Blob([JSON.stringify(snapshot,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='aegis-task-metrics.json';link.click();URL.revokeObjectURL(url);}}>Export Judge metrics</button>
-    </details>}
+    {snapshot&&<section aria-label="Step timeline">
+      <label>Step timeline</label>
+      <StepTimeline entries={snapshot.timeline} />
+      <details><summary>Task summary and timeline</summary><pre data-testid="task-summary">{JSON.stringify(snapshot,null,2)}</pre>
+        <button className="btn btn-neutral btn-sm" onClick={()=>{const blob=new Blob([JSON.stringify(snapshot,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='aegis-task-metrics.json';link.click();URL.revokeObjectURL(url);}}>Export Judge metrics</button>
+      </details>
+    </section>}
   </section>;
 }
