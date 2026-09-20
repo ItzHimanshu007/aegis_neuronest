@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/extension';
 import type { ObserveResult } from '../shared/messages';
+import { openDevTools } from './fixtures/observe';
 
 /** Clicks Observe in the side panel while `targetPage` is the active tab, and returns the parsed
  * ObserveResult by reading it back out of the panel's React state via the DOM it renders (rather
@@ -7,6 +8,7 @@ import type { ObserveResult } from '../shared/messages';
  * messaging). */
 async function observe(panelPage: import('@playwright/test').Page, targetPage: import('@playwright/test').Page) {
   await targetPage.bringToFront();
+  await openDevTools(panelPage);
   await panelPage.getByRole('button', { name: 'Observe', exact: true }).click();
   await expect(panelPage.getByText(/Observing…/)).toHaveCount(0, { timeout: 15_000 });
   await expect(panelPage.locator('.marks-list')).toBeVisible({ timeout: 15_000 });

@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/extension';
 import { forceScenario, acceptConsent } from './fixtures/task';
+import { openDevTools } from './fixtures/observe';
 
 /**
  * Stage 3B Part II: Stop while a step is in flight. Aborts promptly, clears the vault, calls
@@ -59,6 +60,7 @@ test('Stop mid-task aborts promptly, clears the vault, calls endSession, and lea
 
   // No stale task state: a follow-up observation on the SAME tab starts clean, not confused by
   // the aborted task's session/consent/vault state.
+  await openDevTools(panelPage);
   await panelPage.getByRole('button', { name: 'Observe', exact: true }).click();
   await expect(panelPage.getByText(/Observing…/)).toHaveCount(0, { timeout: 15_000 });
   await expect(panelPage.locator('pre.error')).toHaveCount(0);

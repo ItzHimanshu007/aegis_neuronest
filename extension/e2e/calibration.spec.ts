@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/extension';
 import type { ObserveResult } from '../shared/messages';
+import { openDevTools } from './fixtures/observe';
 
 /** Clicks the real Observe button (a genuine, CDP-dispatched, trusted input event — required for
  * `permissions.request()` to succeed; see shared/permissions.ts) and reads back the full
@@ -8,6 +9,7 @@ import type { ObserveResult } from '../shared/messages';
  * not just what's rendered as visible text. */
 async function observeAndGetResult(panelPage: import('@playwright/test').Page, targetPage: import('@playwright/test').Page): Promise<ObserveResult> {
   await targetPage.bringToFront();
+  await openDevTools(panelPage);
   await panelPage.getByRole('button', { name: 'Observe', exact: true }).click();
   await panelPage.waitForFunction(() => Boolean((window as unknown as { __aegisLastObserveResult?: unknown }).__aegisLastObserveResult), {
     timeout: 15_000,

@@ -133,7 +133,17 @@ def click_panel(label):
           .then(el=>actor.clickElement(el,{{toJSON:()=>({{}})}}))
           .then(done,e=>done({{harnessError:String(e)}}));
     """, label)
-    assert not isinstance(r, dict) or 'harnessError' not in r, r
+    if isinstance(r, dict) and 'harnessError' in r:
+        debug = panel(
+            'const b=[...document.querySelectorAll("button")].find(b=>b.textContent===' + json.dumps(label) + ');'
+            'const rect=b?.getBoundingClientRect();'
+            'const d=b?.closest("details");'
+            'return {found:!!b, rect:rect&&{x:rect.x,y:rect.y,w:rect.width,h:rect.height}, '
+            'visible:b&&getComputedStyle(b).visibility, display:b&&getComputedStyle(b).display, '
+            'offsetParent:!!b?.offsetParent, inDetails:!!d, detailsOpen:d?.open, '
+            'winH:innerHeight, winW:innerWidth, scrollY:scrollY, bodyScrollH:document.body.scrollHeight}'
+        )
+        raise AssertionError(f'{r} debug={json.dumps(debug)}')
 
 
 def set_value(selector, value, proto='HTMLInputElement'):
@@ -166,7 +176,23 @@ def navigate(path):
     time.sleep(.4)
 
 
+def open_dev_tools():
+    """The Stage-2 pipeline controls sit inside a collapsed <details class="dev-tools"> so the panel
+    opens on one task input. Marionette refuses to click a control with no layout box, so open it —
+    and then wait for the layout box to actually exist before returning: `setAttribute` lands
+    synchronously, but Marionette's interactability check can still run against a stale layout if
+    the click that follows lands before the next paint (hosted-inference session, Part D prep: this
+    was intermittently failing `click_panel('Observe')` with ElementNotInteractableError even with
+    the attribute set, because nothing here waited for the box to appear)."""
+    panel('document.querySelector("details.dev-tools")?.setAttribute("open","")')
+    wait(lambda: panel(
+        'const d=document.querySelector("details.dev-tools");'
+        'return !!d && d.open && d.getBoundingClientRect().height > 0'
+    ))
+
+
 def observe(sanitize=False):
+    open_dev_tools()
     click_panel('Observe & Sanitize' if sanitize else 'Observe')
     prop = '__aegisLastProcessResult' if sanitize else '__aegisLastObserveResult'
     try:
@@ -228,11 +254,13 @@ try:
     }))()""")
     assert active_only['captured'] and not active_only['allUrls']
     record('activeTab-only capture after toolbar click', 'Succeeded without all_urls grant')
+    open_dev_tools()
     click_panel('Observe')
     permission_button(False)
     wait(lambda: panel('return !!document.querySelector("pre.error")'))
     assert 'denied' in panel('return document.querySelector("pre.error").textContent')
     record('permissions.request from sidebar: Deny', 'Native permission dialog; trusted Observe click')
+    open_dev_tools()
     click_panel('Observe')
     permission_button(True)
     wait(lambda: panel('return !!window.__aegisLastObserveResult || !!document.querySelector("pre.error")'))

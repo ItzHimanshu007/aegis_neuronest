@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import type { ProcessResult } from '../../agentHost';
+import { openDevTools } from './observe';
 
 /**
  * Drives the Privacy Preview's "Observe & Sanitize" button and reads back the full ProcessResult
@@ -10,6 +11,7 @@ import type { ProcessResult } from '../../agentHost';
  */
 export async function observeAndSanitize(panelPage: Page, targetPage: Page, task = ''): Promise<ProcessResult> {
   await targetPage.bringToFront();
+  await openDevTools(panelPage);
   await panelPage.evaluate(() => {
     delete (window as unknown as { __aegisLastProcessResult?: unknown }).__aegisLastProcessResult;
   });

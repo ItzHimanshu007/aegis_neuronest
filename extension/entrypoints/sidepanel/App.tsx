@@ -231,14 +231,16 @@ export default function App() {
       {tab === 'agent' && (
         <>
           <TaskPanel />
-          <section>
-            <label>Server</label>
-            <pre>
-              {serverStatus === 'checking' && 'checking...'}
-              {serverStatus === 'offline' && 'offline — is `pnpm run server` running?'}
-              {serverStatus === 'online' && health && JSON.stringify(health, null, 2)}
-            </pre>
-          </section>
+          <p className="server-line">
+            <ServerStatusDot status={serverStatus} />
+            {serverStatus === 'checking' && 'Checking server…'}
+            {serverStatus === 'offline' && 'Server offline — start it with `pnpm run server`'}
+            {serverStatus === 'online' &&
+              (health ? `Server online — ${health.model_adapter} adapter, v${health.version}` : 'Server online')}
+          </p>
+
+          <details className="dev-tools">
+          <summary>Developer tools (Stage 2 pipeline)</summary>
 
           <section>
             <label>Task (tokenized locally before anything is sent)</label>
@@ -285,11 +287,7 @@ export default function App() {
             </button>
             {observeResult && <ObservationView result={observeResult} showOverlay={showOverlay} onToggleOverlay={() => setShowOverlay((v) => !v)} />}
           </section>
-
-          <section>
-            <label>Task (Stage 3)</label>
-            <input type="text" disabled placeholder="Task input arrives in Stage 3" />
-          </section>
+          </details>
         </>
       )}
 
