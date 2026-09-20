@@ -127,6 +127,17 @@ def click_panel(label):
     d.set_context('chrome')
     wait(lambda: panel('return [...document.querySelectorAll("button")].some(b=>b.textContent===' + json.dumps(label) + '&&!b.disabled)'))
     panel('delete window.__aegisLastObserveResult; delete window.__aegisLastProcessResult;')
+    # `actor.clickElement` is the raw MarionetteCommands actor method (not the standard WebDriver
+    # element-click endpoint Selenium normally issues), and it does not auto-scroll an
+    # out-of-viewport-but-laid-out target into view before checking interactability — which is
+    # exactly what a button newly revealed by expanding `<details class="dev-tools">` can be, on
+    # a sidebar viewport short enough that the expanded panel pushes it below the fold. Scroll it
+    # into view ourselves first, matching what a real click (and the standard WebDriver command)
+    # would do automatically.
+    panel(
+        'const b=[...document.querySelectorAll("button")].find(b=>b.textContent===' + json.dumps(label) + ');'
+        'b?.scrollIntoView({block:"center"});'
+    )
     r = d.execute_async_script(f"""
         const done=arguments[arguments.length-1], actor={ACTOR};
         actor.findElement('xpath',"//button[text()='"+arguments[0]+"']",{{}})
