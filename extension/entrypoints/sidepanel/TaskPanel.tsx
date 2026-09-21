@@ -110,6 +110,7 @@ export function TaskPanel() {
       <button className={`btn ${active?'btn-danger btn-start':'btn-neutral'}`} onClick={()=>runner.current?.stop()} disabled={!active}>Stop</button>
     </div>
     {error&&<p role="alert" className="error">{error}</p>}
+    {snapshot?.state==='failed'&&snapshot.failureError&&<p role="alert" className="error" data-testid="failure-error">{snapshot.failureError}</p>}
     {/* The sentence is what a person reads; the span beside it carries the literal TaskState word
       * the e2e suites assert on (Playwright `toHaveText`, Selenium `textContent===`), kept out of
       * sight and out of the accessibility tree rather than out of the DOM. */}

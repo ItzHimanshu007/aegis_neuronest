@@ -31,6 +31,10 @@ export interface TimelineEntry {
 export interface TaskSnapshot {
   state: TaskState; steps: number; modelCalls: number; replans: number; humanWaitMs: number;
   latencyMs: number; falseSuccess: boolean; timeline: TimelineEntry[]; cleanupFailed: boolean;
+  /** The exception message from the run() catch, when the loop threw unexpectedly. Local-only —
+   * never sent to the server. Enables the panel and DevTools to show what failed instead of just
+   * the opaque 'failed' state. */
+  failureError?: string;
 }
 export interface TaskUI {
   update(snapshot: TaskSnapshot): void;
@@ -62,6 +66,7 @@ export class TaskRunner {
   private denialSent = false;
   private cleanupFailed = false;
   private running = false;
+  private failureError?: string;
   constructor(readonly tabId: number, private task: string, private mode: Mode, private readonly ui: TaskUI) {}
   get signal(): AbortSignal { return this.controller.signal; }
   /** The most recent step's full privacy-pipeline result (payload + preview), for the Privacy
@@ -71,7 +76,8 @@ export class TaskRunner {
   snapshot(): TaskSnapshot {
     return { state: this.state, steps: this.steps, modelCalls: this.modelCalls, replans: this.recovery.replans,
       humanWaitMs: this.humanWaitMs, latencyMs: Math.max(0, performance.now()-this.started-this.humanWaitMs),
-      falseSuccess: this.falseSuccess, timeline: structuredClone(this.timeline), cleanupFailed: this.cleanupFailed };
+      falseSuccess: this.falseSuccess, timeline: structuredClone(this.timeline), cleanupFailed: this.cleanupFailed,
+      ...(this.failureError !== undefined ? { failureError: this.failureError } : {}) };
   }
   private emit(): void { this.ui.update(this.snapshot()); }
   private move(next: TaskState): void { this.signal.throwIfAborted(); this.state = taskReducer(this.state,next); this.emit(); }
@@ -315,8 +321,12 @@ export class TaskRunner {
           if(this.session.scene!.screenEpoch!==context.screenEpoch){this.record(action.action,'DROP_REMAINING','NEW_SCREEN',el?.eid);continue main;}
         }
       }
-    } catch {
-      if(!this.signal.aborted){this.state='failed';this.emit();}
+    } catch(e: unknown) {
+      if(!this.signal.aborted){
+        this.failureError=e instanceof Error?e.message:String(e);
+        console.error('[aegis] run() unexpected throw — check snapshot.failureError for details:',e);
+        this.state='failed';this.emit();
+      }
     } finally {
       for(const row of data)row.value='';data.length=0;
       this.session.end();this.tokens=[];this.task='';

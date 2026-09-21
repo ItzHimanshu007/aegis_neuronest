@@ -139,6 +139,7 @@ export default defineBackground(() => {
     let captureMs = 0;
     let finalStateToken: StateToken | null = null;
     let finalCaptureId: string | null = null;
+    let cleanMatch = false;
 
     while (attempt < AEGIS_CONFIG.CAPTURE_RETRIES) {
       attempt++;
@@ -165,17 +166,25 @@ export default defineBackground(() => {
 
       const stateTokenAfter = await sendToFrame<StateToken>(tabId, { type: 'GET_STATE_TOKEN' }, 0);
 
-      if (stateTokensEqual(harvestResponse.stateToken, stateTokenAfter)) {
-        const composed = composeObservation(resolvedInputs.inputs);
-        composedElements = composed.elements;
-        composedMedia = composed.media;
-        composedTextBlocks = composed.textBlocks;
-        frameInfos = resolvedInputs.frameInfos;
-        dialogOpen = harvestResponse.dialogOpen;
-        screenshotDataUrl = dataUrl;
-        finalStateToken = stateTokenAfter;
-        finalCaptureId = harvestResponse.captureId;
+      // Always record the last complete candidate so we can fall back to it if all retries
+      // exhaust without a clean match. Real-world pages with continuous DOM activity
+      // (form-validation watchers, analytics, cursor effects) mutate every few ms, making
+      // a perfect mutationCounter match impossible without an unbounded retry loop.
+      // The best-effort capture is still safe: seal(), the verifier, and NEW_SCREEN detection
+      // all treat it the same way — nothing is skipped downstream.
+      const composed = composeObservation(resolvedInputs.inputs);
+      composedElements = composed.elements;
+      composedMedia = composed.media;
+      composedTextBlocks = composed.textBlocks;
+      frameInfos = resolvedInputs.frameInfos;
+      dialogOpen = harvestResponse.dialogOpen;
+      screenshotDataUrl = dataUrl;
+      finalStateToken = stateTokenAfter;
+      finalCaptureId = harvestResponse.captureId;
 
+      if (stateTokensEqual(harvestResponse.stateToken, stateTokenAfter)) {
+        cleanMatch = true;
+        // Clean match — render the overlay and stop retrying.
         await sendToFrame(
           tabId,
           { type: 'RENDER_OVERLAY', data: { elements: composedElements, media: composedMedia } },
@@ -186,6 +195,17 @@ export default defineBackground(() => {
       }
       await sendToFrame(tabId, { type: 'SHOW_OVERLAY' }, 0).catch(() => {});
       // state changed mid-capture — loop and retry (Part D.1.5)
+    }
+
+    // Render the overlay for the best-effort capture if we exhausted all retries without a
+    // clean match but still have a valid candidate (domOnly needs no screenshot).
+    if (!cleanMatch && finalStateToken && finalCaptureId && (domOnly || screenshotDataUrl)) {
+      await sendToFrame(
+        tabId,
+        { type: 'RENDER_OVERLAY', data: { elements: composedElements, media: composedMedia } },
+        0,
+      ).catch(() => {});
+      await sendToFrame(tabId, { type: 'SHOW_OVERLAY' }, 0).catch(() => {});
     }
 
     if ((!domOnly && !screenshotDataUrl) || !finalStateToken || !finalCaptureId) {
