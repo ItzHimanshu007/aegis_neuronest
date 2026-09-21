@@ -228,6 +228,12 @@ figure — none exists.
 
 ### 3.5 Live-model latency and behavior (`qwen2.5vl:7b`, via local Ollama, GPU/CPU on the same M2)
 
+> **`qwen2.5vl:7b` was uninstalled 2026-09-21** to reclaim disk; no Ollama model remains on this
+> host. Everything in this section stands as an accurate record of what was measured on the dates
+> stated — none of it is retracted — but it can no longer be re-run here without
+> `ollama pull qwen2.5vl:7b` (~6 GB). Treat these as archived measurements, not as figures you can
+> reproduce on demand during judging.
+
 Source: `eval/reports/model-probe-qwen2.5vl-7b.md` (10 sealed fixtures, 1 run each) and
 `eval/reports/stage3-tasks.md`:
 

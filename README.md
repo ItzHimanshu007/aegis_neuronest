@@ -71,7 +71,15 @@ Serves on `http://localhost:8000`. `GET /health` and `POST /v1/plan` are availab
 
 Copy `server/.env.example` to `server/.env` and set `AEGIS_ADAPTER=openai_compat`. The default
 there points at a local Ollama (`AEGIS_LLM_BASE_URL=http://localhost:11434/v1`,
-`AEGIS_LLM_MODEL=qwen2.5vl:7b`) — see [`eval/reports/model-probe-qwen2.5vl-7b.md`](eval/reports/model-probe-qwen2.5vl-7b.md)
+`AEGIS_LLM_MODEL=qwen2.5vl:7b`).
+
+> **No local model is installed as of 2026-09-21.** `qwen2.5vl:7b` was removed to reclaim disk, so
+> the default above will fail until you re-pull it (`ollama pull qwen2.5vl:7b`, ~6 GB). The
+> measured figures below remain valid as a record of what was measured; they are just no longer
+> reproducible on this host without that pull. To run live today, point at a hosted provider
+> instead (see `server/.env.example`).
+
+See [`eval/reports/model-probe-qwen2.5vl-7b.md`](eval/reports/model-probe-qwen2.5vl-7b.md)
 for single-call numbers (schema validity, grounding, latency) and
 [`eval/reports/stage3-tasks.md`](eval/reports/stage3-tasks.md) for two full multi-step tasks run
 against it end to end through the real agent loop. On ordinary local hardware this model is slow
