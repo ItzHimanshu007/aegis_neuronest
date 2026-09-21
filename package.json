@@ -37,7 +37,8 @@
     "demo:live": "pnpm --filter aegis-extension demo:live",
     "model:probe": "uv run --project server python eval/model_probe/probe.py",
     "pagegen": "python3 eval/page_factory/generate.py",
-    "eval:heldout": "pnpm --filter aegis-extension exec playwright test e2e/baseline.spec.ts e2e/heldout.spec.ts",
+    "eval:heldout": "pnpm --filter aegis-extension exec playwright test --config=playwright.reports.config.ts e2e/baseline.spec.ts e2e/heldout.spec.ts",
+    "eval:timings": "pnpm --filter aegis-extension exec playwright test --config=playwright.reports.config.ts e2e/privacy-timings.spec.ts",
     "eval:fsr": "pnpm --filter aegis-extension eval:fsr",
     "eval:compose": "python3 eval/compose_stage4.py"
   },

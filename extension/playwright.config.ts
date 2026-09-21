@@ -16,11 +16,26 @@ export default defineConfig({
   fullyParallel: false, // one persistent browser context is shared per test file's worker
   workers: 1,
   reporter: [['list']],
-  // probe-fixtures.spec.ts regenerates model-probe fixtures from a live browser run. It is a
-  // deliberate, manually-triggered measurement (see eval/model_probe/), not a test suite. Running
-  // it under `pnpm e2e` would silently overwrite committed fixtures and contaminate the held-out
-  // evaluation corpus. Run it explicitly: npx playwright test e2e/probe-fixtures.spec.ts
-  testIgnore: ['**/probe-fixtures.spec.ts'],
+  // Specs that WRITE evidence rather than only assert are excluded here and run deliberately
+  // instead. A regression suite must be safe to run at any time; these rewrite files that are
+  // submitted as measurements, and one of them destroyed a committed Stage 4 status block by being
+  // run as part of an ordinary `pnpm e2e`.
+  //
+  //   probe-fixtures.spec.ts  regenerates the model-probe fixtures (eval/model_probe/), which would
+  //                           contaminate the held-out evaluation corpus.
+  //   baseline.spec.ts        writes eval/reports/stage2-baseline.md + .json
+  //   heldout.spec.ts         writes eval/reports/stage4-heldout.md and the replay bundle
+  //   privacy-timings.spec.ts writes eval/reports/stage2-timings.md
+  //
+  // The last three are cited by name as sources in docs/deck-facts.md. All four are reachable
+  // through playwright.reports.config.ts — `pnpm eval:heldout` and `pnpm eval:timings`. This does
+  // not make them harder to run on purpose; it makes them impossible to run BY ACCIDENT.
+  testIgnore: [
+    '**/probe-fixtures.spec.ts',
+    '**/baseline.spec.ts',
+    '**/heldout.spec.ts',
+    '**/privacy-timings.spec.ts',
+  ],
   use: {
     baseURL: 'http://localhost:5174',
     // Replay remains off; Stage 4 supplies explicit local Eval/Judge recording.
