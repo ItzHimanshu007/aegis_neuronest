@@ -313,6 +313,20 @@ async def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--runs", type=int, default=12)
     parser.add_argument("--out", type=Path, default=None)
+    parser.add_argument(
+        "--pace-s",
+        type=float,
+        default=0.0,
+        help=(
+            "Fixed delay between attempts (hosted-inference session, Part D). Some hosted "
+            "providers rate-limit by input tokens/minute rather than requests/minute — an "
+            "image-bearing fixture can cost several thousand tokens per call, so back-to-back "
+            "attempts hit 429s well before --runs completes even though the model itself answers "
+            "in under a second. This does not detect the limit; it is a caller-supplied, "
+            "conservative spacing recorded in the report's metadata so the conditions are honest. "
+            "0 (default) preserves prior behavior for providers with no such limit."
+        ),
+    )
     args = parser.parse_args()
     if args.runs < 12:
         parser.error("--runs must be at least 12; smaller samples are not reportable")
@@ -384,6 +398,7 @@ async def main() -> None:
         "adapter": report.adapter,
         "live": live,
         "runs_per_fixture": args.runs,
+        "pace_s": args.pace_s,
         "prompt_version": PROMPT_VERSION,
         "probe_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "prompt_sha256": hashlib.sha256(
@@ -414,8 +429,13 @@ async def main() -> None:
         json.dump(metadata, stream, indent=2, allow_nan=False)
         stream.write("\n")
     with raw_path.open("x") as stream:
+        first = True
         for entry in fixtures:
             for run_index in range(1, args.runs + 1):
+                if not first and args.pace_s > 0:
+                    print(f"  pacing {args.pace_s}s before next attempt …", file=sys.stderr)
+                    await asyncio.sleep(args.pace_s)
+                first = False
                 print(
                     f"probing {entry['name']} {run_index}/{args.runs} …",
                     file=sys.stderr,

@@ -52,7 +52,37 @@ describe('verification',()=>{
   it('a value mismatch overrides a permissive has_value expectation',()=>expect(verify({has_value:true},scene(),{action:'type',target:{eid:'E1',fp:'fp'}},{ok:true,match:false})).toEqual({verdict:'FAIL',code:'VALUE_MISMATCH'}));
   it('unchanged execution with failed evidence records an untrusted-event rejection',()=>expect(verify({text_present:'missing'},scene(),{action:'click'},{ok:true,changed:false}).verdict).toBe('FAIL'));
   it('validation errors prevent success',()=>expect(verify({no_validation_error:true},scene(),undefined,{ok:true,validationError:true}).verdict).toBe('FAIL'));
+
+  // --- Verification contract: done evidence must not be vacuously satisfiable ---
+  // Finding 3 from Stage 4: url_path_prefix:"/" is always true and must not independently prove
+  // completion. These are the regression tests for the fix in verifier.ts.
+
+  // Negative: vacuous url_path_prefix alone cannot prove done
+  it('done with url_path_prefix:"/" alone is FAIL — vacuous evidence rejected',()=>
+    expect(verify({url_path_prefix:'/'},scene(),{action:'done'})).toEqual({verdict:'FAIL',code:'EXPECT_FAILED'}));
+  it('done with url_path_prefix:"" alone is FAIL — empty prefix is always true',()=>
+    expect(verify({url_path_prefix:''},scene(),{action:'done'})).toEqual({verdict:'FAIL',code:'EXPECT_FAILED'}));
+  it('done with url_path_prefix:"/" plus only an eid is FAIL — eid is a reference key, not a state predicate',()=>
+    expect(verify({url_path_prefix:'/',eid:'E1'},scene(),{action:'done'})).toEqual({verdict:'FAIL',code:'EXPECT_FAILED'}));
+  it('done with missing evidence is UNVERIFIABLE — schema requires evidence but verifier handles undefined defensively',()=>
+    expect(verify(undefined,scene(),{action:'done'})).toEqual({verdict:'UNVERIFIABLE',code:'UNVERIFIABLE'}));
+
+  // Negative: ordinary action expect is NOT subject to the done-evidence gate
+  it('a non-done action with url_path_prefix:"/" in expect still PASSes — gate applies only to done',()=>
+    expect(verify({url_path_prefix:'/'},scene(),{action:'click',target:{eid:'E1',fp:'fp'}}).verdict).toBe('PASS'));
+
+  // Positive: done with meaningful evidence passes.
+  // scene() fixture URL is https://example.test/a — prefix '/a' matches and is specific (> 1 char).
+  it('done with a specific url_path_prefix is PASS — fixture url pathname is /a',()=>
+    expect(verify({url_path_prefix:'/a'},scene(),{action:'done'}).verdict).toBe('PASS'));
+  // scene() fixture element (E1) has hasValue:true — element-bound predicate is meaningful.
+  it('done with has_value:true bound to a real eid is PASS',()=>
+    expect(verify({has_value:true,eid:'E1'},scene(),{action:'done'}).verdict).toBe('PASS'));
+  // url_path_prefix:"/" paired with another condition: meaningful_conds = 1, gate does not fire.
+  it('done with url_path_prefix:"/" AND has_value:true (eid-bound) is PASS — one meaningful condition is enough',()=>
+    expect(verify({url_path_prefix:'/',has_value:true,eid:'E1'},scene(),{action:'done'}).verdict).toBe('PASS'));
 });
+
 it('replans twice, then asks; detects repeated no-progress actions',()=>{
   const recovery=new Recovery();
   expect(recovery.decide('STALE_PLAN')).toBe('replan');expect(recovery.decide('TOKEN_TYPE_MISMATCH')).toBe('replan');

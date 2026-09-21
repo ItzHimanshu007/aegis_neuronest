@@ -6,7 +6,7 @@ import { processObservation, type ProcessResult } from '../../agentHost';
 import { PrivacySession } from '../../agentHost/session';
 import { PrivacyPreview } from './PrivacyPreview';
 import { send } from '../../net/network';
-import type { Mode } from '../../privacy/redactor';
+import { redact, verifyMasks, type Mode } from '../../privacy/redactor';
 import type { RawElement } from '../../observe/types';
 import { AEGIS_CONFIG } from '../../shared/config';
 import { isFaceModelLoaded } from '../../perception/faceModel';
@@ -69,6 +69,7 @@ export default function App() {
   const [taskText, setTaskText] = useState('');
   const [mode, setMode] = useState<Mode>('balanced');
   const [somEnabled, setSomEnabled] = useState<boolean>(AEGIS_CONFIG.SOM_ENABLED);
+  const [maskLabelsEnabled, setMaskLabelsEnabled] = useState<boolean>(AEGIS_CONFIG.MASK_LABELS_ENABLED);
   const [processResult, setProcessResult] = useState<ProcessResult | null>(null);
   const [sanitizing, setSanitizing] = useState(false);
   const [sendState, setSendState] = useState<{ digest: string; size: number; at: string } | null>(null);
@@ -98,6 +99,13 @@ export default function App() {
   useEffect(() => {
     (window as unknown as { __aegisIsFaceModelLoaded?: () => boolean }).__aegisIsFaceModelLoaded = isFaceModelLoaded;
     (window as unknown as { __aegisLastFaceRegionTimings?: () => ReturnType<typeof getLastFaceRegionTimings> }).__aegisLastFaceRegionTimings = getLastFaceRegionTimings;
+    // Labelled masks, test-only: `verifyMasks()` is a canvas check, so its regression cases have to
+    // run in a real browser rather than in Vitest. Exposing the two functions here lets
+    // e2e/mask-labels.spec.ts drive them on SYNTHETIC images it builds itself — it never needs a
+    // captured page, and neither function reads anything it is not handed. Same convention, same
+    // risk profile as the hooks above: this is the extension's own side-panel document, which no
+    // web page can script.
+    (window as unknown as { __aegisRedactProbe?: { redact: typeof redact; verifyMasks: typeof verifyMasks } }).__aegisRedactProbe = { redact, verifyMasks };
   }, []);
 
   /** Capture transport has no independent numbering. Only the session registry issues EIDs. */
@@ -172,6 +180,7 @@ export default function App() {
         task: taskText,
         mode,
         somEnabled,
+        maskLabelsEnabled,
         session,
         stateToken: observeResponse.stateToken,
         screen: observeResponse.change,
@@ -256,6 +265,10 @@ export default function App() {
           <label>
             <input type="checkbox" checked={somEnabled} onChange={(e) => setSomEnabled(e.target.checked)} />{' '}
             Element ID marks
+          </label>
+          <label title="Draws what each hidden box was — [EMAIL#k3f7qa2b], [AADHAAR], [IMAGE — not checked] — inside the mask itself">
+            <input type="checkbox" checked={maskLabelsEnabled} onChange={(e) => setMaskLabelsEnabled(e.target.checked)} />{' '}
+            Labelled masks
           </label>
           <div className="button-row">
             <button className="action" onClick={handleObserveAndSanitize} disabled={sanitizing}>

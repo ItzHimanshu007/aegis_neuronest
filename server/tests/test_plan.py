@@ -22,7 +22,11 @@ def test_non_kyc_payload_returns_done_plan(client, kyc_payload):
     body = response.json()
     assert len(body["plan"]) == 1
     assert body["plan"][0]["action"] == "done"
-    assert body["plan"][0]["evidence"] == {"url_path_prefix": "/"}
+    # Evidence must not be vacuously-true (Finding 3, Stage 4). The mock now uses
+    # text_present:"Task complete" — a string absent from all pages — so the client-side
+    # verify() will correctly FAIL this done action, exposing false successes rather than hiding
+    # them. The old evidence (url_path_prefix:"/") was always true and bypassed the guard.
+    assert body["plan"][0]["evidence"] == {"text_present": "Task complete"}
     assert body["state_token"] == payload["state_token"]
 
 

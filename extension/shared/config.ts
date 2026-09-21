@@ -112,6 +112,19 @@ export const AEGIS_CONFIG = {
     outline: '#ffffff',
   },
 
+  /**
+   * Labelled masks (semantic obfuscation). When on, every non-face mask carries a typed label drawn
+   * from a closed vocabulary — `[AADHAAR]`, `[EMAIL#k3f7qa2b]`, `[IMAGE — not checked]` — so the
+   * vision model can tell what a black box was hiding, and so the privacy receipt reads at a glance.
+   * Faces keep the irreversible blur and gain a `[FACE]` tag on top of it.
+   *
+   * OFF by default, and it stays off until the model probe shows first-action EID grounding is
+   * equal or better with labels than without on the SAME fixtures. A label is drawn ON the image the
+   * server receives, so turning it on is a change to what leaves the device and has to be earned by
+   * a measurement rather than by the idea sounding good. See eval/reports/mask-labels.md.
+   */
+  MASK_LABELS_ENABLED: false,
+
   /** Independent local detector sizes; unused until Stage 5. Candidate settings, not results. */
   DETECTOR_INPUT_FAST: 640,
   DETECTOR_INPUT_ACCURATE: 1280,

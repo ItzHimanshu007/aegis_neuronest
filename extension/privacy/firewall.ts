@@ -12,8 +12,8 @@
  *   3. Known-value leak check against the vault and observed raw values
  *   4. Token check — every token-shaped string is one the vault actually issued
  *   5. Coverage — every non-ALLOW detection's rects are covered by manifest masks
- *   6. verifyMasks() — the pixels really are filled, and every Set-of-Marks tag names an
- *      outbound EID
+ *   6. verifyMasks() — the pixels really are filled and match a deterministic re-render, every
+ *      Set-of-Marks tag names an outbound EID, and every mask label is in the closed vocabulary
  *   7. capture_id consistency, and at most one image
  *   8. Canonical serialization -> bytes -> SHA-256 digest -> registry -> SanitizedPayload
  */
@@ -24,6 +24,7 @@ import { TOKEN_PATTERN } from '../shared/schema/tokens';
 import { runRules } from './detect/rules';
 import { normalizeValue } from './vault';
 import { verifyMasks, type RedactResult } from './redactor';
+import { MASK_LABEL_PATTERN, tokenIdFor } from './maskLabel';
 import { SOM_LABEL_PATTERN } from './som';
 import type { Action, Category } from './categoryTypes';
 import type { Detection } from './detect/types';
@@ -39,7 +40,8 @@ export type SealFailureReason =
   | 'mask-integrity'
   | 'capture-id-mismatch'
   | 'image-count'
-  | 'som-label';
+  | 'som-label'
+  | 'mask-label';
 
 export { isRegisteredSealed, consumeSealed, sha256Hex, type SanitizedPayload } from './sealedRegistry';
 
@@ -349,12 +351,44 @@ export async function seal(draft: DraftPayload, ctx: SealContext): Promise<SealR
   // checked (AGENTS.md invariant 12; Stage 3A Part B).
   if (ctx.redactResult && draft.image !== undefined) {
     const outboundEids = new Set(draft.elements.map((el) => el.eid));
+    // Tokens the payload actually carries. Built from the walked strings rather than from any one
+    // field, so "the payload already says this" means the whole payload, and `redactions[].token`
+    // (excluded from walkStrings only for the LEAK check, not from the draft) still counts.
+    const outboundTokens = new Set<string>(
+      [...strings.map((s) => s.value), ...draft.redactions.map((r) => r.token ?? '')].flatMap((value) =>
+        [...value.matchAll(TOKEN_GLOBAL)].map((m) => m[0]),
+      ),
+    );
     for (const label of ctx.redactResult.image.somLabels) {
       if (!SOM_LABEL_PATTERN.test(label.eid)) {
         throw new SealError('som-label', { label: label.eid, reason: 'not an EID' });
       }
       if (!outboundEids.has(label.eid)) {
         throw new SealError('som-label', { label: label.eid, reason: 'not an outbound element' });
+      }
+    }
+
+    // Every label drawn INSIDE a mask must come from the closed vocabulary, and a label that names
+    // a token must name one the vault issued and the payload already carries. A label is pixels on
+    // the image the server receives, so this is the same class of check as the SoM one above: the
+    // image may not say anything the text payload does not already say. `privacy/maskLabel.ts`
+    // cannot construct anything else, and this is the independent re-check of that claim at the
+    // boundary — the firewall assumes the layer above it is buggy (docs/threat_model.md).
+    for (const mask of ctx.redactResult.image.masks) {
+      if (mask.label === undefined) continue;
+      if (!MASK_LABEL_PATTERN.test(mask.label)) {
+        throw new SealError('mask-label', { rid: mask.rid, reason: 'not in the closed vocabulary' });
+      }
+      const idInLabel = mask.label.includes('#') ? mask.label.slice(mask.label.indexOf('#') + 1, -1) : null;
+      if (idInLabel === null) continue;
+      if (!mask.token || !ctx.issuedTokens.has(mask.token)) {
+        throw new SealError('mask-label', { rid: mask.rid, reason: 'label names a token the vault did not issue' });
+      }
+      if (tokenIdFor(mask.type, mask.token) !== idInLabel) {
+        throw new SealError('mask-label', { rid: mask.rid, reason: 'label token id does not match the mask token' });
+      }
+      if (!outboundTokens.has(mask.token)) {
+        throw new SealError('mask-label', { rid: mask.rid, reason: 'label names a token the payload does not carry' });
       }
     }
   }

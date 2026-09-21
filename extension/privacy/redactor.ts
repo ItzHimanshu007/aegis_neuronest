@@ -14,6 +14,7 @@
 
 import { AEGIS_CONFIG } from '../shared/config';
 import { drawSomLabels, fullResLabelHeight, placeSomLabels, type SomCandidate, type SomLabel } from './som';
+import { FACE_TAG_LABEL, buildMaskLabel, categoryOnlyLabel } from './maskLabel';
 import type { Action } from './categoryTypes';
 import type { Category } from './categoryTypes';
 
@@ -37,6 +38,9 @@ export interface AppliedMask {
   /** The mask's rect in SCREENSHOT PIXEL coordinates, after padding/clamping. */
   pxRect: { x: number; y: number; width: number; height: number };
   token?: string;
+  /** The closed-vocabulary label actually drawn inside this mask, if any. `seal()` re-checks every
+   * one against `MASK_LABEL_PATTERN` and against the payload's own tokens. */
+  label?: string;
 }
 
 declare const REDACTED_IMAGE_BRAND: unique symbol;
@@ -70,12 +74,29 @@ export interface RedactOptions {
   somCandidates?: Array<{ eid: import('../scene/registry').EID; rect: { x: number; y: number; width: number; height: number } }>;
   /** Overrides AEGIS_CONFIG.SOM_ENABLED, for the panel's preview toggle. */
   somEnabled?: boolean;
+  /** Overrides AEGIS_CONFIG.MASK_LABELS_ENABLED. Off means every mask is a plain solid fill, which
+   * is the unlabelled arm the probe measures against. */
+  maskLabelsEnabled?: boolean;
 }
 
 const FILL_COLOR = '#000000';
 const LABEL_COLOR = '#ffffff';
 const MIN_LABEL_HEIGHT_PX = 14;
 const BLUR_SHORT_SIDE_PX = 8;
+
+/** Horizontal breathing room inside the mask, per side. A label that needs more than the box has
+ * is stepped down to the category-only form and then dropped — never drawn past the edge. */
+const LABEL_PAD_PX = 4;
+/** Cap on label size. The floor is the box: below MIN_LABEL_HEIGHT_PX there is no label at all. */
+const LABEL_MAX_FONT_PX = 18;
+/** Fraction of the box height a label's glyphs may occupy. Depends on the BOX only — never on the
+ * hidden value's length or content (labelled-masks constraint 2). */
+const LABEL_HEIGHT_RATIO = 0.6;
+
+/** The face tag's own chip, drawn on top of the blur. The blur underneath is untouched. */
+const FACE_TAG_HEIGHT_RATIO = 0.22;
+const FACE_TAG_MIN_PX = 10;
+const FACE_TAG_MAX_PX = 16;
 
 export function maskKindForAction(action: Action, hasToken: boolean): MaskKind | null {
   switch (action) {
@@ -138,21 +159,112 @@ export function toPaddedPixelRect(
   return { x: x0, y: y0, width: Math.max(0, x1 - x0), height: Math.max(0, y1 - y0) };
 }
 
-function drawSolidFill(ctx: OffscreenCanvasRenderingContext2D, pxRect: AppliedMask['pxRect'], label?: string): void {
+/**
+ * The label that WILL be drawn inside a mask box, or undefined for none.
+ *
+ * Pure, and a pure function of (kind, category, token, box geometry) — never of the hidden value.
+ * `verifyMasks()` calls this with the same arguments to reproduce what `redact()` drew, so any
+ * non-determinism here would turn into a false mask-integrity failure rather than a silent pass.
+ *
+ * Fitting is a step-down through the closed vocabulary, never a truncation: full label, then the
+ * category-only form, then nothing. A cut-off string is not in the vocabulary, so it is never an
+ * option (labelled-masks constraint 3).
+ */
+function fitMaskLabel(
+  ctx: OffscreenCanvasRenderingContext2D,
+  mask: Pick<AppliedMask, 'kind' | 'type' | 'token' | 'pxRect'>,
+  fontSize: number,
+): string | undefined {
+  const full = buildMaskLabel(mask.type, mask.token);
+  if (!full) return undefined;
+  const available = mask.pxRect.width - LABEL_PAD_PX * 2;
+  if (available <= 0) return undefined;
+
+  ctx.font = `${fontSize}px monospace`;
+  if (ctx.measureText(full).width <= available) return full;
+
+  const short = categoryOnlyLabel(mask.type);
+  if (short && short !== full && ctx.measureText(short).width <= available) return short;
+  return undefined;
+}
+
+/** Font size for a mask's label. Derived from the BOX and nothing else — two masks of the same
+ * size get the same size text whatever they are hiding (labelled-masks constraint 2). */
+function labelFontSize(pxRect: AppliedMask['pxRect']): number {
+  return Math.min(Math.floor(pxRect.height * LABEL_HEIGHT_RATIO), LABEL_MAX_FONT_PX);
+}
+
+/**
+ * Draws one FILL-family mask: the solid fill, plus its typed label when labels are on.
+ *
+ * This is THE renderer for those masks. `redact()` calls it to produce the shipped image and
+ * `verifyMasks()` calls it again to re-render what the shipped image should contain, so the two can
+ * be compared pixel for pixel. Every piece of canvas state it depends on is set here inside a
+ * save()/restore() pair — nothing is inherited from whatever drew last, which is what makes the
+ * second render bit-identical to the first.
+ *
+ * Returns the label actually drawn, so the caller can record it for `seal()` to re-check.
+ */
+export function drawMaskFill(
+  ctx: OffscreenCanvasRenderingContext2D,
+  mask: Pick<AppliedMask, 'kind' | 'type' | 'token' | 'pxRect'>,
+  labelsEnabled: boolean,
+): string | undefined {
+  const { pxRect } = mask;
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
   ctx.fillStyle = FILL_COLOR;
   ctx.fillRect(pxRect.x, pxRect.y, pxRect.width, pxRect.height);
 
-  if (label && pxRect.height >= MIN_LABEL_HEIGHT_PX) {
-    const fontSize = Math.min(Math.floor(pxRect.height * 0.6), 18);
-    ctx.fillStyle = LABEL_COLOR;
-    ctx.font = `${fontSize}px monospace`;
+  let drawn: string | undefined;
+  if (labelsEnabled && pxRect.height >= MIN_LABEL_HEIGHT_PX) {
+    const fontSize = labelFontSize(pxRect);
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'center';
-    // Keep a clear margin so the label never touches (and so never obscures) the mask's edge —
-    // verifyMasks() samples a ring INSIDE the padded rect but outside this label area.
-    const maxWidth = Math.max(0, pxRect.width - 8);
-    ctx.fillText(label, pxRect.x + pxRect.width / 2, pxRect.y + pxRect.height / 2, maxWidth);
+    drawn = fitMaskLabel(ctx, mask, fontSize);
+    if (drawn) {
+      // White on black: the highest contrast available, so the glyphs survive the downscale and
+      // the PNG re-encode legibly (labelled-masks constraint 4, measured in e2e/mask-labels).
+      ctx.fillStyle = LABEL_COLOR;
+      ctx.font = `${fontSize}px monospace`;
+      // maxWidth is a backstop only — fitMaskLabel() has already guaranteed this fits, so the
+      // glyphs are never condensed and the render stays a function of the box alone.
+      ctx.fillText(drawn, pxRect.x + pxRect.width / 2, pxRect.y + pxRect.height / 2, pxRect.width - LABEL_PAD_PX * 2);
+    }
   }
+  ctx.restore();
+  return drawn;
+}
+
+/**
+ * Draws the `[FACE]` tag on top of an already-blurred face box. The blur is NOT touched — this
+ * paints a small opaque chip inside the box so the model can tell a deliberate redaction from a
+ * bad thumbnail. Same determinism rules as drawMaskFill(); same re-render in verifyMasks().
+ */
+export function drawFaceTag(ctx: OffscreenCanvasRenderingContext2D, pxRect: AppliedMask['pxRect']): string | undefined {
+  const fontSize = Math.min(Math.max(Math.floor(pxRect.height * FACE_TAG_HEIGHT_RATIO), FACE_TAG_MIN_PX), FACE_TAG_MAX_PX);
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.font = `${fontSize}px monospace`;
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'center';
+  const textWidth = ctx.measureText(FACE_TAG_LABEL).width;
+  const chipW = Math.ceil(textWidth) + LABEL_PAD_PX * 2;
+  const chipH = fontSize + LABEL_PAD_PX;
+  if (chipW > pxRect.width || chipH > pxRect.height) {
+    ctx.restore();
+    return undefined;
+  }
+  ctx.fillStyle = FILL_COLOR;
+  ctx.fillRect(pxRect.x, pxRect.y, chipW, chipH);
+  ctx.fillStyle = LABEL_COLOR;
+  ctx.fillText(FACE_TAG_LABEL, pxRect.x + chipW / 2, pxRect.y + chipH / 2, chipW - LABEL_PAD_PX * 2);
+  ctx.restore();
+  return FACE_TAG_LABEL;
 }
 
 /** Irreversible blur: downsample to <= BLUR_SHORT_SIDE_PX on the short side, then upsample back.
@@ -188,6 +300,11 @@ export interface RedactResult {
    * can convert a detection's CSS rects into the same pixel space as the applied masks. */
   scaleX: number;
   scaleY: number;
+  /** Full-res -> final-image factor this redaction used. Recorded rather than recomputed from the
+   * two sizes, which round, so `verifyMasks()` reproduces the downscale exactly. */
+  downscale: number;
+  /** Whether labels were drawn. `verifyMasks()` needs it to re-render what it should be seeing. */
+  labelsEnabled: boolean;
 }
 
 export async function redact(options: RedactOptions): Promise<RedactResult> {
@@ -200,17 +317,22 @@ export async function redact(options: RedactOptions): Promise<RedactResult> {
   if (!ctx) throw new Error('OffscreenCanvas 2d context unavailable');
   ctx.drawImage(source, 0, 0);
 
+  const labelsEnabled = options.maskLabelsEnabled ?? AEGIS_CONFIG.MASK_LABELS_ENABLED;
   const applied: AppliedMask[] = [];
   for (const mask of options.masks) {
     const pxRect = toPaddedPixelRect(mask.rect, options.scaleX, options.scaleY, pxW, pxH);
     if (pxRect.width <= 0 || pxRect.height <= 0) continue;
 
+    const candidate = { kind: mask.kind, type: mask.type, token: mask.token, pxRect };
+    let label: string | undefined;
     if (mask.kind === 'BLUR') {
+      // The blur is the redaction and stays exactly as it was. The tag only sits on top of it.
       drawIrreversibleBlur(ctx, source, pxRect);
+      if (labelsEnabled) label = drawFaceTag(ctx, pxRect);
     } else {
-      drawSolidFill(ctx, pxRect, mask.kind === 'LABELLED_FILL' ? (mask.token ?? mask.type) : undefined);
+      label = drawMaskFill(ctx, candidate, labelsEnabled);
     }
-    applied.push({ rid: mask.rid, kind: mask.kind, type: mask.type, pxRect, token: mask.token });
+    applied.push({ rid: mask.rid, kind: mask.kind, type: mask.type, pxRect, token: mask.token, label });
   }
   source.close();
 
@@ -261,7 +383,7 @@ export async function redact(options: RedactOptions): Promise<RedactResult> {
     somLabels,
   } as RedactedImage;
 
-  return { image, fullResolution: { canvas, pxW, pxH }, scaleX: options.scaleX, scaleY: options.scaleY };
+  return { image, fullResolution: { canvas, pxW, pxH }, scaleX: options.scaleX, scaleY: options.scaleY, downscale: scale, labelsEnabled };
 }
 
 async function canvasToDataUrl(canvas: OffscreenCanvas): Promise<string> {
@@ -276,7 +398,7 @@ async function canvasToDataUrl(canvas: OffscreenCanvas): Promise<string> {
 
 export interface VerifyResult {
   ok: boolean;
-  failures: Array<{ rid: string; reason: string; sampled?: { r: number; g: number; b: number } }>;
+  failures: Array<{ rid: string; reason: string; sampled?: { r: number; g: number; b: number }; at?: { x: number; y: number } }>;
 }
 
 /** Tolerance for lossy re-encoding (WebP/JPEG) — a solid black fill survives compression, but not
@@ -291,6 +413,104 @@ function isFillColour(r: number, g: number, b: number): boolean {
  * landing inside a DIFFERENT mask that legitimately overlaps it — see verifyMasks() below). */
 function pointInRect(px: number, py: number, rect: AppliedMask['pxRect']): boolean {
   return px >= rect.x && px < rect.x + rect.width && py >= rect.y && py < rect.y + rect.height;
+}
+
+/**
+ * Re-renders what the masked canvas SHOULD look like, so the shipped pixels can be compared against
+ * a deterministic expectation rather than merely sampled for "dark enough".
+ *
+ * The reconstruction starts as a copy of the real masked canvas and then REPLAYS every mask in the
+ * order `redact()` drew them:
+ *
+ *   - a FILL-family mask is re-drawn by `drawMaskFill()`, the same function that drew it the first
+ *     time, with the same arguments. If the shipped image really contains that fill and that label,
+ *     the replay changes nothing and the two agree pixel for pixel.
+ *   - a BLUR is replayed by copying its box straight back out of the real canvas, because a blur is
+ *     a function of the ORIGINAL pixels, which are gone by now and must never be kept. Its body is
+ *     therefore trusted here exactly as it was before (blurs were excluded from the old check
+ *     outright); what the replay does add is the `[FACE]` tag, which IS re-rendered and so IS
+ *     checked. A blur's real guarantee remains that it is only ever applied to FACE/PHOTO and that
+ *     its own coverage is checked by `firewall.ts`.
+ *
+ * Starting from a copy rather than a blank canvas is what makes the comparison exact: everything
+ * outside the mask boxes is identical by construction, so the downscale — which mixes neighbouring
+ * pixels across every box edge — produces identical output too, and the shipped PNG can be compared
+ * to it with no tolerance at all.
+ *
+ * This is also why the check now catches things the ring sampling could not. A Set-of-Marks tag
+ * painted over a mask, a label drawn outside its box and into the page, a label whose text is not
+ * the one the payload says it is, a fill that is the right colour but the wrong shape: all of them
+ * survive "every sampled pixel is dark" and none of them survives this.
+ */
+async function reconstruct(result: RedactResult): Promise<OffscreenCanvas | null> {
+  const { canvas: real, pxW, pxH } = result.fullResolution;
+  const scratch = new OffscreenCanvas(pxW, pxH);
+  const ctx = scratch.getContext('2d');
+  if (!ctx) return null;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(real, 0, 0);
+
+  for (const mask of result.image.masks) {
+    const { x, y, width, height } = mask.pxRect;
+    if (width <= 0 || height <= 0) continue;
+    if (mask.kind === 'BLUR') {
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(real, x, y, width, height, x, y, width, height);
+      ctx.restore();
+      if (result.labelsEnabled) drawFaceTag(ctx, mask.pxRect);
+    } else {
+      drawMaskFill(ctx, mask, result.labelsEnabled);
+    }
+  }
+  return scratch;
+}
+
+/** Downscales exactly as `redact()` did, so the expected and shipped final images are comparable. */
+function downscaleLike(source: OffscreenCanvas, result: RedactResult): OffscreenCanvas | null {
+  const { pxW, pxH } = result.fullResolution;
+  if (result.downscale >= 1) return source;
+  const outW = Math.max(1, Math.round(pxW * result.downscale));
+  const outH = Math.max(1, Math.round(pxH * result.downscale));
+  const out = new OffscreenCanvas(outW, outH);
+  const ctx = out.getContext('2d');
+  if (!ctx) return null;
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(source, 0, 0, pxW, pxH, 0, 0, outW, outH);
+  return out;
+}
+
+/** Intersects a rect with an image, rounding OUTWARD so no edge pixel escapes comparison. */
+function clampRect(rect: AppliedMask['pxRect'], scale: number, w: number, h: number): AppliedMask['pxRect'] | null {
+  const x0 = Math.max(0, Math.floor(rect.x * scale));
+  const y0 = Math.max(0, Math.floor(rect.y * scale));
+  const x1 = Math.min(w, Math.ceil((rect.x + rect.width) * scale));
+  const y1 = Math.min(h, Math.ceil((rect.y + rect.height) * scale));
+  if (x1 <= x0 || y1 <= y0) return null;
+  return { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
+}
+
+/** First differing pixel between two same-sized regions, or null when they are identical. */
+function firstDifference(
+  expected: OffscreenCanvasRenderingContext2D,
+  actual: OffscreenCanvasRenderingContext2D,
+  rect: AppliedMask['pxRect'],
+): { x: number; y: number; r: number; g: number; b: number } | null {
+  const a = expected.getImageData(rect.x, rect.y, rect.width, rect.height).data;
+  const b = actual.getImageData(rect.x, rect.y, rect.width, rect.height).data;
+  for (let i = 0; i < a.length; i += 4) {
+    if (a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2] || a[i + 3] !== b[i + 3]) {
+      const pixel = i / 4;
+      return {
+        x: rect.x + (pixel % rect.width),
+        y: rect.y + Math.floor(pixel / rect.width),
+        r: b[i] ?? 0,
+        g: b[i + 1] ?? 0,
+        b: b[i + 2] ?? 0,
+      };
+    }
+  }
+  return null;
 }
 
 /**
@@ -309,6 +529,14 @@ function pointInRect(px: number, py: number, rect: AppliedMask['pxRect']): boole
  * land inside that nested BLUR box; that pixel is correctly non-black by design, not a leak, and
  * the BLUR mask's OWN coverage (checked as a normal non-ALLOW detection by firewall.ts's coverage
  * check, not by this colour check) is what actually guards it.
+ *
+ * **Labelled masks add a second, stricter check on top of that one, and remove nothing.** The ring
+ * sampling above runs exactly as it always did; what follows it is a pixel-for-pixel comparison of
+ * every mask box against `reconstruct()`'s deterministic re-render, at full resolution AND on the
+ * decoded shipped PNG, with no tolerance. Both must pass. The ring check alone could not tell a
+ * correct label from a wrong one — both are "dark enough" outside the label band — and could not
+ * see anything drawn over a mask after the fact; the comparison decides both, and still fails
+ * closed on the original-pixels-leaking case the ring check already caught.
  */
 export async function verifyMasks(result: RedactResult): Promise<VerifyResult> {
   const failures: VerifyResult['failures'] = [];
@@ -360,6 +588,42 @@ export async function verifyMasks(result: RedactResult): Promise<VerifyResult> {
         failures.push({ rid: mask.rid, reason: 'downscaled-sample-not-filled', sampled: { r: down[0] ?? 0, g: down[1] ?? 0, b: down[2] ?? 0 } });
         break;
       }
+    }
+  }
+
+  // --- deterministic re-render comparison ------------------------------------------------------
+  // Fail-closed throughout: a reconstruction we cannot build is a verification we cannot do.
+  const expected = await reconstruct(result);
+  if (!expected) {
+    downscaled.close();
+    return { ok: false, failures: [...failures, { rid: '*', reason: 'no-reconstruction-context' }] };
+  }
+  const expectedCtx = expected.getContext('2d');
+  const expectedDown = downscaleLike(expected, result);
+  const expectedDownCtx = expectedDown?.getContext('2d');
+  if (!expectedCtx || !expectedDownCtx) {
+    downscaled.close();
+    return { ok: false, failures: [...failures, { rid: '*', reason: 'no-reconstruction-context' }] };
+  }
+  if (expectedDown!.width !== downscaled.width || expectedDown!.height !== downscaled.height) {
+    downscaled.close();
+    return { ok: false, failures: [...failures, { rid: '*', reason: 'shipped-image-size-mismatch' }] };
+  }
+
+  for (const mask of result.image.masks) {
+    const fullRect = clampRect(mask.pxRect, 1, result.fullResolution.pxW, result.fullResolution.pxH);
+    if (fullRect) {
+      const diff = firstDifference(expectedCtx, fullCtx, fullRect);
+      if (diff) {
+        failures.push({ rid: mask.rid, reason: 'full-resolution-differs-from-expected-render', sampled: { r: diff.r, g: diff.g, b: diff.b }, at: { x: diff.x, y: diff.y } });
+        continue;
+      }
+    }
+    const downRect = clampRect(mask.pxRect, scaleBack, downscaled.width, downscaled.height);
+    if (!downRect) continue;
+    const diff = firstDifference(expectedDownCtx, downCtx, downRect);
+    if (diff) {
+      failures.push({ rid: mask.rid, reason: 'shipped-image-differs-from-expected-render', sampled: { r: diff.r, g: diff.g, b: diff.b }, at: { x: diff.x, y: diff.y } });
     }
   }
 

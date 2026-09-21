@@ -44,6 +44,9 @@ export interface ProcessOptions {
   requestSpanRects: (request: { capture_id: string; stateToken: StateToken; spans: Array<{ blockRef: string; start: number; end: number }> }) => Promise<SpanRectsResponse>;
   /** Overrides the SoM config default, for the Privacy Preview's on/off toggle. */
   somEnabled?: boolean;
+  /** Overrides the labelled-masks config default, for the Privacy Preview's on/off toggle and for
+   * generating the probe's labelled/unlabelled fixture arms from one build. */
+  maskLabelsEnabled?: boolean;
   /** The token the capture stabilized on. The content script refuses the span lookup unless this
    * still matches, so passing anything else silently degrades every text detection to a
    * whole-block mask. */
@@ -249,6 +252,7 @@ export async function processObservation(options: ProcessOptions): Promise<Proce
         .filter((el) => el.visible)
         .map((el) => ({ eid: el.eid, rect: el.bbox })),
       somEnabled: options.somEnabled,
+      maskLabelsEnabled: options.maskLabelsEnabled,
     });
   }
   const redactMs = performance.now() - redactStart;
