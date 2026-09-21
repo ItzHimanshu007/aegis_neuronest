@@ -1,0 +1,195 @@
+{
+  "schema": "aegis-page-factory/2",
+  "page": "kyc_registration-102.html",
+  "template": "kyc_registration",
+  "split": "train",
+  "seed": 102,
+  "synthetic": true,
+  "counts": {
+    "annotations": 16,
+    "positives": 11,
+    "negatives": 5,
+    "faces": 1,
+    "faceControls": 1
+  },
+  "items": [
+    {
+      "elementId": "g12-item",
+      "category": "NONE",
+      "value": "SKU-2024-146",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Reference"
+    },
+    {
+      "elementId": "g13-item",
+      "category": "NONE",
+      "value": "0721064926",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Reference"
+    },
+    {
+      "elementId": "g14-item",
+      "category": "NONE",
+      "value": "4309 8575 4547",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Reference"
+    },
+    {
+      "elementId": "g15-item",
+      "category": "NONE",
+      "value": "₹4094.00",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Reference"
+    },
+    {
+      "elementId": "g16-item",
+      "category": "NONE",
+      "value": "Form was published on 13/05/2018.",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Reference"
+    },
+    {
+      "elementId": "g5-aadhar",
+      "category": "AADHAAR",
+      "value": "6971 6550 1437",
+      "label": "आधार संख्या",
+      "idiom": "dl",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Identity documents"
+    },
+    {
+      "elementId": "g7-voter_id",
+      "category": "VOTER_ID",
+      "value": "HOF0443646",
+      "label": "Elector's photo ID",
+      "idiom": "dl",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Identity documents"
+    },
+    {
+      "elementId": "g6-taxid",
+      "category": "PAN",
+      "value": "OYXJS6681Y",
+      "label": "PAN",
+      "idiom": "dl",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Identity documents"
+    },
+    {
+      "elementId": "g8-addr_line",
+      "category": "ADDRESS",
+      "value": "308, Brigade Road",
+      "label": "Residential address",
+      "idiom": "dl",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Address on record"
+    },
+    {
+      "elementId": "g9-city_name",
+      "category": "CITY",
+      "value": "Kochi",
+      "label": "City of residence",
+      "idiom": "dl",
+      "autocomplete": "address-level2",
+      "secretField": false,
+      "section": "Address on record"
+    },
+    {
+      "elementId": "g10-pincode",
+      "category": "PIN_CODE",
+      "value": "381839",
+      "label": "Postal code",
+      "idiom": "dl",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Address on record"
+    },
+    {
+      "elementId": "g11-auth_code",
+      "category": "OTP",
+      "value": "825542",
+      "label": "6-digit OTP",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": true,
+      "section": "Verification"
+    },
+    {
+      "elementId": "g2-bdate",
+      "category": "DOB",
+      "value": "21 July 1986",
+      "label": "Date of birth (DD/MM/YYYY)",
+      "idiom": "dl",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Applicant details"
+    },
+    {
+      "elementId": "g1-holder",
+      "category": "NAME",
+      "value": "Tarun Reddy",
+      "label": "पूरा नाम",
+      "idiom": "dl",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Applicant details"
+    },
+    {
+      "elementId": "g3-phone1",
+      "category": "PHONE",
+      "value": "78237 49462",
+      "label": "मोबाइल नंबर",
+      "idiom": "dl",
+      "autocomplete": "tel",
+      "secretField": false,
+      "section": "Applicant details"
+    },
+    {
+      "elementId": "g4-email_id",
+      "category": "EMAIL",
+      "value": "user566@example.com",
+      "label": "ईमेल पता",
+      "idiom": "dl",
+      "autocomplete": "email",
+      "secretField": false,
+      "section": "Applicant details"
+    }
+  ],
+  "media": [
+    {
+      "src": "/faces/profile-photo.jpg",
+      "element_id": "m-photo",
+      "face_gt": "FACE",
+      "width": 180,
+      "height": 180,
+      "alt": "synthetic profile photo, AI-generated, no real person"
+    },
+    {
+      "src": "/faces/control-no-face.png",
+      "element_id": "m-control",
+      "face_gt": "NONE",
+      "width": 180,
+      "height": 180,
+      "alt": "synthetic control graphic with no face"
+    }
+  ]
+}

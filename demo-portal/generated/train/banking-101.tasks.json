@@ -1,0 +1,41 @@
+{
+  "schema": "aegis-page-factory-tasks/2",
+  "page": "banking-101.html",
+  "split": "train",
+  "tasks": [
+    {
+      "id": "banking-101.html::missing-field",
+      "kind": "impossible",
+      "impossibility": "missing-field",
+      "instruction": "Fill in the uan field on this page.",
+      "reason": "No element on this page carries category UAN.",
+      "targetCategory": "UAN"
+    },
+    {
+      "id": "banking-101.html::never-supplied",
+      "kind": "impossible",
+      "impossibility": "never-supplied-value",
+      "instruction": "Update the financial value field to the new value I gave you earlier.",
+      "reason": "No value for this field was supplied in task data or present on the page.",
+      "targetCategory": "FINANCIAL_VALUE"
+    },
+    {
+      "id": "banking-101.html::ambiguous",
+      "kind": "impossible",
+      "impossibility": "ambiguous",
+      "instruction": "Change the ifsc to the correct one.",
+      "reason": "2 distinct elements on this page carry category IFSC; the instruction does not disambiguate between them.",
+      "targetCategory": "IFSC"
+    },
+    {
+      "id": "banking-101.html::possible",
+      "kind": "possible",
+      "impossibility": null,
+      "instruction": "Read out the financial value shown on this page.",
+      "reason": "Exactly one element carries this category and its value is visible.",
+      "targetCategory": "FINANCIAL_VALUE",
+      "targetElementId": "g4-financial_value",
+      "expectedValue": "₹68,517.86"
+    }
+  ]
+}

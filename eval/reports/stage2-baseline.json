@@ -1,0 +1,224 @@
+{
+  "schema": "aegis-baseline/2",
+  "measuredAt": "2026-09-21T11:17:25.914Z",
+  "browser": "153.0.8010.12",
+  "corpus": "pii-zoo.html",
+  "mode": "balanced",
+  "cascade": "dom-only",
+  "annotations": 93,
+  "positives": 59,
+  "negatives": 34,
+  "captures": 15,
+  "overall": {
+    "tp": 59,
+    "fp": 3,
+    "fn": 0,
+    "precision": "0.952",
+    "recall": "1.000"
+  },
+  "perCategory": {
+    "AADHAAR": {
+      "tp": 6,
+      "fp": 0,
+      "fn": 0,
+      "precision": "1.000",
+      "recall": "1.000"
+    },
+    "ABHA": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": "1.000",
+      "recall": "1.000"
+    },
+    "ADDRESS": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": "1.000",
+      "recall": "1.000"
+    },
+    "BANK_ACCOUNT": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": "1.000",
+      "recall": "1.000"
+    },
+    "CARD_NUMBER": {
+      "tp": 5,
+      "fp": 0,
+      "fn": 0,
+      "precision": "1.000",
+      "recall": "1.000"
+    },
+    "CITY": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": "1.000",
+      "recall": "1.000"
+    },
+    "CVV": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": "1.000",
+      "recall": "1.000"
+    },
+    "DOB": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": "1.000",
+      "recall": "1.000"
+    },
+    "DRIVING_LICENCE": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": "1.000",
+      "recall": "1.000"
+    },
+    "EMAIL": {
+      "tp": 6,
+      "fp": 0,
+      "fn": 0,
+      "precision": "1.000",
+      "recall": "1.000"
+    },
+    "EMPLOYER": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": "1.000",
+      "recall": "1.000"
+    },
+    "FINANCIAL_VALUE": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": "1.000",
+      "recall": "1.000"
+    },
+    "HEALTH": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": "1.000",
+      "recall": "1.000"
+    },
+    "IFSC": {
+      "tp": 3,
+      "fp": 1,
+      "fn": 0,
+      "precision": "0.750",
+      "recall": "1.000"
+    },
+    "NAME": {
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": "1.000",
+      "recall": "1.000"
+    },
+    "OTP": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": "1.000",
+      "recall": "1.000"
+    },
+    "PAN": {
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "precision": "1.000",
+      "recall": "1.000"
+    },
+    "PASSPORT": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": "1.000",
+      "recall": "1.000"
+    },
+    "PASSWORD": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": "1.000",
+      "recall": "1.000"
+    },
+    "PHONE": {
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": "1.000",
+      "recall": "1.000"
+    },
+    "PIN_CODE": {
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "precision": "1.000",
+      "recall": "1.000"
+    },
+    "PRIVATE_GENERIC": {
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "precision": "1.000",
+      "recall": "1.000"
+    },
+    "SECRET": {
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "precision": "1.000",
+      "recall": "1.000"
+    },
+    "TRACKING_ID": {
+      "tp": 1,
+      "fp": 2,
+      "fn": 0,
+      "precision": "0.333",
+      "recall": "1.000"
+    },
+    "UAN": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": "1.000",
+      "recall": "1.000"
+    },
+    "UNSCANNED_MEDIA": {
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "precision": "1.000",
+      "recall": "1.000"
+    },
+    "UPI_ID": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": "1.000",
+      "recall": "1.000"
+    },
+    "VEHICLE_REG": {
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "precision": "1.000",
+      "recall": "1.000"
+    },
+    "VOTER_ID": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": "1.000",
+      "recall": "1.000"
+    }
+  }
+}

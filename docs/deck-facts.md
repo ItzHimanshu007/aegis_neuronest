@@ -13,6 +13,12 @@ inferring one. No papers or model cards were consulted — only this repository.
 > file's other rows still describe the repo state at `ec54529`, as stated; it was not
 > regenerated wholesale for this one change.
 
+> **New measurement, 2026-09-21 (Stage 4, held-out evaluation):** §3.3's authored-page numbers
+> below are UNCHANGED and still correct for what they measure. A **new §3.3b** adds the first
+> held-out numbers this project has ever had — the same cascade measured on 24 generated pages it
+> has never seen. Both are kept, clearly labelled, so the deck can show generalization honestly.
+> Read §3.3 and §3.3b together; quoting §3.3 alone is the thing this stage exists to stop.
+
 > **Drift correction, 2026-09-20 (consolidation pass, commit `781479e`):** the `ec54529`
 > kyc.html photo swap (`a54f456`, demo-readiness work) changed byte sizes and per-stage timings on
 > every page that touches that image, and the reports below were regenerated against it
@@ -64,7 +70,10 @@ inferring one. No papers or model cards were consulted — only this repository.
 - Stage 7: NER + linkability tuning.
 - Stage 8: adaptive sensing consolidation, caching, resolution/encoding tuning, **WebGPU/WASM**.
 - Stage 9: hardening, attack tests, consent UX polish, Judge Mode polish.
-- Stage 4: page factory v2, held-out splits, impossible tasks, false-success rate, eval-mode replay.
+- Stage 4: **partially shipped 2026-09-21** — page factory v2, one held-out split, impossible
+  tasks + false-success rate, and a minimal eval-mode replay all exist (`docs/STAGES.md`).
+  Still open: the three held-out splits originally scoped (there is one), and
+  `eval/labeler|metrics|leakage_test|bench|pareto`.
 
 **Model selection for a smaller/faster candidate is currently blocked**, not complete: the only
 verified host (Apple M2, 16 GiB unified memory) fails the adopted no-swap hardware gate before any
@@ -211,9 +220,77 @@ Per-category precision is 1.000 for 27 of 29 categories; two categories (IFSC 0.
 0.333) have false positives, all three explained as previously-vaulted values or numeric substrings
 reappearing in unlabelled catalogue rows (documented in the report, not hidden).
 
-**No number exists yet for**: a held-out/unseen page, real-world pages, images/OCR-based PII, or
-NER-based free-text PII (all Stage 4–7, not started). Do not claim a generalized precision/recall
-figure — none exists.
+**No number exists yet for**: real-world pages, images/OCR-based PII, or NER-based free-text PII
+(Stages 5–7, not started). A held-out/unseen-page number now DOES exist — see §3.3b immediately
+below, and quote it alongside this section rather than quoting this section alone.
+
+### 3.3b PII detection on HELD-OUT pages (Stage 4) — the generalization number
+
+Source: `eval/reports/stage4-heldout.md`. Test set: **390 annotations (270 positive, 28 categories;
+120 negative) across 24 synthetic pages**, generated from 4 templates by `eval/page_factory` and
+scored over **102 overlapping viewport captures**, on Chromium 153.0.8010.12, `balanced` mode,
+**DOM-only cascade (no vision/OCR/NER)**. 0 pages were refused by the pipeline.
+
+**This test set is NOT hand-annotated and was never inspected.** Ground truth is derived from the
+generator's own records — templates build a record list first and render HTML from it, so page and
+label cannot disagree. The corpus is gitignored, hash-sealed (`heldout-seal.json`) for byte-exact
+reproduction, and drawn from a label-phrase bank partitioned so train and held-out share a
+distribution but no phrases. The phrase bank was written **without reading the detector's label
+dictionary**, so the hit rate is an honest sample rather than a tuned one.
+
+| Metric | Authored (§3.3) | Held-out | Delta |
+| --- | ---: | ---: | ---: |
+| Overall precision | 0.952 | **0.950** (207 TP / 11 FP) | −0.2 pp |
+| Overall recall | 1.000 | **0.767** (63 FN) | **−23.3 pp** |
+
+**The headline is that precision held and recall did not.** Broken down by how each category is
+actually detected — the breakdown matters more than the average:
+
+| Detection mode | Categories | Precision | Recall |
+| --- | --- | ---: | ---: |
+| Checksum-validated | AADHAAR, CARD_NUMBER | 0.947 | **1.000** |
+| Self-describing shape | EMAIL, PAN, IFSC, UPI_ID, PHONE, SECRET, VEHICLE_REG | 1.000 | **0.974** |
+| Label-dictionary-dependent | 19 categories incl. NAME, ADDRESS, CITY, HEALTH | 0.919 | **0.649** |
+
+**61 of the 63 false negatives are label-dependent.** A value that validates itself (checksum) or
+describes itself (shape) generalizes essentially perfectly to unseen pages; a value recognised only
+by the wording of its label does not. Worst categories on held-out: **HEALTH 0.000 recall (0/6)**,
+VOTER_ID 0.167, CITY / EMPLOYER / FINANCIAL_VALUE 0.333 each.
+
+**Honest framing for the deck:** held-out pages are **unseen, not independent** — the generator was
+written by this project. This removes annotator bias and instance memorisation, but not the
+shared-authorship prior, and it is still not a claim about real-world sites. Do not present 0.952 as
+the system's accuracy; present 0.950 / 0.767 with the per-mode breakdown, which is both more honest
+and more informative about where the remaining work is.
+
+**Three findings came out of this corpus**, all reachable on ordinary real pages rather than
+generator artifacts: a `seal()` leak-check false positive that refused legitimate payloads,
+`orderIdRule` matching ordinary prose words, and — the one that matters most for the product —
+**`verify()` accepts vacuously-true `done` evidence**, so the loop's own false-success guard can be
+walked straight past. The first two are fixed; the third is filed, not fixed. See
+`eval/reports/stage4-heldout.md`.
+
+### 3.3c False-success rate on impossible tasks (Stage 4)
+
+Source: `eval/reports/stage4-heldout.md`, Part C. **54 impossible tasks** (all of them; no
+sampling), derived by `eval/page_factory` from each held-out page's own record list, driven through
+the real agent loop on Chromium 153.0.8010.12. A task is a false success when it is
+known-impossible by construction and the loop still terminates in a state a user would read as
+completion; ending `failed`, or escalating to `ask_user` and stopping, is not.
+
+| Arm | False-success rate | Controls completed |
+| --- | ---: | ---: |
+| Mock adapter (`AEGIS_ADAPTER=mock`) | **52/54** | 0/24 |
+| Local model (`qwen2.5vl:7b`) | **NOT MEASURED** | NOT MEASURED |
+
+Per category (mock arm): ambiguous 6/6, missing-field 23/24, never-supplied-value 23/24.
+
+**Do not quote 52/54 as Aegis's false-success rate.** `MockAdapter` is a stub that ignores the task
+text and returns `done` with `evidence=Expect(url_path_prefix="/")`, which always verifies — so all
+52 were recorded under "terminal state `done`". The number is a genuine measurement of the stub and
+of the verifier hole it exposed, and it establishes the floor a real planner must beat. It is not a
+measurement of the shipped system with a real planner. **That number does not exist yet**: the live
+arm was NOT MEASURED because this machine had no local model installed (see §3.5 note below).
 
 ### 3.4 Redaction / mask-integrity numbers
 
@@ -227,6 +304,15 @@ figure — none exists.
   `scripts/firefox/e2e.py`, reported in `docs/architecture.md` and `eval/reports/firefox-stage2.5.json`.
 
 ### 3.5 Live-model latency and behavior (`qwen2.5vl:7b`, via local Ollama, GPU/CPU on the same M2)
+
+> **Reproducibility note, 2026-09-21.** These numbers remain **valid** — they were measured, and a
+> measurement does not become false because the model was later removed from the machine. But they
+> are **no longer reproducible on demand**: as of 2026-09-21 this machine has no local model
+> installed (`/api/tags` returns `{"models":[]}`; `~/.ollama/models/manifests` is empty, mtime
+> 08:42:35 that morning). Re-running any figure in this section, or answering a judge who asks for a
+> live demonstration, requires `ollama pull qwen2.5vl:7b` (~6 GB) first. Nothing in the repo checks
+> for a local model before a run that needs one, so the failure currently shows up only as an empty
+> model list.
 
 Source: `eval/reports/model-probe-qwen2.5vl-7b.md` (10 sealed fixtures, 1 run each) and
 `eval/reports/stage3-tasks.md`:
@@ -353,10 +439,12 @@ Defaults from `docs/policy.yaml` and the classifier in `extension/authority/inde
    `form_enter`, `answer_balance`, `banner_first`, `loop`, `impossible`, and all seven adversarial
    `evil_*` scenarios have zero Firefox-automated coverage today (`docs/manual-test-firefox.md`).
    No live-model flow has been run in Firefox at all.
-4. **Everything works only on demo-portal pages we authored** (`kyc.html`, `pii-zoo.html`,
-   `login.html`, `search.html`, `injection.html`, `calibration.html`, `shadow.html`, `frames.html`,
-   `dynamic.html`, `hidden.html`). No real-world site has been tested. Held-out/unseen-page
-   evaluation is Stage 4 and has not started.
+4. **Everything works only on synthetic pages** — the authored demo portal (`kyc.html`,
+   `pii-zoo.html`, `login.html`, `search.html`, `injection.html`, `calibration.html`, `shadow.html`,
+   `frames.html`, `dynamic.html`, `hidden.html`) plus the 24 generated held-out pages added in
+   Stage 4. **No real-world site has been tested.** Held-out evaluation now exists (§3.3b) and
+   dropped recall from 1.000 to 0.767, but held-out pages are *unseen, not independent*: the
+   generator was written by this project, so the shared-authorship prior remains.
 5. **Model selection for a faster/lighter candidate is blocked, not resolved.** The only available
    evaluation host fails the adopted no-swap resource gate before inference even starts, so there is
    no measured resource envelope, no survivor besides the original `qwen2.5vl:7b`, and no
@@ -376,8 +464,12 @@ Defaults from `docs/policy.yaml` and the classifier in `extension/authority/inde
 
 ### Top 5 fixes with three more months
 
-1. Ship Stage 4 (held-out page splits, impossible tasks, false-success measurement) — the single
-   biggest credibility gap: every number today is on pages we wrote.
+1. **Close the label-dictionary recall gap that Stage 4 exposed.** Held-out recall on
+   label-dependent categories is 0.649 against 1.000 on the authored page, and 61 of 63 false
+   negatives are label-dependent (§3.3b). Checksum and shape categories already generalize
+   (1.000 / 0.974), so the work is specifically in recognising fields by something other than a
+   30-entry phrase list — which is what Stage 5's coarse-class detector and Stage 7's NER are for.
+   Test on genuinely third-party pages, which nothing here has yet done.
 2. Implement Stage 5's real coarse-class local privacy detector to catch unlabelled/checksum-free
    free-text PII — the accuracy risk the project itself names as core.
 3. Close the Firefox coverage gap: port the seven-scenario adversarial matrix and the remaining six

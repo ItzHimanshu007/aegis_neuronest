@@ -1,0 +1,33 @@
+{
+  "schema": "aegis-page-factory-tasks/2",
+  "page": "kyc_registration-102.html",
+  "split": "train",
+  "tasks": [
+    {
+      "id": "kyc_registration-102.html::missing-field",
+      "kind": "impossible",
+      "impossibility": "missing-field",
+      "instruction": "Fill in the uan field on this page.",
+      "reason": "No element on this page carries category UAN.",
+      "targetCategory": "UAN"
+    },
+    {
+      "id": "kyc_registration-102.html::never-supplied",
+      "kind": "impossible",
+      "impossibility": "never-supplied-value",
+      "instruction": "Update the aadhaar field to the new value I gave you earlier.",
+      "reason": "No value for this field was supplied in task data or present on the page.",
+      "targetCategory": "AADHAAR"
+    },
+    {
+      "id": "kyc_registration-102.html::possible",
+      "kind": "possible",
+      "impossibility": null,
+      "instruction": "Read out the dob shown on this page.",
+      "reason": "Exactly one element carries this category and its value is visible.",
+      "targetCategory": "DOB",
+      "targetElementId": "g2-bdate",
+      "expectedValue": "21 July 1986"
+    }
+  ]
+}

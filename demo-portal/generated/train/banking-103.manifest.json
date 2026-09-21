@@ -1,0 +1,168 @@
+{
+  "schema": "aegis-page-factory/2",
+  "page": "banking-103.html",
+  "template": "banking",
+  "split": "train",
+  "seed": 103,
+  "synthetic": true,
+  "counts": {
+    "annotations": 15,
+    "positives": 10,
+    "negatives": 5,
+    "faces": 0,
+    "faceControls": 0
+  },
+  "items": [
+    {
+      "elementId": "g11-item",
+      "category": "NONE",
+      "value": "257653803586",
+      "label": null,
+      "idiom": "dl",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Recent reference numbers"
+    },
+    {
+      "elementId": "g12-item",
+      "category": "NONE",
+      "value": "4584 0867 6186 5221",
+      "label": null,
+      "idiom": "dl",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Recent reference numbers"
+    },
+    {
+      "elementId": "g13-item",
+      "category": "NONE",
+      "value": "SKU-2022-292",
+      "label": null,
+      "idiom": "dl",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Recent reference numbers"
+    },
+    {
+      "elementId": "g14-item",
+      "category": "NONE",
+      "value": "₹3765.00",
+      "label": null,
+      "idiom": "dl",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Recent reference numbers"
+    },
+    {
+      "elementId": "g15-item",
+      "category": "NONE",
+      "value": "469581274799",
+      "label": null,
+      "idiom": "dl",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Recent reference numbers"
+    },
+    {
+      "elementId": "g10-emailAddress",
+      "category": "EMAIL",
+      "value": "stmt59@example.com",
+      "label": "Email address",
+      "idiom": "prose",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Statement note"
+    },
+    {
+      "elementId": "g3-rtgs",
+      "category": "IFSC",
+      "value": "PUNB0PCYSLK",
+      "label": "Bank IFSC code",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Account summary"
+    },
+    {
+      "elementId": "g1-holder",
+      "category": "NAME",
+      "value": "Neha Gupta",
+      "label": "Customer name",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Account summary"
+    },
+    {
+      "elementId": "g4-financial_value",
+      "category": "FINANCIAL_VALUE",
+      "value": "₹1,548.26",
+      "label": "Total due",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Account summary"
+    },
+    {
+      "elementId": "g2-beneficiary_acct",
+      "category": "BANK_ACCOUNT",
+      "value": "556696573633",
+      "label": "Beneficiary account",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Account summary"
+    },
+    {
+      "elementId": "g6-payee_vpa",
+      "category": "UPI_ID",
+      "value": "neha@okaxis",
+      "label": "UPI ID",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Payment instruments"
+    },
+    {
+      "elementId": "g5-pan_card",
+      "category": "CARD_NUMBER",
+      "value": "5171 5818 7856 8154",
+      "label": "Saved card",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Payment instruments"
+    },
+    {
+      "elementId": "g8-ifsc_code",
+      "category": "IFSC",
+      "value": "IDIB06T84H1",
+      "label": "Bank IFSC code",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Transfer to beneficiary"
+    },
+    {
+      "elementId": "g9-cvc",
+      "category": "CVV",
+      "value": "932",
+      "label": "सीवीवी",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": true,
+      "section": "Transfer to beneficiary"
+    },
+    {
+      "elementId": "g7-acct_no",
+      "category": "BANK_ACCOUNT",
+      "value": "29983293828946",
+      "label": "Account number for credit",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Transfer to beneficiary"
+    }
+  ],
+  "media": []
+}

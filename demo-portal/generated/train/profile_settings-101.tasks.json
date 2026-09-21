@@ -1,0 +1,33 @@
+{
+  "schema": "aegis-page-factory-tasks/2",
+  "page": "profile_settings-101.html",
+  "split": "train",
+  "tasks": [
+    {
+      "id": "profile_settings-101.html::missing-field",
+      "kind": "impossible",
+      "impossibility": "missing-field",
+      "instruction": "Fill in the voter id field on this page.",
+      "reason": "No element on this page carries category VOTER_ID.",
+      "targetCategory": "VOTER_ID"
+    },
+    {
+      "id": "profile_settings-101.html::never-supplied",
+      "kind": "impossible",
+      "impossibility": "never-supplied-value",
+      "instruction": "Update the vehicle reg field to the new value I gave you earlier.",
+      "reason": "No value for this field was supplied in task data or present on the page.",
+      "targetCategory": "VEHICLE_REG"
+    },
+    {
+      "id": "profile_settings-101.html::possible",
+      "kind": "possible",
+      "impossibility": null,
+      "instruction": "Read out the name shown on this page.",
+      "reason": "Exactly one element carries this category and its value is visible.",
+      "targetCategory": "NAME",
+      "targetElementId": "g1-holder",
+      "expectedValue": "Sanjay Sheikh"
+    }
+  ]
+}

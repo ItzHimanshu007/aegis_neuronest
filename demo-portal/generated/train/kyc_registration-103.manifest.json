@@ -1,0 +1,195 @@
+{
+  "schema": "aegis-page-factory/2",
+  "page": "kyc_registration-103.html",
+  "template": "kyc_registration",
+  "split": "train",
+  "seed": 103,
+  "synthetic": true,
+  "counts": {
+    "annotations": 16,
+    "positives": 11,
+    "negatives": 5,
+    "faces": 1,
+    "faceControls": 1
+  },
+  "items": [
+    {
+      "elementId": "g12-item",
+      "category": "NONE",
+      "value": "SKU-2023-744",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Reference"
+    },
+    {
+      "elementId": "g13-item",
+      "category": "NONE",
+      "value": "0570464324",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Reference"
+    },
+    {
+      "elementId": "g14-item",
+      "category": "NONE",
+      "value": "9853 1021 0550",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Reference"
+    },
+    {
+      "elementId": "g15-item",
+      "category": "NONE",
+      "value": "₹3355.00",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Reference"
+    },
+    {
+      "elementId": "g16-item",
+      "category": "NONE",
+      "value": "Form was published on 14/04/1998.",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Reference"
+    },
+    {
+      "elementId": "g2-dob",
+      "category": "DOB",
+      "value": "28-10-1992",
+      "label": "D.O.B.",
+      "idiom": "dl",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Applicant details"
+    },
+    {
+      "elementId": "g3-contact",
+      "category": "PHONE",
+      "value": "+91 84278 12579",
+      "label": "Contact number",
+      "idiom": "dl",
+      "autocomplete": "tel",
+      "secretField": false,
+      "section": "Applicant details"
+    },
+    {
+      "elementId": "g4-mail",
+      "category": "EMAIL",
+      "value": "user564@example.com",
+      "label": "Email address",
+      "idiom": "dl",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Applicant details"
+    },
+    {
+      "elementId": "g1-applicant_name",
+      "category": "NAME",
+      "value": "Pooja Verma",
+      "label": "Customer name",
+      "idiom": "dl",
+      "autocomplete": "name",
+      "secretField": false,
+      "section": "Applicant details"
+    },
+    {
+      "elementId": "g8-residence",
+      "category": "ADDRESS",
+      "value": "260, Linking Road",
+      "label": "Residential address",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Address on record"
+    },
+    {
+      "elementId": "g9-city_name",
+      "category": "CITY",
+      "value": "Ahmedabad",
+      "label": "Nearest city",
+      "idiom": "input",
+      "autocomplete": "address-level2",
+      "secretField": false,
+      "section": "Address on record"
+    },
+    {
+      "elementId": "g10-pin",
+      "category": "PIN_CODE",
+      "value": "665886",
+      "label": "Zip / PIN",
+      "idiom": "input",
+      "autocomplete": "postal-code",
+      "secretField": false,
+      "section": "Address on record"
+    },
+    {
+      "elementId": "g11-auth_code",
+      "category": "OTP",
+      "value": "510219",
+      "label": "OTP",
+      "idiom": "input",
+      "autocomplete": "one-time-code",
+      "secretField": true,
+      "section": "Verification"
+    },
+    {
+      "elementId": "g6-pan_no",
+      "category": "PAN",
+      "value": "DRFJM0107K",
+      "label": "PAN",
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Identity documents"
+    },
+    {
+      "elementId": "g7-voter_id",
+      "category": "VOTER_ID",
+      "value": "CJE0833950",
+      "label": "EPIC / Voter card",
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Identity documents"
+    },
+    {
+      "elementId": "g5-aadhar",
+      "category": "AADHAAR",
+      "value": "3492 3204 3586",
+      "label": "Aadhaar no. (12 digits)",
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Identity documents"
+    }
+  ],
+  "media": [
+    {
+      "src": "/faces/partial-face-small.png",
+      "element_id": "m-photo",
+      "face_gt": "FACE",
+      "width": 180,
+      "height": 180,
+      "alt": "synthetic profile photo, AI-generated, no real person"
+    },
+    {
+      "src": "/faces/control-no-face.png",
+      "element_id": "m-control",
+      "face_gt": "NONE",
+      "width": 180,
+      "height": 180,
+      "alt": "synthetic control graphic with no face"
+    }
+  ]
+}

@@ -1,0 +1,197 @@
+{
+  "schema": "aegis-page-factory/2",
+  "page": "profile_settings-103.html",
+  "template": "profile_settings",
+  "split": "train",
+  "seed": 103,
+  "synthetic": true,
+  "counts": {
+    "annotations": 17,
+    "positives": 13,
+    "negatives": 4,
+    "faces": 1,
+    "faceControls": 0
+  },
+  "items": [
+    {
+      "elementId": "g11-date_of_birth",
+      "category": "DOB",
+      "value": "27/09/2001",
+      "label": "D.O.B.",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Health record"
+    },
+    {
+      "elementId": "g10-health",
+      "category": "HEALTH",
+      "value": "A positive",
+      "label": "Diagnosis",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Health record"
+    },
+    {
+      "elementId": "g3-msisdn",
+      "category": "PHONE",
+      "value": "+91 70613 35029",
+      "label": "मोबाइल नंबर",
+      "idiom": "table",
+      "autocomplete": "tel",
+      "secretField": false,
+      "section": "Profile"
+    },
+    {
+      "elementId": "g4-employer",
+      "category": "EMPLOYER",
+      "value": "Northwind Logistics Pvt Ltd",
+      "label": "Employer name",
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Profile"
+    },
+    {
+      "elementId": "g2-email_id",
+      "category": "EMAIL",
+      "value": "p8414@example.com",
+      "label": "Registered email ID",
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Profile"
+    },
+    {
+      "elementId": "g1-fullname",
+      "category": "NAME",
+      "value": "Kavya Iyer",
+      "label": "Customer name",
+      "idiom": "table",
+      "autocomplete": "name",
+      "secretField": false,
+      "section": "Profile"
+    },
+    {
+      "elementId": "g8-uan",
+      "category": "UAN",
+      "value": "211233164936",
+      "label": "UAN",
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Linked identifiers"
+    },
+    {
+      "elementId": "g9-vehicle_reg",
+      "category": "VEHICLE_REG",
+      "value": "KL74ZV5164",
+      "label": "RC number",
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Linked identifiers"
+    },
+    {
+      "elementId": "g7-abha",
+      "category": "ABHA",
+      "value": "88-7044-7629-9746",
+      "label": "स्वास्थ्य आईडी",
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Linked identifiers"
+    },
+    {
+      "elementId": "g6-driving_licence",
+      "category": "DRIVING_LICENCE",
+      "value": "GJ21 20083877422",
+      "label": "Driver licence",
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Linked identifiers"
+    },
+    {
+      "elementId": "g5-passport",
+      "category": "PASSPORT",
+      "value": "Y8381506",
+      "label": "पासपोर्ट संख्या",
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Linked identifiers"
+    },
+    {
+      "elementId": "g12-login_password",
+      "category": "PASSWORD",
+      "value": "correct-horse-staple",
+      "label": "पासवर्ड",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": true,
+      "section": "Security"
+    },
+    {
+      "elementId": "g13-secret",
+      "category": "SECRET",
+      "value": "ghp_zxu4h4ae7iny7todcziwgno7fnt281d3bj1o",
+      "label": "Secret key",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": true,
+      "section": "Security"
+    },
+    {
+      "elementId": "g14-item",
+      "category": "NONE",
+      "value": "Signed in on 12/06/2010 from a new device.",
+      "label": null,
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Activity log"
+    },
+    {
+      "elementId": "g15-item",
+      "category": "NONE",
+      "value": "651680193688",
+      "label": null,
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Activity log"
+    },
+    {
+      "elementId": "g16-item",
+      "category": "NONE",
+      "value": "SKU-2024-164",
+      "label": null,
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Activity log"
+    },
+    {
+      "elementId": "g17-item",
+      "category": "NONE",
+      "value": "₹496.00",
+      "label": null,
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Activity log"
+    }
+  ],
+  "media": [
+    {
+      "src": "/faces/profile-photo.jpg",
+      "element_id": "m-avatar",
+      "face_gt": "FACE",
+      "width": 160,
+      "height": 160,
+      "alt": "synthetic avatar, AI-generated, no real person"
+    }
+  ]
+}

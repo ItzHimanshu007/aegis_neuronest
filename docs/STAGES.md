@@ -1,10 +1,41 @@
 # Aegis — Build stages (architecture v6)
 
-Current stage: **3B, complete**, plus **Stage 5A, complete** (see below). Stage 4 remains
-deliberately deferred and has not started. Implement one stage at a time; future implementation is
+Current stage: **3B, complete**, plus **Stage 5A, complete** (see below), plus **Stage 4, partially
+complete** (see below). Implement one stage at a time; future implementation is
 a throwing `TODO(stage-N)` stub where a silent default could be unsafe. Every stage adds tests and
 requires `pnpm check`, browser checks and a stage report. Architecture describes intended
 interfaces, not claims that later-stage modules are already implemented.
+
+**Stage 4, partial (2026-09-21).** Parts A-D of the Stage 4 scope landed; see
+`eval/reports/stage4-heldout.md` for every measured number and its conditions.
+
+- **Page factory v2 — done.** `eval/page_factory/` generates synthetic portal pages from four
+  templates with ground truth **derived from the generator's own records**, not hand-annotated.
+  A committed TRAIN split (12 pages) and a sealed, gitignored, never-committed HELD-OUT split
+  (24 pages) are enforced procedurally by three mechanisms, not by promise: the corpus is absent
+  from git (guard test), hash-sealed for byte-exact reproduction (`heldout-seal.json`), and drawn
+  from a label-phrase bank partitioned so the two splits share a distribution but no instances.
+- **Held-out precision/recall — done, and measured worse than the authored baseline, as expected.**
+  Reported per category beside the authored numbers with the delta in percentage points, and broken
+  down by *how* each category is detected rather than averaged into one figure.
+- **Impossible tasks and false-success rate — done.** Task sets whose impossibility is derived from
+  each page's own record list, run through the real agent loop, with the definition stated in the
+  report and a `possible` control set so a loop that refuses everything cannot score well.
+- **Eval-mode replay — minimal version done.** `extension/eval/replay.ts` rescores a recorded run in
+  Node with no browser. It covers the detection cascade and the metric arithmetic; it cannot catch
+  regressions in capture, DOM mapping, EID assignment, span rects, cropping, the executor or
+  `verify()`, because the observation is frozen input. Limits are stated in the report.
+- **Two real bugs found by the held-out corpus, both fixed and reported** rather than worked around:
+  a `seal()` leak-check false positive on locally generated vocabularies, and `orderIdRule` matching
+  ordinary prose words. Both were reachable on ordinary real pages, not artifacts of generated ones.
+  The held-out seeds were then **rolled and resealed**, because a corpus that has caused a code
+  change is no longer held-out with respect to the changed code.
+- **Not done:** "three held-out splits" — there is one held-out split, not three. `eval/labeler/`,
+  `eval/metrics/`, `eval/leakage_test/`, `eval/bench/` and `eval/pareto/` remain unbuilt, and
+  `leakage_test/` is still not a blocking part of `pnpm check`.
+
+**Deliberate reordering (2026-09-18), now resolved — Stage 4 was deferred, and has since landed
+in part (2026-09-21, see above). The note below is kept as the record of why the order changed.**
 
 **Deliberate reordering (2026-09-18): Stage 4 deferred, not skipped or cancelled.** A narrow slice
 of Stage 5 — local face detection only, "Stage 5A" — is pulled forward ahead of Stage 4. Reason:
@@ -45,7 +76,7 @@ non-stage-numbered work landed on top of 3B/5A, all merged and verified (`pnpm c
 | 2.5 | Firefox bring-up; architecture v6; Stage 2 fixes; Scene Graph/EIDs; state tokens and schema v2; pure stale-plan/action checks and authority classifier; context-expansion function; audit/replay policy; linkability state; sensing skeleton |
 | 3A | Stage 2.5 follow-ups (occlusion signal, search-form Enter, display-only tokens); Privacy Set-of-Marks; server reasoning adapter with prompt/validation/repair/session store; deterministic mock scenarios; model probe |
 | **3B** | **Consent and credential UI; planner client; agent loop; reacquisition; re-hydration; executor; verifier; recovery; approvals; answer display; step timeline; first end-to-end demo tasks; login.html; the full malicious-scenario matrix and Firefox core flows through the real agent loop; task-level evaluation against both the mock adapter and a live local model** |
-| 4 | Page factory v2; three held-out splits; impossible tasks; false-success rate; replay in eval mode only |
+| **4** | **Page factory v2 (done); held-out split (done — one split, not the three originally scoped); impossible tasks and false-success rate (done); replay in eval mode only (minimal version done)** — partially complete, see above |
 | 5 | Privacy detector with coarse classes; empty/partial/full forms |
 | 6 | OCR + fusion + UI detector loaded only when needed + image-only mode |
 | 7 | NER + linkability tuning |

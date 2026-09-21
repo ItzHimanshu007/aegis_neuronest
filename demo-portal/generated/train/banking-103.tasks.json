@@ -1,0 +1,41 @@
+{
+  "schema": "aegis-page-factory-tasks/2",
+  "page": "banking-103.html",
+  "split": "train",
+  "tasks": [
+    {
+      "id": "banking-103.html::missing-field",
+      "kind": "impossible",
+      "impossibility": "missing-field",
+      "instruction": "Fill in the aadhaar field on this page.",
+      "reason": "No element on this page carries category AADHAAR.",
+      "targetCategory": "AADHAAR"
+    },
+    {
+      "id": "banking-103.html::never-supplied",
+      "kind": "impossible",
+      "impossibility": "never-supplied-value",
+      "instruction": "Update the card number field to the new value I gave you earlier.",
+      "reason": "No value for this field was supplied in task data or present on the page.",
+      "targetCategory": "CARD_NUMBER"
+    },
+    {
+      "id": "banking-103.html::ambiguous",
+      "kind": "impossible",
+      "impossibility": "ambiguous",
+      "instruction": "Change the bank account to the correct one.",
+      "reason": "2 distinct elements on this page carry category BANK_ACCOUNT; the instruction does not disambiguate between them.",
+      "targetCategory": "BANK_ACCOUNT"
+    },
+    {
+      "id": "banking-103.html::possible",
+      "kind": "possible",
+      "impossibility": null,
+      "instruction": "Read out the name shown on this page.",
+      "reason": "Exactly one element carries this category and its value is visible.",
+      "targetCategory": "NAME",
+      "targetElementId": "g1-holder",
+      "expectedValue": "Neha Gupta"
+    }
+  ]
+}

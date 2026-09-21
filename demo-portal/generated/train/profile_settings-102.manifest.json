@@ -1,0 +1,197 @@
+{
+  "schema": "aegis-page-factory/2",
+  "page": "profile_settings-102.html",
+  "template": "profile_settings",
+  "split": "train",
+  "seed": 102,
+  "synthetic": true,
+  "counts": {
+    "annotations": 17,
+    "positives": 13,
+    "negatives": 4,
+    "faces": 1,
+    "faceControls": 0
+  },
+  "items": [
+    {
+      "elementId": "g13-secret",
+      "category": "SECRET",
+      "value": "sk-w2698xt6nt5vk52eusy4o29m5fg3iuvc",
+      "label": "API key",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": true,
+      "section": "Security"
+    },
+    {
+      "elementId": "g12-pwd",
+      "category": "PASSWORD",
+      "value": "correct-horse-staple",
+      "label": "पासवर्ड",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": true,
+      "section": "Security"
+    },
+    {
+      "elementId": "g14-item",
+      "category": "NONE",
+      "value": "Signed in on 26/07/2011 from a new device.",
+      "label": null,
+      "idiom": "prose",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Activity log"
+    },
+    {
+      "elementId": "g15-item",
+      "category": "NONE",
+      "value": "910486183889",
+      "label": null,
+      "idiom": "prose",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Activity log"
+    },
+    {
+      "elementId": "g16-item",
+      "category": "NONE",
+      "value": "SKU-2021-527",
+      "label": null,
+      "idiom": "prose",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Activity log"
+    },
+    {
+      "elementId": "g17-item",
+      "category": "NONE",
+      "value": "₹3328.00",
+      "label": null,
+      "idiom": "prose",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Activity log"
+    },
+    {
+      "elementId": "g7-abha",
+      "category": "ABHA",
+      "value": "27-7123-5827-2050",
+      "label": "ABHA number",
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Linked identifiers"
+    },
+    {
+      "elementId": "g8-uan",
+      "category": "UAN",
+      "value": "854933910335",
+      "label": "UAN",
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Linked identifiers"
+    },
+    {
+      "elementId": "g6-driving_licence",
+      "category": "DRIVING_LICENCE",
+      "value": "WB23 20065283451",
+      "label": "Licence number",
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Linked identifiers"
+    },
+    {
+      "elementId": "g5-passport",
+      "category": "PASSPORT",
+      "value": "C0388277",
+      "label": "पासपोर्ट संख्या",
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Linked identifiers"
+    },
+    {
+      "elementId": "g9-vehicle_reg",
+      "category": "VEHICLE_REG",
+      "value": "KL87PM3000",
+      "label": "Number plate",
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Linked identifiers"
+    },
+    {
+      "elementId": "g2-contact_email",
+      "category": "EMAIL",
+      "value": "p9120@example.com",
+      "label": "Correspondence e-mail",
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Profile"
+    },
+    {
+      "elementId": "g1-applicant_name",
+      "category": "NAME",
+      "value": "Ananya Joshi",
+      "label": "पूरा नाम",
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Profile"
+    },
+    {
+      "elementId": "g4-employer",
+      "category": "EMPLOYER",
+      "value": "Blue Ridge Industries Pvt Ltd",
+      "label": "Employer name",
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Profile"
+    },
+    {
+      "elementId": "g3-contact",
+      "category": "PHONE",
+      "value": "+91 78553 69695",
+      "label": "Mobile number",
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Profile"
+    },
+    {
+      "elementId": "g11-dob",
+      "category": "DOB",
+      "value": "21/12/1956",
+      "label": "Date of birth (DD/MM/YYYY)",
+      "idiom": "prose",
+      "autocomplete": "bday",
+      "secretField": false,
+      "section": "Health record"
+    },
+    {
+      "elementId": "g10-health",
+      "category": "HEALTH",
+      "value": "O positive",
+      "label": "Diagnosis",
+      "idiom": "prose",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Health record"
+    }
+  ],
+  "media": [
+    {
+      "src": "/faces/id-card.png",
+      "element_id": "m-avatar",
+      "face_gt": "FACE",
+      "width": 160,
+      "height": 160,
+      "alt": "synthetic avatar, AI-generated, no real person"
+    }
+  ]
+}

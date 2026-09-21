@@ -1,0 +1,197 @@
+{
+  "schema": "aegis-page-factory/2",
+  "page": "profile_settings-101.html",
+  "template": "profile_settings",
+  "split": "train",
+  "seed": 101,
+  "synthetic": true,
+  "counts": {
+    "annotations": 17,
+    "positives": 13,
+    "negatives": 4,
+    "faces": 1,
+    "faceControls": 0
+  },
+  "items": [
+    {
+      "elementId": "g4-employer",
+      "category": "EMPLOYER",
+      "value": "Northwind Textiles Pvt Ltd",
+      "label": "Employer name",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Profile"
+    },
+    {
+      "elementId": "g1-holder",
+      "category": "NAME",
+      "value": "Sanjay Sheikh",
+      "label": "Customer name",
+      "idiom": "input",
+      "autocomplete": "name",
+      "secretField": false,
+      "section": "Profile"
+    },
+    {
+      "elementId": "g3-msisdn",
+      "category": "PHONE",
+      "value": "+91 81844 31317",
+      "label": "Mobile (linked to bank)",
+      "idiom": "input",
+      "autocomplete": "tel",
+      "secretField": false,
+      "section": "Profile"
+    },
+    {
+      "elementId": "g2-emailAddress",
+      "category": "EMAIL",
+      "value": "p4918@example.com",
+      "label": "ईमेल पता",
+      "idiom": "input",
+      "autocomplete": "email",
+      "secretField": false,
+      "section": "Profile"
+    },
+    {
+      "elementId": "g12-passwd",
+      "category": "PASSWORD",
+      "value": "correct-horse-staple",
+      "label": "पासवर्ड",
+      "idiom": "input",
+      "autocomplete": "new-password",
+      "secretField": true,
+      "section": "Security"
+    },
+    {
+      "elementId": "g13-secret",
+      "category": "SECRET",
+      "value": "AKIATLKUKU56XP4F2HCY",
+      "label": "Secret key",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": true,
+      "section": "Security"
+    },
+    {
+      "elementId": "g11-dob",
+      "category": "DOB",
+      "value": "23/10/1981",
+      "label": "Date of birth as on Aadhaar",
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Health record"
+    },
+    {
+      "elementId": "g10-health",
+      "category": "HEALTH",
+      "value": "A negative",
+      "label": "Blood group (if known)",
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Health record"
+    },
+    {
+      "elementId": "g14-item",
+      "category": "NONE",
+      "value": "Signed in on 08/12/2009 from a new device.",
+      "label": null,
+      "idiom": "prose",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Activity log"
+    },
+    {
+      "elementId": "g15-item",
+      "category": "NONE",
+      "value": "0789337872",
+      "label": null,
+      "idiom": "prose",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Activity log"
+    },
+    {
+      "elementId": "g16-item",
+      "category": "NONE",
+      "value": "SKU-2027-613",
+      "label": null,
+      "idiom": "prose",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Activity log"
+    },
+    {
+      "elementId": "g17-item",
+      "category": "NONE",
+      "value": "₹2304.00",
+      "label": null,
+      "idiom": "prose",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Activity log"
+    },
+    {
+      "elementId": "g6-driving_licence",
+      "category": "DRIVING_LICENCE",
+      "value": "WB88 19912812726",
+      "label": "DL number",
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Linked identifiers"
+    },
+    {
+      "elementId": "g9-vehicle_reg",
+      "category": "VEHICLE_REG",
+      "value": "MH87NL4868",
+      "label": "Registered vehicle no.",
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Linked identifiers"
+    },
+    {
+      "elementId": "g7-abha",
+      "category": "ABHA",
+      "value": "85-6122-8114-0736",
+      "label": "स्वास्थ्य आईडी",
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Linked identifiers"
+    },
+    {
+      "elementId": "g8-uan",
+      "category": "UAN",
+      "value": "637351172189",
+      "label": "Universal Account Number",
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Linked identifiers"
+    },
+    {
+      "elementId": "g5-passport",
+      "category": "PASSPORT",
+      "value": "L0866080",
+      "label": "Indian passport number",
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Linked identifiers"
+    }
+  ],
+  "media": [
+    {
+      "src": "/faces/profile-photo.jpg",
+      "element_id": "m-avatar",
+      "face_gt": "FACE",
+      "width": 160,
+      "height": 160,
+      "alt": "synthetic avatar, AI-generated, no real person"
+    }
+  ]
+}

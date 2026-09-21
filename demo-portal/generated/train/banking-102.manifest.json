@@ -1,0 +1,168 @@
+{
+  "schema": "aegis-page-factory/2",
+  "page": "banking-102.html",
+  "template": "banking",
+  "split": "train",
+  "seed": 102,
+  "synthetic": true,
+  "counts": {
+    "annotations": 15,
+    "positives": 10,
+    "negatives": 5,
+    "faces": 0,
+    "faceControls": 0
+  },
+  "items": [
+    {
+      "elementId": "g10-contact_email",
+      "category": "EMAIL",
+      "value": "stmt11@example.com",
+      "label": "Correspondence e-mail",
+      "idiom": "prose",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Statement note"
+    },
+    {
+      "elementId": "g2-acct_no",
+      "category": "BANK_ACCOUNT",
+      "value": "52403277903115",
+      "label": "Beneficiary account",
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Account summary"
+    },
+    {
+      "elementId": "g1-holder",
+      "category": "NAME",
+      "value": "Vikram Trivedi",
+      "label": "Name of the subscriber",
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Account summary"
+    },
+    {
+      "elementId": "g3-rtgs",
+      "category": "IFSC",
+      "value": "HDFC0J9DHAP",
+      "label": "Bank IFSC code",
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Account summary"
+    },
+    {
+      "elementId": "g4-financial_value",
+      "category": "FINANCIAL_VALUE",
+      "value": "₹3,257.75",
+      "label": "Transaction amount",
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Account summary"
+    },
+    {
+      "elementId": "g5-card_no",
+      "category": "CARD_NUMBER",
+      "value": "5176 1534 0729 0638",
+      "label": "Payment card number",
+      "idiom": "dl",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Payment instruments"
+    },
+    {
+      "elementId": "g6-upi",
+      "category": "UPI_ID",
+      "value": "vikram@oksbi",
+      "label": "यूपीआई आईडी",
+      "idiom": "dl",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Payment instruments"
+    },
+    {
+      "elementId": "g9-cvv2",
+      "category": "CVV",
+      "value": "176",
+      "label": "Security code",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": true,
+      "section": "Transfer to beneficiary"
+    },
+    {
+      "elementId": "g7-acct_no",
+      "category": "BANK_ACCOUNT",
+      "value": "5699605049430001",
+      "label": "Beneficiary account",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Transfer to beneficiary"
+    },
+    {
+      "elementId": "g8-ifsc_code",
+      "category": "IFSC",
+      "value": "SBIN0437PA2",
+      "label": "Bank IFSC code",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Transfer to beneficiary"
+    },
+    {
+      "elementId": "g11-item",
+      "category": "NONE",
+      "value": "0050867204",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Recent reference numbers"
+    },
+    {
+      "elementId": "g12-item",
+      "category": "NONE",
+      "value": "5526 7483 2881 9967",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Recent reference numbers"
+    },
+    {
+      "elementId": "g13-item",
+      "category": "NONE",
+      "value": "SKU-2020-108",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Recent reference numbers"
+    },
+    {
+      "elementId": "g14-item",
+      "category": "NONE",
+      "value": "₹4167.00",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Recent reference numbers"
+    },
+    {
+      "elementId": "g15-item",
+      "category": "NONE",
+      "value": "0834047306",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Recent reference numbers"
+    }
+  ],
+  "media": []
+}

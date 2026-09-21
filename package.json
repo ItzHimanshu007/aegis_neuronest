@@ -25,8 +25,9 @@
     "e2e": "pnpm --filter aegis-extension e2e",
     "server": "uv run --project server uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload --app-dir server",
     "server:lint": "uv run --project server ruff check server && uv run --project server ruff format --check server",
+    "eval:lint": "uv run --project server ruff check eval/page_factory && uv run --project server ruff format --check eval/page_factory",
     "server:test": "uv run --project server pytest server/tests -q",
-    "check": "pnpm run schema:check && pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run server:lint && pnpm run server:test",
+    "check": "pnpm run schema:check && pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run server:lint && pnpm run eval:lint && pnpm run server:test",
     "manifests": "node scripts/print-manifests.mjs",
     "gen:policy": "node scripts/gen-policy.mjs",
     "gen:validator": "node scripts/gen-validator.mjs",
@@ -34,7 +35,11 @@
     "e2e:firefox": "WXT_SERVER_URL=http://localhost:8001 pnpm --filter aegis-extension build:firefox && uv run scripts/firefox/e2e.py",
     "demo": "pnpm --filter aegis-extension demo",
     "demo:live": "pnpm --filter aegis-extension demo:live",
-    "model:probe": "uv run --project server python eval/model_probe/probe.py"
+    "model:probe": "uv run --project server python eval/model_probe/probe.py",
+    "pagegen": "python3 eval/page_factory/generate.py",
+    "eval:heldout": "pnpm --filter aegis-extension exec playwright test e2e/baseline.spec.ts e2e/heldout.spec.ts",
+    "eval:fsr": "pnpm --filter aegis-extension eval:fsr",
+    "eval:compose": "python3 eval/compose_stage4.py"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -1,0 +1,195 @@
+{
+  "schema": "aegis-page-factory/2",
+  "page": "kyc_registration-101.html",
+  "template": "kyc_registration",
+  "split": "train",
+  "seed": 101,
+  "synthetic": true,
+  "counts": {
+    "annotations": 16,
+    "positives": 11,
+    "negatives": 5,
+    "faces": 1,
+    "faceControls": 1
+  },
+  "items": [
+    {
+      "elementId": "g12-item",
+      "category": "NONE",
+      "value": "SKU-2020-896",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Reference"
+    },
+    {
+      "elementId": "g13-item",
+      "category": "NONE",
+      "value": "000486784829",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Reference"
+    },
+    {
+      "elementId": "g14-item",
+      "category": "NONE",
+      "value": "2227 3384 6117",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Reference"
+    },
+    {
+      "elementId": "g15-item",
+      "category": "NONE",
+      "value": "₹621.00",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Reference"
+    },
+    {
+      "elementId": "g16-item",
+      "category": "NONE",
+      "value": "Form was published on 05/01/1997.",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Reference"
+    },
+    {
+      "elementId": "g6-pan_no",
+      "category": "PAN",
+      "value": "GKUCY7256Z",
+      "label": "PAN",
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Identity documents"
+    },
+    {
+      "elementId": "g7-voter_id",
+      "category": "VOTER_ID",
+      "value": "VMX6126468",
+      "label": "EPIC / Voter card",
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Identity documents"
+    },
+    {
+      "elementId": "g5-aadhar",
+      "category": "AADHAAR",
+      "value": "4296 6465 1253",
+      "label": "आधार संख्या",
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Identity documents"
+    },
+    {
+      "elementId": "g11-otp_input",
+      "category": "OTP",
+      "value": "717178",
+      "label": "OTP",
+      "idiom": "input",
+      "autocomplete": "one-time-code",
+      "secretField": true,
+      "section": "Verification"
+    },
+    {
+      "elementId": "g9-town",
+      "category": "CITY",
+      "value": "Hyderabad",
+      "label": "City of residence",
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Address on record"
+    },
+    {
+      "elementId": "g8-residence",
+      "category": "ADDRESS",
+      "value": "97, Salt Lake Sector 3",
+      "label": "Residential address",
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Address on record"
+    },
+    {
+      "elementId": "g10-zip",
+      "category": "PIN_CODE",
+      "value": "822235",
+      "label": "Postal code",
+      "idiom": "table",
+      "autocomplete": "postal-code",
+      "secretField": false,
+      "section": "Address on record"
+    },
+    {
+      "elementId": "g3-contact",
+      "category": "PHONE",
+      "value": "6806521863",
+      "label": "Contact number",
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Applicant details"
+    },
+    {
+      "elementId": "g2-date_of_birth",
+      "category": "DOB",
+      "value": "14 November 1986",
+      "label": "D.O.B.",
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Applicant details"
+    },
+    {
+      "elementId": "g1-holder",
+      "category": "NAME",
+      "value": "Swati Mahajan",
+      "label": "Name of the subscriber",
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Applicant details"
+    },
+    {
+      "elementId": "g4-email_id",
+      "category": "EMAIL",
+      "value": "user137@example.com",
+      "label": "Registered email ID",
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Applicant details"
+    }
+  ],
+  "media": [
+    {
+      "src": "/faces/id-card.png",
+      "element_id": "m-photo",
+      "face_gt": "FACE",
+      "width": 180,
+      "height": 180,
+      "alt": "synthetic profile photo, AI-generated, no real person"
+    },
+    {
+      "src": "/faces/control-no-face.png",
+      "element_id": "m-control",
+      "face_gt": "NONE",
+      "width": 180,
+      "height": 180,
+      "alt": "synthetic control graphic with no face"
+    }
+  ]
+}

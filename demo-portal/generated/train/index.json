@@ -1,0 +1,157 @@
+{
+  "schema": "aegis-page-factory-index/2",
+  "split": "train",
+  "seeds": [
+    101,
+    102,
+    103
+  ],
+  "templates": [
+    "banking",
+    "checkout_search",
+    "kyc_registration",
+    "profile_settings"
+  ],
+  "pages": [
+    {
+      "page": "banking-101.html",
+      "template": "banking",
+      "seed": 101,
+      "url": "/generated/train/banking-101.html",
+      "annotations": 15,
+      "positives": 10,
+      "negatives": 5,
+      "faces": 0,
+      "tasks": 4
+    },
+    {
+      "page": "banking-102.html",
+      "template": "banking",
+      "seed": 102,
+      "url": "/generated/train/banking-102.html",
+      "annotations": 15,
+      "positives": 10,
+      "negatives": 5,
+      "faces": 0,
+      "tasks": 4
+    },
+    {
+      "page": "banking-103.html",
+      "template": "banking",
+      "seed": 103,
+      "url": "/generated/train/banking-103.html",
+      "annotations": 15,
+      "positives": 10,
+      "negatives": 5,
+      "faces": 0,
+      "tasks": 4
+    },
+    {
+      "page": "checkout_search-101.html",
+      "template": "checkout_search",
+      "seed": 101,
+      "url": "/generated/train/checkout_search-101.html",
+      "annotations": 17,
+      "positives": 11,
+      "negatives": 6,
+      "faces": 0,
+      "tasks": 3
+    },
+    {
+      "page": "checkout_search-102.html",
+      "template": "checkout_search",
+      "seed": 102,
+      "url": "/generated/train/checkout_search-102.html",
+      "annotations": 17,
+      "positives": 11,
+      "negatives": 6,
+      "faces": 0,
+      "tasks": 3
+    },
+    {
+      "page": "checkout_search-103.html",
+      "template": "checkout_search",
+      "seed": 103,
+      "url": "/generated/train/checkout_search-103.html",
+      "annotations": 17,
+      "positives": 11,
+      "negatives": 6,
+      "faces": 0,
+      "tasks": 3
+    },
+    {
+      "page": "kyc_registration-101.html",
+      "template": "kyc_registration",
+      "seed": 101,
+      "url": "/generated/train/kyc_registration-101.html",
+      "annotations": 16,
+      "positives": 11,
+      "negatives": 5,
+      "faces": 1,
+      "tasks": 3
+    },
+    {
+      "page": "kyc_registration-102.html",
+      "template": "kyc_registration",
+      "seed": 102,
+      "url": "/generated/train/kyc_registration-102.html",
+      "annotations": 16,
+      "positives": 11,
+      "negatives": 5,
+      "faces": 1,
+      "tasks": 3
+    },
+    {
+      "page": "kyc_registration-103.html",
+      "template": "kyc_registration",
+      "seed": 103,
+      "url": "/generated/train/kyc_registration-103.html",
+      "annotations": 16,
+      "positives": 11,
+      "negatives": 5,
+      "faces": 1,
+      "tasks": 3
+    },
+    {
+      "page": "profile_settings-101.html",
+      "template": "profile_settings",
+      "seed": 101,
+      "url": "/generated/train/profile_settings-101.html",
+      "annotations": 17,
+      "positives": 13,
+      "negatives": 4,
+      "faces": 1,
+      "tasks": 3
+    },
+    {
+      "page": "profile_settings-102.html",
+      "template": "profile_settings",
+      "seed": 102,
+      "url": "/generated/train/profile_settings-102.html",
+      "annotations": 17,
+      "positives": 13,
+      "negatives": 4,
+      "faces": 1,
+      "tasks": 3
+    },
+    {
+      "page": "profile_settings-103.html",
+      "template": "profile_settings",
+      "seed": 103,
+      "url": "/generated/train/profile_settings-103.html",
+      "annotations": 17,
+      "positives": 13,
+      "negatives": 4,
+      "faces": 1,
+      "tasks": 3
+    }
+  ],
+  "totals": {
+    "pages": 12,
+    "annotations": 195,
+    "positives": 135,
+    "negatives": 60,
+    "faces": 6,
+    "tasks": 39
+  }
+}

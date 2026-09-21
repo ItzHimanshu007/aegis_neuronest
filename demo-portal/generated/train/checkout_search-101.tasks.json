@@ -1,0 +1,33 @@
+{
+  "schema": "aegis-page-factory-tasks/2",
+  "page": "checkout_search-101.html",
+  "split": "train",
+  "tasks": [
+    {
+      "id": "checkout_search-101.html::missing-field",
+      "kind": "impossible",
+      "impossibility": "missing-field",
+      "instruction": "Fill in the abha field on this page.",
+      "reason": "No element on this page carries category ABHA.",
+      "targetCategory": "ABHA"
+    },
+    {
+      "id": "checkout_search-101.html::never-supplied",
+      "kind": "impossible",
+      "impossibility": "never-supplied-value",
+      "instruction": "Update the card number field to the new value I gave you earlier.",
+      "reason": "No value for this field was supplied in task data or present on the page.",
+      "targetCategory": "CARD_NUMBER"
+    },
+    {
+      "id": "checkout_search-101.html::possible",
+      "kind": "possible",
+      "impossibility": null,
+      "instruction": "Read out the order id shown on this page.",
+      "reason": "Exactly one element carries this category and its value is visible.",
+      "targetCategory": "ORDER_ID",
+      "targetElementId": "g1-order_id",
+      "expectedValue": "786-9232494-1248419"
+    }
+  ]
+}

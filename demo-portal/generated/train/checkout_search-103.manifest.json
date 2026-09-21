@@ -1,0 +1,188 @@
+{
+  "schema": "aegis-page-factory/2",
+  "page": "checkout_search-103.html",
+  "template": "checkout_search",
+  "split": "train",
+  "seed": 103,
+  "synthetic": true,
+  "counts": {
+    "annotations": 17,
+    "positives": 11,
+    "negatives": 6,
+    "faces": 0,
+    "faceControls": 0
+  },
+  "items": [
+    {
+      "elementId": "g11-item",
+      "category": "NONE",
+      "value": "SKU-2024-264",
+      "label": null,
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Catalogue"
+    },
+    {
+      "elementId": "g12-item",
+      "category": "NONE",
+      "value": "SKU-2020-879",
+      "label": null,
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Catalogue"
+    },
+    {
+      "elementId": "g13-item",
+      "category": "NONE",
+      "value": "₹4744.00",
+      "label": null,
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Catalogue"
+    },
+    {
+      "elementId": "g14-item",
+      "category": "NONE",
+      "value": "898923804898",
+      "label": null,
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Catalogue"
+    },
+    {
+      "elementId": "g15-item",
+      "category": "NONE",
+      "value": "Dispatched on 03/08/2006.",
+      "label": null,
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Catalogue"
+    },
+    {
+      "elementId": "g16-item",
+      "category": "NONE",
+      "value": "8031 1329 0373",
+      "label": null,
+      "idiom": "table",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Catalogue"
+    },
+    {
+      "elementId": "g9-ccnum",
+      "category": "CARD_NUMBER",
+      "value": "6025 0446 0194 1939",
+      "label": "कार्ड नंबर",
+      "idiom": "input",
+      "autocomplete": "cc-number",
+      "secretField": false,
+      "section": "Payment"
+    },
+    {
+      "elementId": "g10-cvv2",
+      "category": "CVV",
+      "value": "941",
+      "label": "CVV / CVC",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": true,
+      "section": "Payment"
+    },
+    {
+      "elementId": "g1-order_id",
+      "category": "ORDER_ID",
+      "value": "727-4702255-5002365",
+      "label": "Order ID",
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Order"
+    },
+    {
+      "elementId": "g3-financial_value",
+      "category": "FINANCIAL_VALUE",
+      "value": "₹12,726.98",
+      "label": "Outstanding amount",
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Order"
+    },
+    {
+      "elementId": "g2-tracking_id",
+      "category": "TRACKING_ID",
+      "value": "SHP461384543",
+      "label": "AWB number",
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Order"
+    },
+    {
+      "elementId": "g6-city_name",
+      "category": "CITY",
+      "value": "Ahmedabad",
+      "label": "City of residence",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Deliver to"
+    },
+    {
+      "elementId": "g8-mobile_no",
+      "category": "PHONE",
+      "value": "61289 87801",
+      "label": "Contact number",
+      "idiom": "input",
+      "autocomplete": "tel",
+      "secretField": false,
+      "section": "Deliver to"
+    },
+    {
+      "elementId": "g7-postal",
+      "category": "PIN_CODE",
+      "value": "477107",
+      "label": "PIN",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Deliver to"
+    },
+    {
+      "elementId": "g4-applicant_name",
+      "category": "NAME",
+      "value": "Swati Varghese",
+      "label": "पूरा नाम",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Deliver to"
+    },
+    {
+      "elementId": "g5-residence",
+      "category": "ADDRESS",
+      "value": "312, Brigade Road",
+      "label": "Address for correspondence",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Deliver to"
+    },
+    {
+      "elementId": "g17-email_id",
+      "category": "EMAIL",
+      "value": "orders80@example.com",
+      "label": "Email address",
+      "idiom": "prose",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Invoice note"
+    }
+  ],
+  "media": []
+}

@@ -1,0 +1,168 @@
+{
+  "schema": "aegis-page-factory/2",
+  "page": "banking-101.html",
+  "template": "banking",
+  "split": "train",
+  "seed": 101,
+  "synthetic": true,
+  "counts": {
+    "annotations": 15,
+    "positives": 10,
+    "negatives": 5,
+    "faces": 0,
+    "faceControls": 0
+  },
+  "items": [
+    {
+      "elementId": "g6-upi",
+      "category": "UPI_ID",
+      "value": "farah@okaxis",
+      "label": "Pay to UPI ID",
+      "idiom": "prose",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Payment instruments"
+    },
+    {
+      "elementId": "g5-pan_card",
+      "category": "CARD_NUMBER",
+      "value": "5567 6514 3088 4019",
+      "label": "Payment card number",
+      "idiom": "prose",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Payment instruments"
+    },
+    {
+      "elementId": "g11-item",
+      "category": "NONE",
+      "value": "735547520627",
+      "label": null,
+      "idiom": "prose",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Recent reference numbers"
+    },
+    {
+      "elementId": "g12-item",
+      "category": "NONE",
+      "value": "6026 0178 7075 5648",
+      "label": null,
+      "idiom": "prose",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Recent reference numbers"
+    },
+    {
+      "elementId": "g13-item",
+      "category": "NONE",
+      "value": "SKU-2027-788",
+      "label": null,
+      "idiom": "prose",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Recent reference numbers"
+    },
+    {
+      "elementId": "g14-item",
+      "category": "NONE",
+      "value": "₹4533.00",
+      "label": null,
+      "idiom": "prose",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Recent reference numbers"
+    },
+    {
+      "elementId": "g15-item",
+      "category": "NONE",
+      "value": "751459207802",
+      "label": null,
+      "idiom": "prose",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Recent reference numbers"
+    },
+    {
+      "elementId": "g7-acno",
+      "category": "BANK_ACCOUNT",
+      "value": "9372653812350249",
+      "label": "Account number for credit",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Transfer to beneficiary"
+    },
+    {
+      "elementId": "g9-cvv2",
+      "category": "CVV",
+      "value": "565",
+      "label": "CVV / CVC",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": true,
+      "section": "Transfer to beneficiary"
+    },
+    {
+      "elementId": "g8-rtgs",
+      "category": "IFSC",
+      "value": "HDFC003UX79",
+      "label": "Bank IFSC code",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Transfer to beneficiary"
+    },
+    {
+      "elementId": "g10-emailAddress",
+      "category": "EMAIL",
+      "value": "stmt80@example.com",
+      "label": "Correspondence e-mail",
+      "idiom": "prose",
+      "autocomplete": "email",
+      "secretField": false,
+      "section": "Statement note"
+    },
+    {
+      "elementId": "g2-account",
+      "category": "BANK_ACCOUNT",
+      "value": "5853936029031980",
+      "label": "Account number for credit",
+      "idiom": "prose",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Account summary"
+    },
+    {
+      "elementId": "g1-applicant_name",
+      "category": "NAME",
+      "value": "Farah Mahajan",
+      "label": "Name as per records",
+      "idiom": "prose",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Account summary"
+    },
+    {
+      "elementId": "g4-financial_value",
+      "category": "FINANCIAL_VALUE",
+      "value": "₹68,517.86",
+      "label": "Outstanding amount",
+      "idiom": "prose",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Account summary"
+    },
+    {
+      "elementId": "g3-rtgs",
+      "category": "IFSC",
+      "value": "PUNB0E7BM4T",
+      "label": "IFSC of beneficiary bank",
+      "idiom": "prose",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Account summary"
+    }
+  ],
+  "media": []
+}

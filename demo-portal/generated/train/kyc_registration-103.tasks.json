@@ -1,0 +1,33 @@
+{
+  "schema": "aegis-page-factory-tasks/2",
+  "page": "kyc_registration-103.html",
+  "split": "train",
+  "tasks": [
+    {
+      "id": "kyc_registration-103.html::missing-field",
+      "kind": "impossible",
+      "impossibility": "missing-field",
+      "instruction": "Fill in the passport field on this page.",
+      "reason": "No element on this page carries category PASSPORT.",
+      "targetCategory": "PASSPORT"
+    },
+    {
+      "id": "kyc_registration-103.html::never-supplied",
+      "kind": "impossible",
+      "impossibility": "never-supplied-value",
+      "instruction": "Update the phone field to the new value I gave you earlier.",
+      "reason": "No value for this field was supplied in task data or present on the page.",
+      "targetCategory": "PHONE"
+    },
+    {
+      "id": "kyc_registration-103.html::possible",
+      "kind": "possible",
+      "impossibility": null,
+      "instruction": "Read out the city shown on this page.",
+      "reason": "Exactly one element carries this category and its value is visible.",
+      "targetCategory": "CITY",
+      "targetElementId": "g9-city_name",
+      "expectedValue": "Ahmedabad"
+    }
+  ]
+}

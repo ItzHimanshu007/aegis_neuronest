@@ -1,0 +1,33 @@
+{
+  "schema": "aegis-page-factory-tasks/2",
+  "page": "checkout_search-103.html",
+  "split": "train",
+  "tasks": [
+    {
+      "id": "checkout_search-103.html::missing-field",
+      "kind": "impossible",
+      "impossibility": "missing-field",
+      "instruction": "Fill in the vehicle reg field on this page.",
+      "reason": "No element on this page carries category VEHICLE_REG.",
+      "targetCategory": "VEHICLE_REG"
+    },
+    {
+      "id": "checkout_search-103.html::never-supplied",
+      "kind": "impossible",
+      "impossibility": "never-supplied-value",
+      "instruction": "Update the phone field to the new value I gave you earlier.",
+      "reason": "No value for this field was supplied in task data or present on the page.",
+      "targetCategory": "PHONE"
+    },
+    {
+      "id": "checkout_search-103.html::possible",
+      "kind": "possible",
+      "impossibility": null,
+      "instruction": "Read out the card number shown on this page.",
+      "reason": "Exactly one element carries this category and its value is visible.",
+      "targetCategory": "CARD_NUMBER",
+      "targetElementId": "g9-ccnum",
+      "expectedValue": "6025 0446 0194 1939"
+    }
+  ]
+}

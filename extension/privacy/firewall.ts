@@ -127,9 +127,43 @@ export interface SealResult {
  */
 const PROTOCOL_ENVELOPE_PATHS = new Set(['$.session', '$.capture_id', '$.schema', '$.state_token', '$.mode']);
 const OPAQUE_ID_SUFFIX = /\.(rid|fp|eid)$/;
+/**
+ * `redactions[].type|kind|reason` are LOCALLY-GENERATED CLOSED VOCABULARIES, excluded for the same
+ * structural reason as `rid`/`fp`/`eid` above: it is impossible for them to carry page data, so any
+ * match on them is a false positive by construction rather than a leak.
+ *
+ * All three are written at exactly one place, `scene/index.ts`:
+ *   `redactions.push({ rid, eid, kind, type: detection.category, reason: `${sources} -> ${action}` })`
+ * `type` is a `Category` (a closed TS union of 38 fixed names), `kind` is a schema `enum`
+ * (FILL/LABELLED_FILL/BLUR/FILL_REGION), and `reason` is built from the detection-source and action
+ * vocabularies. None is derived from the page.
+ *
+ * Found by the Stage 4 held-out corpus, and reachable on a REAL page. The leak check compares every
+ * observed raw value against every payload string with a 4-character floor (`LEAK_MIN_LEN`), and
+ * `orderIdRule` is context-gated but very broad — `[A-Za-z0-9][A-Za-z0-9-]{4,24}`. On a checkout
+ * page with a field labelled "Order number" it matches the bare word `number` and records it as an
+ * observed ORDER_ID value. If that same page also carries a card field, `redactions[].type` is the
+ * literal string `CARD_NUMBER`, which CONTAINS `number` — so `seal()` threw `known-value-leak` and
+ * refused a payload that leaked nothing at all. `kind` carries the same latent collision against a
+ * 4-character page word such as `fill`.
+ *
+ * This narrows only WHERE the check looks, never WHAT it looks for. Every page-derived string in the
+ * payload — element labels, text blocks, task text, field hints, visual regions — is still scanned
+ * exactly as before, and `extension/privacy/__tests__/firewall.localVocabulary.test.ts` pins both
+ * halves of that. A stronger form of this guarantee would enum-constrain `redaction.type` in
+ * `shared/schema/payload.v2.schema.json` so the closed vocabulary is provable rather than a
+ * convention; that is a schema change with a Pydantic mirror, and is left for a later stage.
+ */
+const LOCAL_VOCABULARY_PATH = /^\$\.redactions\[\d+\]\.(type|kind|reason)$/;
 function* walkStrings(value: unknown, path = '$'): Generator<{ path: string; value: string }> {
   if (typeof value === 'string') {
-    if (path === '$.image' || PROTOCOL_ENVELOPE_PATHS.has(path) || OPAQUE_ID_SUFFIX.test(path)) return;
+    if (
+      path === '$.image' ||
+      PROTOCOL_ENVELOPE_PATHS.has(path) ||
+      OPAQUE_ID_SUFFIX.test(path) ||
+      LOCAL_VOCABULARY_PATH.test(path)
+    )
+      return;
     yield { path, value };
   } else if (Array.isArray(value)) {
     for (const [i, item] of value.entries()) yield* walkStrings(item, `${path}[${i}]`);

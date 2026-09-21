@@ -255,3 +255,24 @@ describe('false-positive corpus', () => {
     expect(true).toBe(true);
   });
 });
+
+describe('orderId: prose words are not identifiers (Stage 4 regression)', () => {
+  // Found by the Stage 4 held-out corpus. The pattern is broad enough to match ordinary words, so
+  // without a digit requirement a field labelled "Order number" recorded the bare word `number` as
+  // an ORDER_ID value. That word then poisoned the known-value leak check: any other label on the
+  // page containing it — "Card number" on a checkout page — made `seal()` refuse a payload that
+  // leaked nothing. The same-shaped trackingIdRule already required a digit.
+  it('does not match the bare words of its own label', () => {
+    const matches = orderIdRule.find('Order number: 402-1234567-7654321', { fieldCategory: 'ORDER_ID' });
+    expect(matches.map((m) => m.matchedText)).toEqual(['402-1234567-7654321']);
+  });
+
+  it('matches nothing at all in a purely alphabetic phrase', () => {
+    expect(orderIdRule.find('Order reference', { fieldCategory: 'ORDER_ID' })).toEqual([]);
+  });
+
+  it('still matches alphanumeric order references', () => {
+    const matches = orderIdRule.find('Order ABC-12345', { fieldCategory: 'ORDER_ID' });
+    expect(matches.map((m) => m.matchedText)).toEqual(['ABC-12345']);
+  });
+});

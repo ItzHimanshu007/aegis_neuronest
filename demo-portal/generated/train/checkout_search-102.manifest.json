@@ -1,0 +1,188 @@
+{
+  "schema": "aegis-page-factory/2",
+  "page": "checkout_search-102.html",
+  "template": "checkout_search",
+  "split": "train",
+  "seed": 102,
+  "synthetic": true,
+  "counts": {
+    "annotations": 17,
+    "positives": 11,
+    "negatives": 6,
+    "faces": 0,
+    "faceControls": 0
+  },
+  "items": [
+    {
+      "elementId": "g6-district",
+      "category": "CITY",
+      "value": "Surat",
+      "label": "Nearest city",
+      "idiom": "dl",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Deliver to"
+    },
+    {
+      "elementId": "g8-mobile_no",
+      "category": "PHONE",
+      "value": "97463 67791",
+      "label": "मोबाइल नंबर",
+      "idiom": "dl",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Deliver to"
+    },
+    {
+      "elementId": "g7-pincode",
+      "category": "PIN_CODE",
+      "value": "363076",
+      "label": "Zip / PIN",
+      "idiom": "dl",
+      "autocomplete": "postal-code",
+      "secretField": false,
+      "section": "Deliver to"
+    },
+    {
+      "elementId": "g5-residence",
+      "category": "ADDRESS",
+      "value": "54, Linking Road",
+      "label": "Address for correspondence",
+      "idiom": "dl",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Deliver to"
+    },
+    {
+      "elementId": "g4-cust_name",
+      "category": "NAME",
+      "value": "Vikram Joshi",
+      "label": "पूरा नाम",
+      "idiom": "dl",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Deliver to"
+    },
+    {
+      "elementId": "g9-ccnum",
+      "category": "CARD_NUMBER",
+      "value": "5514 1591 2491 6372",
+      "label": "कार्ड नंबर",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Payment"
+    },
+    {
+      "elementId": "g10-cvv2",
+      "category": "CVV",
+      "value": "867",
+      "label": "CVV / CVC",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": true,
+      "section": "Payment"
+    },
+    {
+      "elementId": "g11-item",
+      "category": "NONE",
+      "value": "SKU-2025-937",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Catalogue"
+    },
+    {
+      "elementId": "g12-item",
+      "category": "NONE",
+      "value": "SKU-2023-156",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Catalogue"
+    },
+    {
+      "elementId": "g13-item",
+      "category": "NONE",
+      "value": "₹2577.00",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Catalogue"
+    },
+    {
+      "elementId": "g14-item",
+      "category": "NONE",
+      "value": "1307768344",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Catalogue"
+    },
+    {
+      "elementId": "g15-item",
+      "category": "NONE",
+      "value": "Dispatched on 10/02/2010.",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Catalogue"
+    },
+    {
+      "elementId": "g16-item",
+      "category": "NONE",
+      "value": "7952 0424 1018",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Catalogue"
+    },
+    {
+      "elementId": "g17-contact_email",
+      "category": "EMAIL",
+      "value": "orders81@example.com",
+      "label": "Registered email ID",
+      "idiom": "prose",
+      "autocomplete": "email",
+      "secretField": false,
+      "section": "Invoice note"
+    },
+    {
+      "elementId": "g1-order_id",
+      "category": "ORDER_ID",
+      "value": "404-3713507-8119355",
+      "label": "Order reference",
+      "idiom": "dl",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Order"
+    },
+    {
+      "elementId": "g3-financial_value",
+      "category": "FINANCIAL_VALUE",
+      "value": "₹23,219.13",
+      "label": "Total due",
+      "idiom": "dl",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Order"
+    },
+    {
+      "elementId": "g2-tracking_id",
+      "category": "TRACKING_ID",
+      "value": "TRK772517167",
+      "label": "Consignment number",
+      "idiom": "dl",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Order"
+    }
+  ],
+  "media": []
+}

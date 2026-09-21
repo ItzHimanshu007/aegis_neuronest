@@ -2,7 +2,7 @@
 
 **Definition:** a value labelled with a sensitive type is positive even when its checksum fails (probable typo). Unlabelled near-misses are negatives.
 
-Measured 2026-09-20T09:08:43.923Z on Chromium 153.0.8010.12, balanced mode, DOM-only cascade: 93 annotations (59 positives, 34 negatives), 15 overlapping viewport captures of the synthetic pii-zoo.html. No vision, OCR or NER.
+Measured 2026-09-21T11:17:25.910Z on Chromium 153.0.8010.12, balanced mode, DOM-only cascade: 93 annotations (59 positives, 34 negatives), 15 overlapping viewport captures of the synthetic pii-zoo.html. No vision, OCR or NER.
 
 Matching uses target EID geometry for fields/media, and block geometry plus exact normalized span/value containment for text. Each (annotation index, category) is counted once across captures. A wrong category is both an FP for that category and an FN for the expected one; detections outside annotated regions are excluded. Side channels are tested separately by leakage tests. There is no category-count TP proxy.
 
@@ -58,4 +58,4 @@ The identical measured detection stream is replayed through the pure policy with
 
 Negative-region IFSC/tracking detections arise from earlier vaulted strings or their numeric substrings reappearing in unlabelled catalogue values. The session conservatively protects these known values; the annotation rule still counts them as false positives. Any additional category within an annotated value, including CITY within ADDRESS, also counts as an FP under this single-category ground truth. The Stage 2.5 run carried one false negative, a `<th>Account holder</th><td>Asha Verma</td>` row. Stage 3A traced it to the label dictionary rather than to the viewport: "account holder" matched no phrase at all, so the row header supplied no category and the labelled-value fallback never fired. Adding the account-holder/cardholder/beneficiary phrases to NAME closed it.
 
-The mapped iframe container has no UNSCANNED_MEDIA annotation: its contents are observed separately. Canvas and image are annotated as unscanned media. This authored-page result is not a generalization claim and must not be used as a deck benchmark; Stage 4 introduces held-out splits. Off-annotation false positives and free-prose names/addresses remain outside this measurement.
+The mapped iframe container has no UNSCANNED_MEDIA annotation: its contents are observed separately. Canvas and image are annotated as unscanned media. This authored-page result is not a generalization claim and must not be used as a deck benchmark; Stage 4 introduces held-out splits (see `eval/reports/stage4-heldout.md`). Off-annotation false positives and free-prose names/addresses remain outside this measurement.

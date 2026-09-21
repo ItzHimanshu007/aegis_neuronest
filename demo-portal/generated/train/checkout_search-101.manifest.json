@@ -1,0 +1,188 @@
+{
+  "schema": "aegis-page-factory/2",
+  "page": "checkout_search-101.html",
+  "template": "checkout_search",
+  "split": "train",
+  "seed": 101,
+  "synthetic": true,
+  "counts": {
+    "annotations": 17,
+    "positives": 11,
+    "negatives": 6,
+    "faces": 0,
+    "faceControls": 0
+  },
+  "items": [
+    {
+      "elementId": "g9-cardnum",
+      "category": "CARD_NUMBER",
+      "value": "3764 791594 36650",
+      "label": "16-digit card number",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Payment"
+    },
+    {
+      "elementId": "g10-cvc",
+      "category": "CVV",
+      "value": "563",
+      "label": "CVV / CVC",
+      "idiom": "input",
+      "autocomplete": "cc-csc",
+      "secretField": true,
+      "section": "Payment"
+    },
+    {
+      "elementId": "g11-item",
+      "category": "NONE",
+      "value": "SKU-2023-761",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Catalogue"
+    },
+    {
+      "elementId": "g12-item",
+      "category": "NONE",
+      "value": "SKU-2026-268",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Catalogue"
+    },
+    {
+      "elementId": "g13-item",
+      "category": "NONE",
+      "value": "₹1490.00",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Catalogue"
+    },
+    {
+      "elementId": "g14-item",
+      "category": "NONE",
+      "value": "0994083328",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Catalogue"
+    },
+    {
+      "elementId": "g15-item",
+      "category": "NONE",
+      "value": "Dispatched on 20/08/1995.",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Catalogue"
+    },
+    {
+      "elementId": "g16-item",
+      "category": "NONE",
+      "value": "6232 6180 4955",
+      "label": null,
+      "idiom": "list",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Catalogue"
+    },
+    {
+      "elementId": "g1-order_id",
+      "category": "ORDER_ID",
+      "value": "786-9232494-1248419",
+      "label": "Order reference",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Order"
+    },
+    {
+      "elementId": "g3-financial_value",
+      "category": "FINANCIAL_VALUE",
+      "value": "₹20,529.09",
+      "label": "Total due",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Order"
+    },
+    {
+      "elementId": "g2-tracking_id",
+      "category": "TRACKING_ID",
+      "value": "AWB851697872",
+      "label": "Tracking reference",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Order"
+    },
+    {
+      "elementId": "g17-mail",
+      "category": "EMAIL",
+      "value": "orders65@example.com",
+      "label": "Email address",
+      "idiom": "prose",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Invoice note"
+    },
+    {
+      "elementId": "g4-holder",
+      "category": "NAME",
+      "value": "Ananya Chatterjee",
+      "label": "Customer name",
+      "idiom": "input",
+      "autocomplete": "name",
+      "secretField": false,
+      "section": "Deliver to"
+    },
+    {
+      "elementId": "g7-postal",
+      "category": "PIN_CODE",
+      "value": "541908",
+      "label": "Zip / PIN",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Deliver to"
+    },
+    {
+      "elementId": "g6-district",
+      "category": "CITY",
+      "value": "Bengaluru",
+      "label": "Nearest city",
+      "idiom": "input",
+      "autocomplete": null,
+      "secretField": false,
+      "section": "Deliver to"
+    },
+    {
+      "elementId": "g5-comm_address",
+      "category": "ADDRESS",
+      "value": "330, Brigade Road",
+      "label": "Address for correspondence",
+      "idiom": "input",
+      "autocomplete": "street-address",
+      "secretField": false,
+      "section": "Deliver to"
+    },
+    {
+      "elementId": "g8-msisdn",
+      "category": "PHONE",
+      "value": "72770 32153",
+      "label": "Mobile (linked to bank)",
+      "idiom": "input",
+      "autocomplete": "tel",
+      "secretField": false,
+      "section": "Deliver to"
+    }
+  ],
+  "media": []
+}

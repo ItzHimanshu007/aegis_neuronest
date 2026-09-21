@@ -8,7 +8,13 @@
 
 import type { Rule, RuleContext, RuleMatch } from './types';
 
-function contextGated(name: string, category: RuleMatch['category'], pattern: RegExp, confidence: number): Rule {
+function contextGated(
+  name: string,
+  category: RuleMatch['category'],
+  pattern: RegExp,
+  confidence: number,
+  requireDigit = false,
+): Rule {
   return {
     name,
     category,
@@ -17,6 +23,10 @@ function contextGated(name: string, category: RuleMatch['category'], pattern: Re
       if (ctx.fieldCategory !== category) return [];
       const matches: RuleMatch[] = [];
       for (const m of value.matchAll(pattern)) {
+        // Broad alphanumeric formats still need a digit; plain label/prose words are not
+        // candidates. Identical rule and identical wording to `labelled()` in
+        // indianIdentifiers.ts, which already applies it to the same-shaped trackingIdRule.
+        if (requireDigit && !/\d/.test(m[0])) continue;
         matches.push({ category, confidence, matchedText: m[0], start: m.index });
       }
       return matches;
@@ -27,7 +37,12 @@ function contextGated(name: string, category: RuleMatch['category'], pattern: Re
 export const bankAccountRule = contextGated('bankAccount', 'BANK_ACCOUNT', /\b\d{9,18}\b/g, 0.6);
 export const otpRule = contextGated('otp', 'OTP', /\b\d{4,8}\b/g, 0.6);
 export const pinCodeRule = contextGated('pinCode', 'PIN_CODE', /\b\d{6}\b/g, 0.65);
-export const orderIdRule = contextGated('orderId', 'ORDER_ID', /\b[A-Za-z0-9][A-Za-z0-9-]{4,24}\b/g, 0.5);
+// LABEL-REQUIRED and digit-required. Without the digit filter this pattern matches ordinary words,
+// so a field labelled "Order number" yielded the bare word `number` as an ORDER_ID value. That word
+// then entered the known-value set, and `seal()` refused any payload whose other labels contained
+// it — "Card number" on the same checkout page was enough. Found by the Stage 4 held-out corpus
+// (eval/reports/stage4-heldout.md); the same-shaped trackingIdRule already filtered for a digit.
+export const orderIdRule = contextGated('orderId', 'ORDER_ID', /\b[A-Za-z0-9][A-Za-z0-9-]{4,24}\b/g, 0.5, true);
 
 const DATE_PATTERN = /\b(\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}|\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{2,4})\b/gi;
 export const dateRule: Rule = {

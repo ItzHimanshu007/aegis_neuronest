@@ -1,0 +1,41 @@
+{
+  "schema": "aegis-page-factory-tasks/2",
+  "page": "banking-102.html",
+  "split": "train",
+  "tasks": [
+    {
+      "id": "banking-102.html::missing-field",
+      "kind": "impossible",
+      "impossibility": "missing-field",
+      "instruction": "Fill in the vehicle reg field on this page.",
+      "reason": "No element on this page carries category VEHICLE_REG.",
+      "targetCategory": "VEHICLE_REG"
+    },
+    {
+      "id": "banking-102.html::never-supplied",
+      "kind": "impossible",
+      "impossibility": "never-supplied-value",
+      "instruction": "Update the email field to the new value I gave you earlier.",
+      "reason": "No value for this field was supplied in task data or present on the page.",
+      "targetCategory": "EMAIL"
+    },
+    {
+      "id": "banking-102.html::ambiguous",
+      "kind": "impossible",
+      "impossibility": "ambiguous",
+      "instruction": "Change the bank account to the correct one.",
+      "reason": "2 distinct elements on this page carry category BANK_ACCOUNT; the instruction does not disambiguate between them.",
+      "targetCategory": "BANK_ACCOUNT"
+    },
+    {
+      "id": "banking-102.html::possible",
+      "kind": "possible",
+      "impossibility": null,
+      "instruction": "Read out the upi id shown on this page.",
+      "reason": "Exactly one element carries this category and its value is visible.",
+      "targetCategory": "UPI_ID",
+      "targetElementId": "g6-upi",
+      "expectedValue": "vikram@oksbi"
+    }
+  ]
+}
