@@ -1,5 +1,41 @@
 # Stage 4 — held-out detection accuracy
 
+> ## STATUS: PARTIAL RERUN — NOT THE AUTHORITATIVE STAGE 4 HEADLINE RESULT
+>
+> This report records the **later 23/24-page rerun**, measured at `2026-09-21T16:26:46.483Z`. One
+> page — `kyc_registration-3005.html` — produced no payload because its capture did not stabilize
+> after 3 attempts, and was excluded (see "Pipeline refusals"). The 200 TP / 11 FP / 59 FN below,
+> and the precision 0.948 / recall 0.772 computed from them, therefore describe **23 of 24 pages and
+> 374 of 390 annotations** — not the complete corpus. Do not quote them as the Stage 4 headline.
+>
+> **The authoritative complete-corpus Stage 4 result is the earlier run recorded in commit
+> `bd62c26`:** 24/24 pages, 390 annotations (270 positive / 120 negative), 102 captures, 0 refusals,
+> **207 TP, 11 FP, 63 FN — precision 0.950, recall 0.767**, with **61 of 63 false negatives
+> label-dependent**. That is the figure `docs/deck-facts.md` carries, and the one to quote.
+>
+> **These are not competing measurements.** They are the same evaluation at two coverage levels, and
+> the deltas reconcile exactly against the refused page's own sealed manifest
+> (`demo-portal/generated/heldout/kyc_registration-3005.manifest.json` — 16 annotations, 11
+> positives, 5 negatives):
+>
+> ```
+> 390 − 16 = 374 annotations      270 − 11 = 259 positives      120 − 5 = 115 negatives
+> TP 207 → 200 (−7) and FN 63 → 59 (−4) account for all 11 lost positives
+> ```
+>
+> Per-mode false positives are identical across both runs (1 / 0 / 10) and shape-mode false
+> negatives are unchanged at 2 — the signature of one page removed and nothing else. The detector,
+> the corpus seal (`eval/page_factory/heldout-seal.json`, unchanged since `bd62c26`) and the
+> browser/runtime (Chromium 153.0.8010.12, Node v22.22.3, `workers: 1`) are the same in both.
+>
+> Two limits, stated plainly. The earlier run's raw replay artifact was overwritten when this rerun
+> regenerated `eval/replay/` (which is gitignored), so **no surviving raw data backs the complete
+> run** — only its committed report and the reconciliation above. And **the complete run has not
+> been independently reproduced.** Neither gap is closed by rerunning the evaluation: that would
+> produce a new measurement, not recover the original one.
+>
+> Nothing below this block has been altered. Every measured value in this report is this rerun's own.
+
 **This is the number that is allowed to be worse.** Every accuracy figure in this repository
 before Stage 4 was measured on `pii-zoo.html`, a page this project wrote and annotated by hand.
 This report measures the same cascade on pages it has never seen, with ground truth derived
