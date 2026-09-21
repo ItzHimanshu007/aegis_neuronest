@@ -6,6 +6,7 @@ import { processObservation, type ProcessResult } from '../../agentHost';
 import { PrivacySession } from '../../agentHost/session';
 import { PrivacyPreview } from './PrivacyPreview';
 import { send } from '../../net/network';
+import { publishReceipt } from '../../shared/receiptBridge';
 import { redact, verifyMasks, type Mode } from '../../privacy/redactor';
 import type { RawElement } from '../../observe/types';
 import { AEGIS_CONFIG } from '../../shared/config';
@@ -106,6 +107,12 @@ export default function App() {
     // risk profile as the hooks above: this is the extension's own side-panel document, which no
     // web page can script.
     (window as unknown as { __aegisRedactProbe?: { redact: typeof redact; verifyMasks: typeof verifyMasks } }).__aegisRedactProbe = { redact, verifyMasks };
+    // Test-only: hands a preview to the full-page receipt tab without running a whole task first.
+    // The receipt is normally published by PrivacyReceipt's own effect, which only mounts once a
+    // task is under way and a model has answered; this lets e2e (and the labelled-masks
+    // screenshots) render the real receipt from a dev-tools preview instead. It publishes exactly
+    // the same `ProcessResult['preview']` the task path does, over the same in-memory bridge.
+    (window as unknown as { __aegisPublishReceipt?: typeof publishReceipt }).__aegisPublishReceipt = publishReceipt;
   }, []);
 
   /** Capture transport has no independent numbering. Only the session registry issues EIDs. */

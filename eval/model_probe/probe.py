@@ -34,6 +34,9 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
+# Set from --fixtures-dir. Kept as a module global because load_fixtures()/run_one() read it from
+# several places; the CLI is the only writer, once, before any fixture is loaded.
+ACTIVE_FIXTURES_DIR = FIXTURES_DIR
 REPORTS_DIR = REPO_ROOT / "eval" / "reports"
 
 sys.path.insert(0, str(REPO_ROOT / "server"))
@@ -114,7 +117,7 @@ class MockProbeAdapter:
 
 
 def load_fixtures() -> list[dict]:
-    index_path = FIXTURES_DIR / "index.json"
+    index_path = ACTIVE_FIXTURES_DIR / "index.json"
     if not index_path.exists():
         raise SystemExit(
             "No fixtures. Generate them first:\n"
@@ -127,7 +130,7 @@ async def run_one(
     adapter: OpenAICompatibleAdapter, entry: dict, run_index: int
 ) -> FixtureResult:
     payload = PayloadV2.model_validate(
-        json.loads((FIXTURES_DIR / f"{entry['name']}.json").read_text())
+        json.loads((ACTIVE_FIXTURES_DIR / f"{entry['name']}.json").read_text())
     )
     result = FixtureResult(
         name=entry["name"],
@@ -314,6 +317,30 @@ async def main() -> None:
     parser.add_argument("--runs", type=int, default=12)
     parser.add_argument("--out", type=Path, default=None)
     parser.add_argument(
+        "--only",
+        default=None,
+        help=(
+            "Comma-separated fixture names to probe, instead of every entry in index.json. The "
+            "selection is recorded in the report metadata. Used by the labelled-masks measurement "
+            "to skip fixtures whose sealed IMAGE is byte-identical in both arms (pages with no "
+            "masks at all): probing those spends rate-limited calls to compare an image with "
+            "itself, and averaging a guaranteed-zero difference into the delta would understate "
+            "whatever effect the labels do have."
+        ),
+    )
+    parser.add_argument(
+        "--fixtures-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Directory holding index.json and the sealed payloads to probe. Defaults to "
+            "eval/model_probe/fixtures. Used by the labelled-masks measurement to run the SAME "
+            "pages and tasks against two fixture sets that differ only in whether the sealed "
+            "image carries mask labels; the directory is recorded in the report metadata so an "
+            "arm can never be mistaken for the other."
+        ),
+    )
+    parser.add_argument(
         "--pace-s",
         type=float,
         default=0.0,
@@ -330,6 +357,12 @@ async def main() -> None:
     args = parser.parse_args()
     if args.runs < 12:
         parser.error("--runs must be at least 12; smaller samples are not reportable")
+
+    global ACTIVE_FIXTURES_DIR
+    if args.fixtures_dir is not None:
+        ACTIVE_FIXTURES_DIR = args.fixtures_dir.resolve()
+        if not (ACTIVE_FIXTURES_DIR / "index.json").exists():
+            parser.error(f"No index.json in {ACTIVE_FIXTURES_DIR}")
 
     load_env_file()
     adapter_name = os.environ.get("AEGIS_ADAPTER", "mock")
@@ -380,6 +413,13 @@ async def main() -> None:
         )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     fixtures = load_fixtures()
+    if args.only:
+        wanted = [name.strip() for name in args.only.split(",") if name.strip()]
+        available = {entry["name"] for entry in fixtures}
+        missing = [name for name in wanted if name not in available]
+        if missing:
+            parser.error(f"--only names fixtures not in the index: {', '.join(missing)}")
+        fixtures = [entry for entry in fixtures if entry["name"] in wanted]
     import subprocess
 
     commit = subprocess.run(
@@ -399,17 +439,20 @@ async def main() -> None:
         "live": live,
         "runs_per_fixture": args.runs,
         "pace_s": args.pace_s,
+        "fixtures_dir": str(ACTIVE_FIXTURES_DIR.relative_to(REPO_ROOT)),
+        "only": args.only,
+        "fixtures_probed": [entry["name"] for entry in fixtures],
         "prompt_version": PROMPT_VERSION,
         "probe_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "prompt_sha256": hashlib.sha256(
             (REPO_ROOT / "server/app/prompts/system.py").read_bytes()
         ).hexdigest(),
         "fixture_index_sha256": hashlib.sha256(
-            (FIXTURES_DIR / "index.json").read_bytes()
+            (ACTIVE_FIXTURES_DIR / "index.json").read_bytes()
         ).hexdigest(),
         "fixture_sha256": {
             entry["name"]: hashlib.sha256(
-                (FIXTURES_DIR / f"{entry['name']}.json").read_bytes()
+                (ACTIVE_FIXTURES_DIR / f"{entry['name']}.json").read_bytes()
             ).hexdigest()
             for entry in fixtures
         },

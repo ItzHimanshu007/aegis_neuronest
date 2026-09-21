@@ -1,0 +1,34 @@
+{
+  "schema": "aegis-model-probe/2",
+  "recorded_at_utc": "2026-09-21T16:12:40.487434+00:00",
+  "repo_commit": "3e97011480705b333a2793f3b1ab0f018e5959dd",
+  "model": "qwen/qwen3.8-27b",
+  "base_url": "https://api.groq.com/openai/v1",
+  "adapter": "mock",
+  "live": false,
+  "runs_per_fixture": 12,
+  "pace_s": 0.0,
+  "fixtures_dir": "eval/model_probe/fixtures-labelled",
+  "prompt_version": "3b.1",
+  "probe_sha256": "823b9bbd818c94e37f3ca622b369cf9561bfd6990812d28f0409dac2f795be7c",
+  "prompt_sha256": "43b9ffe7fcf5a39deed903fa104f0420ac2861957882de07133e4f2be5492007",
+  "fixture_index_sha256": "acb3851b624f1dfcafd25fdfa2260159dd90739412be2d513538424bb24c77b2",
+  "fixture_sha256": {
+    "kyc-fill-name": "710bdb9829ae2406da06b48d42c36d651360a3120f1e385e16728304803d15bb",
+    "kyc-fill-email": "9853669a87bbce063609f9bf18c7f0accf7f4833d8046c50fd29fcbf86c699ee",
+    "kyc-banner": "3a6aa42300638a127b8d97ccf65e2939fc611ce931b1936bdd2db25ba5425b5e",
+    "search-enter": "4eb14e68eec2bb3ebfdc187ecb54b8b03d3b85841f2f9e7a4cf026f178334693",
+    "hidden-controls": "ef7aa5d12b60ab648383e97edeb3cc5e541341822e1694ec4509989fdcd8fd76",
+    "dynamic-modal": "8cb6f56213ff2445bf854969b36975f3658f8ee1910afca017af22c39982b742",
+    "injection-save-draft": "a25824f1dbb0f14d78de22a83329c65752d2a04836b2d43bfff0e9859c46f58a",
+    "zoo-answer": "78af86fec97babc9f0784c2d286301e4d3f3c316175a30e5b6b362c4ff4bb649"
+  },
+  "settings": {
+    "timeout_s": null,
+    "json_mode": null,
+    "max_tokens": null,
+    "temperature": null,
+    "image_detail": null
+  },
+  "hardware_gate": "NOT_CERTIFIED_BY_THIS_PROBE"
+}

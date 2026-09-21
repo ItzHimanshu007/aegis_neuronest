@@ -10,7 +10,7 @@ import { TOKEN_PATTERN } from '../../shared/schema/tokens';
 import { unwrapForPanelRender } from '../../privacy/vault';
 import { PrivacyReceipt } from './PrivacyReceipt';
 import { StepTimeline } from './StepTimeline';
-import { RUN_STATUS, runStatusTone, LEVEL_REASON, approvalQuestion, categoryLabel } from './labels';
+import { RUN_STATUS, runStatusTone, LEVEL_REASON, approvalQuestion, categoryLabel, levelBand } from './labels';
 
 type Prompt = { kind:'consent'; request:ConsentRequest; resolve:(reply:ConsentReply)=>void } |
   {kind:'approval'; request:ApprovalRequest; resolve:(reply:ApprovalReply)=>void} |
@@ -137,7 +137,7 @@ export function TaskPanel() {
     </section></div>}
     {prompt?.kind==='approval'&&<div className="dialog-overlay"><section role="dialog" aria-label="Action approval" className="dialog-card">
       <div className="dialog-header">
-        <span className="level-badge" data-level={prompt.request.level} title={`Authority level ${prompt.request.level}`}>{prompt.request.level}</span>
+        <span className="level-badge" data-level={prompt.request.level} title={`Authority level ${prompt.request.level} — ${levelBand(prompt.request.level)}`}>{prompt.request.level}</span>
         <h3>{approvalQuestion(prompt.request.action,prompt.request.label)}</h3>
       </div>
       <p className="dialog-lead">{LEVEL_REASON[prompt.request.level]}</p>

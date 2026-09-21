@@ -94,12 +94,22 @@
   --color-verdict-fail-solid: #b91c1c;
   --color-verdict-pending-solid: #8a6d00;
 
-  /* Authority-level badge, escalating by level — reuses the severity hues (L3~quasi, L4~medium,
-   * L5~high) so the same colour means the same thing everywhere in the panel. */
-  --color-level-default-solid: #6b6b6b;
-  --color-level-l3-solid: #8a6d00;
-  --color-level-l4-solid: #c1580f;
-  --color-level-l5-solid: #c0392b;
+  /* Authority-level badge, as a three-band risk scale rather than six shades of escalation:
+   * L0-L2 green (nothing on the page changes, or only a local control does), L3-L4 amber (a
+   * private value or a credential is involved), L5 red (it commits, and always asks the user —
+   * AGENTS.md invariant 14).
+   *
+   * Three bands, not six, because the badge's job is to answer "should I look at this?" at a
+   * glance, and a six-step ramp makes neighbouring levels indistinguishable in a 10px chip. The
+   * colour never carries the meaning on its own: the level string is inside the badge and the
+   * approval dialog states the reason in words, so the scale is redundant with the text for
+   * anyone who cannot separate the hues.
+   *
+   * Greens and reds are the verdict chips' own hues, so "green is fine, red needs you" means the
+   * same thing everywhere in the panel. */
+  --color-level-safe-solid: #178a4c;
+  --color-level-caution-solid: #8a6d00;
+  --color-level-commit-solid: #b91c1c;
 
   --overlay-backdrop: rgba(20, 20, 20, 0.5);
 }
@@ -155,10 +165,9 @@
     --color-verdict-fail-solid: #e05a50;
     --color-verdict-pending-solid: #c9a227;
 
-    --color-level-default-solid: #8a8a8a;
-    --color-level-l3-solid: #c9a227;
-    --color-level-l4-solid: #e0813a;
-    --color-level-l5-solid: #e05a50;
+    --color-level-safe-solid: #37c977;
+    --color-level-caution-solid: #c9a227;
+    --color-level-commit-solid: #e05a50;
 
     --overlay-backdrop: rgba(0, 0, 0, 0.65);
   }
@@ -637,18 +646,23 @@ pre.error {
   font-weight: 700;
   padding: 2px var(--space-2);
   border-radius: var(--radius-pill);
-  background: var(--color-level-default-solid);
+  /* Green is the default so an unrecognised level can only ever be shown by something that also
+   * failed to classify it; every level the authority gate can return is listed below. */
+  background: var(--color-level-safe-solid);
   color: var(--color-chip-fg);
   white-space: nowrap;
 }
-.level-badge[data-level='L3'] {
-  background: var(--color-level-l3-solid);
+.level-badge[data-level='L0'],
+.level-badge[data-level='L1'],
+.level-badge[data-level='L2'] {
+  background: var(--color-level-safe-solid);
 }
+.level-badge[data-level='L3'],
 .level-badge[data-level='L4'] {
-  background: var(--color-level-l4-solid);
+  background: var(--color-level-caution-solid);
 }
 .level-badge[data-level='L5'] {
-  background: var(--color-level-l5-solid);
+  background: var(--color-level-commit-solid);
 }
 
 .dialog-target {

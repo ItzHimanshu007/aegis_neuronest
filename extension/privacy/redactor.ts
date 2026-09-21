@@ -194,6 +194,33 @@ function labelFontSize(pxRect: AppliedMask['pxRect']): number {
   return Math.min(Math.floor(pxRect.height * LABEL_HEIGHT_RATIO), LABEL_MAX_FONT_PX);
 }
 
+/** A FILL_REGION shorter than this keeps the centred placement: the caption position below only
+ * makes sense on a box big enough for the two to be visibly different, and on a short box it would
+ * push the glyphs up towards the edge the ring check samples. */
+const REGION_CAPTION_MIN_HEIGHT_PX = MIN_LABEL_HEIGHT_PX * 4;
+
+/**
+ * Where the label's glyphs are centred vertically inside the box. A function of the mask KIND and
+ * the box, never of the value (labelled-masks constraint 2).
+ *
+ * A FILL_REGION covers a whole picture, and a face detected inside it is masked afterwards, on top
+ * — so a centred region label gets its middle painted out by the very blur it is describing,
+ * leaving a legible fragment like `[I` … `]`. A tall region's label therefore sits as a caption
+ * near the TOP of the box, where a centred subject does not reach. Every other mask is a tight box
+ * around one value with nothing drawn over it, and centres.
+ *
+ * One font-size down from the top edge, not hard against it: `verifyMasks()`'s ring check samples
+ * the row `inset` pixels inside the top edge and requires it to be pure fill, and that check is not
+ * being relaxed to make room for a caption. At this offset the glyphs' ink starts roughly 0.65
+ * font-sizes below the edge, clear of that row at every size the box can produce.
+ */
+function labelCentreY(kind: MaskKind, pxRect: AppliedMask['pxRect']): number {
+  if (kind !== 'FILL_REGION' || pxRect.height < REGION_CAPTION_MIN_HEIGHT_PX) {
+    return pxRect.y + pxRect.height / 2;
+  }
+  return pxRect.y + labelFontSize(pxRect);
+}
+
 /**
  * Draws one FILL-family mask: the solid fill, plus its typed label when labels are on.
  *
@@ -231,7 +258,7 @@ export function drawMaskFill(
       ctx.font = `${fontSize}px monospace`;
       // maxWidth is a backstop only — fitMaskLabel() has already guaranteed this fits, so the
       // glyphs are never condensed and the render stays a function of the box alone.
-      ctx.fillText(drawn, pxRect.x + pxRect.width / 2, pxRect.y + pxRect.height / 2, pxRect.width - LABEL_PAD_PX * 2);
+      ctx.fillText(drawn, pxRect.x + pxRect.width / 2, labelCentreY(mask.kind, pxRect), pxRect.width - LABEL_PAD_PX * 2);
     }
   }
   ctx.restore();
@@ -490,16 +517,37 @@ function clampRect(rect: AppliedMask['pxRect'], scale: number, w: number, h: num
   return { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
 }
 
-/** First differing pixel between two same-sized regions, or null when they are identical. */
+/**
+ * Per-channel tolerance for the comparison against the SHIPPED image, and zero for the comparison
+ * at full resolution.
+ *
+ * At full resolution both sides are canvas pixels this module drew, so they are compared exactly.
+ * The shipped side is different: it has been PNG-encoded by `convertToBlob()` and decoded again by
+ * `createImageBitmap()`, and that round trip is NOT bit-exact in Firefox — a #000000 fill comes
+ * back as 17/17/17. This is the same phenomenon `FILL_TOLERANCE` already exists for ("a solid fill
+ * survives compression, but not always as exactly #000000"), and `docs/architecture.md` records the
+ * matching measurement for Firefox's WebP round trip, so the constant is reused rather than a
+ * second number invented for it.
+ *
+ * It costs the check very little. The thing this comparison exists to catch — a label that is not
+ * the one the payload says it is, a tag painted over a mask, original pixels showing through — is a
+ * difference of ~255 per channel, an order of magnitude past the tolerance, and the full-resolution
+ * comparison catches all of it at zero tolerance first regardless.
+ */
+const SHIPPED_RENDER_TOLERANCE = FILL_TOLERANCE;
+
+/** First pixel differing by more than `tolerance`, or null when the regions agree. */
 function firstDifference(
   expected: OffscreenCanvasRenderingContext2D,
   actual: OffscreenCanvasRenderingContext2D,
   rect: AppliedMask['pxRect'],
+  tolerance: number,
 ): { x: number; y: number; r: number; g: number; b: number } | null {
   const a = expected.getImageData(rect.x, rect.y, rect.width, rect.height).data;
   const b = actual.getImageData(rect.x, rect.y, rect.width, rect.height).data;
+  const differs = (x: number | undefined, y: number | undefined) => Math.abs((x ?? 0) - (y ?? 0)) > tolerance;
   for (let i = 0; i < a.length; i += 4) {
-    if (a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2] || a[i + 3] !== b[i + 3]) {
+    if (differs(a[i], b[i]) || differs(a[i + 1], b[i + 1]) || differs(a[i + 2], b[i + 2]) || differs(a[i + 3], b[i + 3])) {
       const pixel = i / 4;
       return {
         x: rect.x + (pixel % rect.width),
@@ -613,7 +661,7 @@ export async function verifyMasks(result: RedactResult): Promise<VerifyResult> {
   for (const mask of result.image.masks) {
     const fullRect = clampRect(mask.pxRect, 1, result.fullResolution.pxW, result.fullResolution.pxH);
     if (fullRect) {
-      const diff = firstDifference(expectedCtx, fullCtx, fullRect);
+      const diff = firstDifference(expectedCtx, fullCtx, fullRect, 0);
       if (diff) {
         failures.push({ rid: mask.rid, reason: 'full-resolution-differs-from-expected-render', sampled: { r: diff.r, g: diff.g, b: diff.b }, at: { x: diff.x, y: diff.y } });
         continue;
@@ -621,7 +669,7 @@ export async function verifyMasks(result: RedactResult): Promise<VerifyResult> {
     }
     const downRect = clampRect(mask.pxRect, scaleBack, downscaled.width, downscaled.height);
     if (!downRect) continue;
-    const diff = firstDifference(expectedDownCtx, downCtx, downRect);
+    const diff = firstDifference(expectedDownCtx, downCtx, downRect, SHIPPED_RENDER_TOLERANCE);
     if (diff) {
       failures.push({ rid: mask.rid, reason: 'shipped-image-differs-from-expected-render', sampled: { r: diff.r, g: diff.g, b: diff.b }, at: { x: diff.x, y: diff.y } });
     }

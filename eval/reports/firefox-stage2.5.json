@@ -150,7 +150,7 @@
     {
       "item": "WebP quality:1 pixel identity (raw + redacted, kyc.html + pii-zoo.html) \u2014 measurement only, see notes",
       "status": "PASS",
-      "notes": "kyc.html/raw: identical=True 1606x1632 mismatches=0/10483968 maxDelta=0 png=351687 webp=156564 ratio=0.445; kyc.html/redacted: identical=False 1260x1280 mismatches=1236/6451200 maxDelta=6 png=151086 webp=64932 ratio=0.430; pii-zoo.html/raw: identical=True 1606x1632 mismatches=0/10483968 maxDelta=0 png=320910 webp=82304 ratio=0.256; pii-zoo.html/redacted: identical=False 1260x1280 mismatches=943/6451200 maxDelta=6 png=299012 webp=119476 ratio=0.400"
+      "notes": "kyc.html/raw: identical=True 1606x1632 mismatches=0/10483968 maxDelta=0 png=350807 webp=156614 ratio=0.446; kyc.html/redacted: identical=False 1260x1280 mismatches=1260/6451200 maxDelta=6 png=150712 webp=65320 ratio=0.433; pii-zoo.html/raw: identical=True 1606x1632 mismatches=0/10483968 maxDelta=0 png=322136 webp=82550 ratio=0.256; pii-zoo.html/redacted: identical=False 1260x1280 mismatches=968/6451200 maxDelta=6 png=293868 webp=117736 ratio=0.401"
     },
     {
       "item": "Stage 5A: face in <img> detected and irreversibly blurred",

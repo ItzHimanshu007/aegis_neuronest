@@ -125,31 +125,60 @@ function loadTasks(): Array<{ page: string; url: string; task: FactoryTask }> {
 }
 
 /**
+ * Returns true when `err` is the Playwright page/context/browser-was-closed family of errors.
+ *
+ * The agent loop's `session.end()` path can invalidate the panel page context at any point after
+ * the task reaches a terminal state — during `status.textContent()`, `isVisible()`, or
+ * `waitForTimeout()`. That invalidation means "the task is over", not "the harness broke".
+ * Re-throwing for any other error preserves the harness's ability to surface real failures.
+ */
+function isPageClosed(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /page.*closed|context.*closed|browser.*closed/i.test(msg);
+}
+
+/**
  * Waits for a terminal state, answering dialogs the way a careful user would:
  *   - a recovery question is the loop correctly escalating: stop, and record it as an escalation;
  *   - an approval is denied. Approving would make the HUMAN the one authorising an action on an
  *     impossible task, which would contaminate the measurement.
+ *
+ * The panel page can be closed at any point after the agent session ends (status.textContent,
+ * isVisible, waitForTimeout). The entire loop body is therefore guarded: a page-closed error
+ * returns 'stopped' (the task is over); anything else is re-thrown so real harness failures
+ * remain visible.
  */
 async function driveToTerminal(panelPage: Page, timeoutMs: number): Promise<string> {
   const deadline = Date.now() + timeoutMs;
   const status = panelPage.locator('[data-testid="task-status"]');
   while (Date.now() < deadline) {
-    const state = ((await status.textContent()) ?? '').trim();
-    if (state === 'done' || state === 'failed' || state === 'stopped') return state;
+    try {
+      const state = ((await status.textContent()) ?? '').trim();
+      if (state === 'done' || state === 'failed' || state === 'stopped') return state;
 
-    const question = panelPage.getByRole('dialog', { name: 'Task question' });
-    if (await question.isVisible().catch(() => false)) {
-      await question.getByRole('button', { name: 'Stop task' }).click().catch(() => {});
-      continue;
+      const question = panelPage.getByRole('dialog', { name: 'Task question' });
+      if (await question.isVisible().catch(() => false)) {
+        await question.getByRole('button', { name: 'Stop task' }).click().catch(() => {});
+        continue;
+      }
+      const approval = panelPage.getByRole('dialog', { name: 'Action approval' });
+      if (await approval.isVisible().catch(() => false)) {
+        await approval.getByRole('button', { name: 'Do something else' }).click().catch(() => {});
+        continue;
+      }
+      await panelPage.waitForTimeout(500);
+    } catch (err) {
+      if (isPageClosed(err)) return 'stopped';
+      throw err;
     }
-    const approval = panelPage.getByRole('dialog', { name: 'Action approval' });
-    if (await approval.isVisible().catch(() => false)) {
-      await approval.getByRole('button', { name: 'Do something else' }).click().catch(() => {});
-      continue;
-    }
-    await panelPage.waitForTimeout(500);
   }
-  return ((await status.textContent()) ?? 'timeout').trim();
+  // Deadline reached — read whatever state was last rendered, or 'timeout' if the page is gone.
+  try {
+    return ((await status.textContent()) ?? 'timeout').trim();
+  } catch (err) {
+    if (isPageClosed(err)) return 'stopped';
+    throw err;
+  }
 }
 
 test('stage 4: false-success rate over impossible tasks', async ({ context, sidepanelUrl }) => {
@@ -282,8 +311,9 @@ test('stage 4: false-success rate over impossible tasks', async ({ context, side
         Boolean(task.expectedValue && answer.includes(task.expectedValue)),
     });
 
-    await targetPage.close();
-    await panelPage.close();
+    // Pages may already be closed if the agent's session.end() teardown raced with driveToTerminal.
+    await targetPage.close().catch((err: unknown) => { if (!isPageClosed(err)) throw err; });
+    await panelPage.close().catch((err: unknown) => { if (!isPageClosed(err)) throw err; });
     flush();
   }
 

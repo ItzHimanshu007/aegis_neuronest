@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { TimelineEntry } from '../../agent/runAgentLoop';
-import { STEP_ACTION, STEP_VERDICT } from './labels';
+import { STEP_ACTION, STEP_VERDICT, levelBand } from './labels';
 
 /** Buckets the seven HistoryEntry verdicts (schema/payload.v2) into the three visual tones the
  * timeline actually needs to distinguish at a glance. */
@@ -49,7 +49,7 @@ export function StepTimeline({ entries, running = false }: { entries: TimelineEn
             <span className="timeline-eid" title="How Aegis and the server refer to this element">
               {entry.eid ?? ''}
             </span>
-            <span className="level-badge" data-level={entry.level} title={`Authority level ${entry.level}`}>
+            <span className="level-badge" data-level={entry.level} title={`Authority level ${entry.level} — ${levelBand(entry.level)}`}>
               {entry.level}
             </span>
             <span

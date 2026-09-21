@@ -14,7 +14,7 @@ it cannot grant itself authority or disclose information the local policy withhe
 5. **Privacy Scene Graph** joins observations, detections and policy decisions under one session-local EID per element and one opaque state token per sealed observation; it exposes local and outbound projections.
 6. **Privacy Policy** decides treatment from sensitivity, necessity, linkability and origin; locked classes cannot be weakened and generated policy data is the single source of defaults.
 7. **Token Vault** maps HMAC tokens to local values using a non-extractable per-session key, and permits restoration only inside a matching `type` action on a consented origin.
-8. **Redactor** accepts local rectangles and decisions, solid-fills text and unscanned media, blurs faces only, and returns a verified redacted image.
+8. **Redactor** accepts local rectangles and decisions, solid-fills text and unscanned media, blurs faces only, optionally draws a closed-vocabulary type label inside each fill, and returns a verified redacted image.
 9. **Privacy Set-of-Marks** draws Scene Graph EIDs on sanitized pixels for remote grounding; it never invents another element identity.
 10. **Egress Firewall** validates the outbound draft, scans text/tokens and mask coverage/integrity, and seals immutable canonical bytes with a digest and runtime registry entry for the sole `network.send` path.
 11. **Remote Reasoning** uses an open-weight VLM behind an OpenAI-compatible API to return an initial short plan and batched actions echoing `state_token`, with the current image and sanitized text history only.
@@ -62,6 +62,65 @@ outside the mask edge instead. That rule is what lets `verifyMasks()` keep sampl
 actually ships, rather than a pre-marks copy: nothing a mark draws can land where a mask is
 checked. Tags also never overlap each other, and an element with nowhere clear to go is left
 untagged rather than marked wrongly.
+
+## Labelled masks
+
+A mask hides a value. A **label** says what kind of value it was, drawn inside the mask itself:
+`[AADHAAR]` for a blocked value, `[EMAIL#k3f7qa2b]` for a tokenized one, `[IMAGE — not checked]`
+for media nothing scanned, and `[FACE]` as a small chip on top of a face's irreversible blur. The
+blur itself is never replaced by a label; only the chip is added.
+
+The point is that the sanitized image and the sanitized text say the same thing. Without a label
+the server learns what a black box was only from the manifest beside the image, and a vision model
+has to correlate a rectangle with a list. With one, the token ID in `[EMAIL#k3f7qa2b]` is character
+for character the ID in the `[[PII:EMAIL:k3f7qa2b]]` the text payload already carries. SIH26171
+names this "semantic obfuscation" and accepts it as a sanitization method.
+
+Three properties make it safe to draw anything at all on an outbound image:
+
+- **Closed vocabulary.** `privacy/maskLabel.ts` can emit only a `Category` name, optionally plus the
+  ID of a vault-issued token, or one of two fixed constants. It has no parameter a raw value could
+  travel in, and every string it returns is re-checked against `MASK_LABEL_PATTERN` before it is
+  returned. `seal()` then re-checks every label actually drawn, and additionally requires a label's
+  token to be one the vault issued *and* one the payload already carries — so the image can never
+  say something the text does not.
+- **Geometry from the box, never the value.** Font size and position are functions of the mask
+  rectangle alone. A long hidden value and a short one of the same category produce identical
+  labels, so neither length nor content is inferable from the render. A label that does not fit
+  steps down to the category-only form and then to nothing; it is never truncated, because a
+  truncated string is not in the vocabulary.
+- **Verified in pixels.** See below.
+
+The flag is `AEGIS_CONFIG.MASK_LABELS_ENABLED`, and the panel has a *Labelled masks* toggle beside
+*Element ID marks*. See `eval/reports/mask-labels.md` for the measurement that governs the default.
+
+### verifyMasks(): re-render, don't sample
+
+`verifyMasks()` runs two independent checks over every mask, and a mask has to pass both.
+
+The first is the original ring sampling: a few pixels inside each edge, at full resolution and
+again after the downscale, must all be the fill colour. It is unchanged.
+
+The second re-renders what the image *should* contain and compares it pixel for pixel, with no
+tolerance. The reconstruction starts as a copy of the real masked canvas and replays every mask in
+the order the redactor drew them, calling the same `drawMaskFill()` that drew them the first time.
+If the shipped image really holds that fill and that label, the replay changes nothing and the two
+agree exactly. Starting from a copy rather than a blank canvas is what makes it exact: everything
+outside the mask boxes is identical by construction, so the downscale — which mixes neighbouring
+pixels across every box edge — produces identical output too, and the shipped PNG can be compared
+to the expected one with zero tolerance.
+
+A blur is the one thing that cannot be re-rendered: it is a function of the original pixels, which
+are gone by then and must never be kept. Its box is replayed by copying it back out of the real
+canvas, so its body is trusted exactly as it was before (blurs were excluded from the old check
+outright). What the replay does add for a face is the `[FACE]` chip, which *is* re-rendered and so
+*is* checked. A blur's real guarantee remains that it is only applied to FACE/PHOTO and that its
+own coverage is checked separately by `seal()`.
+
+This is strictly stronger than sampling. A label that is not the one the payload says it is, a
+Set-of-Marks tag painted over a mask, a label drawn past its own edge, a fill of the right colour
+but the wrong shape — every one of those is "dark enough" at every sampled point and none of them
+survives the comparison.
 
 ## Image encoding
 

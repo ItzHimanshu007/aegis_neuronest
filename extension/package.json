@@ -18,7 +18,9 @@
     "predemo": "wxt build --browser chrome",
     "demo": "playwright test --config=playwright.demo.config.ts",
     "demo:live": "wxt build --browser chrome && AEGIS_DEMO_LIVE=1 playwright test --config=playwright.demo.config.ts",
-    "eval:fsr": "wxt build --browser chrome && playwright test --config=playwright.eval.config.ts"
+    "eval:fsr": "wxt build --browser chrome && playwright test --config=playwright.eval.config.ts",
+    "evidence:fixtures": "wxt build --browser chrome && playwright test --config=playwright.evidence.config.ts mask-label-fixtures",
+    "evidence:screenshots": "wxt build --browser chrome && playwright test --config=playwright.evidence.config.ts mask-label-screenshots"
   },
   "dependencies": {
     "dom-accessibility-api": "^0.7.1",

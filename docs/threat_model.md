@@ -17,8 +17,10 @@ receives and may be operated by someone who would happily read it.
 *Defence.* The server receives only tokens and redacted pixels. `SanitizedPayload` is a branded type
 that only `firewall.seal()` can mint, `send()` re-checks a runtime registry of sealed payloads, and
 `net/network.ts` is the only file in the codebase allowed to touch `fetch` (enforced by ESLint).
-Text PII is solid-filled, never pixelated; faces are irreversibly blurred. Request-body logging is
-disabled server-side, which is a courtesy — the design does not depend on it.
+Text PII is solid-filled, never pixelated; faces are irreversibly blurred. Where a fill carries a
+type label, that label is drawn from a closed vocabulary and names nothing the text payload does not
+already name (T4d). Request-body logging is disabled server-side, which is a courtesy — the design
+does not depend on it.
 
 *Residual risk.* Redacted layout, element labels and bounding boxes are still fingerprintable
 signals. We accept this: the agent cannot function without screen structure.
@@ -111,6 +113,39 @@ page content. Reproduced twice this project (`capture_id`, Stage 3A; `redactions
 Part II — the second one found by an e2e run of the full suite, not by design review), documented
 in `privacy/firewall.ts`'s own comment above `walkStrings()` so the next opaque field gets the
 existing fix rather than a new one-off patch.
+
+### T4d — The mask label as a leak channel
+
+Labelled masks draw text onto the image the server receives. Anything drawn on an outbound image is
+a channel, so the question is not whether a label *does* leak but whether it *can*.
+
+The channel is closed by construction rather than by filtering. `privacy/maskLabel.ts` is the only
+thing that produces a label, and it takes two parameters: a `Category` and a token. There is no
+parameter through which a raw value could arrive. A category outside the 38-name closed set yields
+no label at all; a token that is not exactly `[[PII:<TYPE>:<8 base32>]]`, or whose own type segment
+disagrees with the mask's category, is dropped and the label degrades to the category-only form. The
+finished string is re-checked against `MASK_LABEL_PATTERN` before it is returned, so the function
+cannot emit anything the firewall would later reject. `privacy/__tests__/maskLabel.test.ts` attacks
+both parameters with raw values, injection strings, forged tokens and control characters, and
+asserts that no three-character fragment of any of them reaches the output.
+
+`seal()` re-checks this independently, on the labels actually drawn, because the firewall assumes
+every layer above it is buggy. A label must match the pattern; and a label naming a token must name
+one the vault issued *and* one the payload already carries. That last clause is the important one:
+it means the image can never tell the server something the text was not already telling it, so the
+label adds no information to the payload as a whole.
+
+Two quieter side channels are closed by geometry. Font size and position come from the mask
+rectangle alone, so a long hidden value and a short one of the same category render identically —
+neither length nor content is inferable from the label's width. And a label that does not fit steps
+down to the category-only form and then to nothing, never to a truncation, because a truncated
+string would be both outside the vocabulary and a function of what it was truncating.
+
+*Residual risk.* The label makes the category of each masked region legible to anyone who sees the
+image, where before it was legible only in the manifest beside it. That is not new information to
+the server — the manifest has always carried `redactions[].type` — but it does mean a screenshot of
+the sealed image alone now carries the category map. We accept this: it is the same fact in a second
+place, and it is the point of the feature. Nothing about the *value* becomes more inferable.
 
 ### T4 — Detector misses
 

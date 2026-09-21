@@ -50,8 +50,12 @@ interface ProbeResult {
  */
 async function runProbe(panelPage: import('@playwright/test').Page, probeCase: ProbeCase): Promise<ProbeResult> {
   return panelPage.evaluate(async (input: ProbeCase & { token: string }) => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    const probe = (window as unknown as { __aegisRedactProbe?: { redact: Function; verifyMasks: Function } }).__aegisRedactProbe;
+    type RedactFn = (options: Record<string, unknown>) => Promise<{
+      image: { dataUrl: string; pxW: number; pxH: number; masks: Array<{ rid: string; pxRect: { x: number; y: number; width: number; height: number }; label?: string }> };
+      fullResolution: { canvas: OffscreenCanvas; pxW: number; pxH: number };
+    }>;
+    type VerifyFn = (result: unknown) => Promise<{ ok: boolean; failures: Array<{ reason: string }> }>;
+    const probe = (window as unknown as { __aegisRedactProbe?: { redact: RedactFn; verifyMasks: VerifyFn } }).__aegisRedactProbe;
     if (!probe) throw new Error('__aegisRedactProbe missing — App.tsx should expose it');
 
     const W = 800;
@@ -85,6 +89,7 @@ async function runProbe(panelPage: import('@playwright/test').Page, probeCase: P
     });
 
     const mask = result.image.masks[0];
+    if (!mask) throw new Error('redact() dropped the mask — the box should be well inside the image');
     const rect = mask.pxRect;
     const fullCtx = result.fullResolution.canvas.getContext('2d')!;
 
@@ -197,7 +202,7 @@ async function runProbe(panelPage: import('@playwright/test').Page, probeCase: P
 
     return {
       ok: verdict.ok,
-      reasons: verdict.failures.map((f: { reason: string }) => f.reason),
+      reasons: verdict.failures.map((f) => f.reason),
       label: mask.label,
       outsideInk,
       shippedMin,

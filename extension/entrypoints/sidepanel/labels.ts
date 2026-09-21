@@ -81,6 +81,23 @@ export const LEVEL_REASON: Record<AuthorityLevel, string> = {
   L5: 'This could submit the form or change something on the site.',
 };
 
+/**
+ * The risk band an authority level falls in, in words.
+ *
+ * The badge is colour-coded L0-L2 green, L3-L4 amber, L5 red, and this is the text that rides
+ * along with it — in the badge's tooltip and its accessible name — so the band is never carried by
+ * colour alone. Colour and text come from the same `level`, so they cannot drift apart.
+ *
+ * Takes a plain string, not `AuthorityLevel`: `TimelineEntry.level` is a string (it survives a
+ * round trip through the audit log, which re-validates it against /^L[0-5]$/ rather than a union),
+ * and an unrecognised level falls into the same 'routine' band the CSS defaults to.
+ */
+export function levelBand(level: AuthorityLevel | string): string {
+  if (level === 'L5') return 'needs your approval every time';
+  if (level === 'L3' || level === 'L4') return 'touches a private value';
+  return 'routine';
+}
+
 /** The approval dialog's question, naming both the action and the thing it targets. */
 export function approvalQuestion(action: ActionName, label: string): string {
   const what = label.trim() ? `“${label.trim()}”` : 'this element';
