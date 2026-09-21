@@ -200,18 +200,32 @@ remaining human checks are in [`docs/manual-test-firefox.md`](docs/manual-test-f
 ### Demo recording path
 
 A separate, deliberately-out-of-`pnpm check`/`pnpm e2e` Playwright suite that drives one scripted,
-watchable-pace run of each full task flow (`kyc_submit`, then `login_credential`) end to end —
-consent → observe → detect+redact → seal → plan → approval → execute → verify → stop — for
-recording. It runs the packaged production build, not a dev server.
+watchable-pace run of each full task flow end to end, for recording. It runs the packaged
+production build, not a dev server. Four flows, ~20s total:
+
+| Flow | What it shows |
+| --- | --- |
+| `kyc-full-flow` | The whole pipeline succeeding: consent → observe → detect+redact (including a face) → seal → plan → **L5 approval** → execute → verify → stop. |
+| `login-full-flow` | A credential path: **L4** type, then **L5** sign-in, with the raw password never leaving the browser. |
+| `blocked-exfiltration` | **A refusal.** The model answers with a `navigate` carrying one of the user's tokens in the URL. `checkPlan()` drops the whole plan on `TOKEN_IN_URL` before anything is classified, approved or run — no request is ever attempted to the exfiltration host, and the user is told why in plain words. |
+| `unverified-claim` | **A rejected completion.** The model says the task is done; `verify()` re-observes the page, cannot find the evidence offered, and refuses to call it finished. `falseSuccess` is recorded and shown. |
+
+The last two are the point: they demonstrate that AEGIS refuses things, which a happy-path demo
+cannot show.
 
 ```sh
-pnpm run server     # terminal 1 — http://localhost:8000 (mock adapter by default)
-pnpm portal          # terminal 2 — http://localhost:5174
-pnpm demo            # terminal 3 — builds the extension, then runs both scripted flows (mock, ~10s)
+AEGIS_ADAPTER=mock pnpm run server   # terminal 1 — http://localhost:8000
+pnpm portal                          # terminal 2 — http://localhost:5174
+pnpm demo                            # terminal 3 — builds the extension, then runs all four flows
 ```
 
-`pnpm demo:live` (sets `AEGIS_DEMO_LIVE=1`) runs the same two flows without forcing a mock
-scenario, so `/v1/plan` reaches whatever adapter `server/.env`'s `AEGIS_ADAPTER` is actually
+`AEGIS_ADAPTER=mock` is spelled out because `server/.env` in this checkout sets `openai_compat`: a
+server started without the override reaches a hosted, rate-limited model and the scripted demos
+cannot drive it. Each demo checks `/health` before it starts and fails with that instruction rather
+than timing out mid-run (`extension/e2e-demo/preconditions.ts`).
+
+`pnpm demo:live` (sets `AEGIS_DEMO_LIVE=1`) runs without forcing a mock scenario and skips the
+adapter precondition, so `/v1/plan` reaches whatever adapter `server/.env`'s `AEGIS_ADAPTER` is actually
 configured to — local Ollama, or a hosted `openai_compat` endpoint (Groq, OpenRouter; see
 "Running with a live model" above). Expect real model latency (p50 ≈ 43s, p95 ≈ 88s per call
 against the local baseline; hosted endpoints vary) — a live run can take several minutes per flow,

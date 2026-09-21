@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { test, expect } from '../e2e/fixtures/extension';
 import { forceScenario, acceptConsent, respondToApproval } from '../e2e/fixtures/task';
+import { assertDemoServerReady } from './preconditions';
 
 /**
  * The scripted demo path for `login_credential` (hosted-inference session, Part D) — the second
@@ -31,6 +32,8 @@ async function screenshot(page: import('@playwright/test').Page, name: string): 
 }
 
 test.describe('login full flow demo', () => {
+  test.beforeEach(async ({ request }) => assertDemoServerReady(request));
+
   test('consent + credential -> L4 type -> L5 sign in -> dashboard -> stop', async ({ context, sidepanelUrl }) => {
     const started = Date.now();
     if (LIVE) {

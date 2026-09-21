@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { test, expect } from '../e2e/fixtures/extension';
 import { forceScenario, acceptConsent, respondToApproval, zoomOut } from '../e2e/fixtures/task';
+import { assertDemoServerReady } from './preconditions';
 
 /**
  * The scripted demo path (demo-readiness session, Part C): one deterministic, recordable run on
@@ -37,6 +38,8 @@ async function screenshot(page: import('@playwright/test').Page, name: string): 
 }
 
 test.describe('kyc full flow demo', () => {
+  test.beforeEach(async ({ request }) => assertDemoServerReady(request));
+
   test('consent -> observe -> detect+redact -> seal -> plan -> L5 approval -> execute -> verify -> stop', async ({ context, sidepanelUrl }) => {
     const started = Date.now();
     if (LIVE) {

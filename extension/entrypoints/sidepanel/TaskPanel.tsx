@@ -120,6 +120,13 @@ export function TaskPanel() {
       {lastStepMs!==null&&<span className="run-time">last step {lastStepMs} ms</span>}
       <span className="sr-only" aria-hidden="true" data-testid="task-status">{state}</span>
     </p>
+    {/* The model claiming completion is not completion. When a `done` action's evidence fails
+      * verify(), the loop refuses to call the task finished and records falseSuccess; without this
+      * the run just ends as "could not finish", which hides the most interesting thing that
+      * happened — that a claim was checked and rejected. */}
+    {snapshot?.falseSuccess&&<p className="warning" role="status" data-testid="false-success-note">
+      The model reported the task was done, but Aegis re-checked the page and could not confirm it. The claim was not accepted.
+    </p>}
     {prompt?.kind==='consent'&&<div className="dialog-overlay"><section role="dialog" aria-label="Task consent" className="dialog-card">
       <h3>What may Aegis use on {prompt.request.origin}?</h3>
       <p className="dialog-lead">Tick what this task is allowed to type into this site. Anything you leave unticked is never re-created on the page.</p>

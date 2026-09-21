@@ -101,6 +101,32 @@ export class TaskRunner {
     this.history.push({step:this.steps,action,verdict,...(code?{code}:{}),...(eid?{eid}: {})});
     if(this.history.length>CONFIG.HISTORY_MAX_STEPS) this.history.shift();
   }
+  /**
+   * Records a REFUSAL on the user-facing step timeline.
+   *
+   * `record()` above writes the model-facing history; until this existed, that was the only place a
+   * block was written down, and `this.timeline` was appended to in exactly one place — after an
+   * action had already executed and been verified. So the timeline could only ever show things that
+   * happened, never things that were stopped, even though its own vocabulary already has
+   * 'Blocked' / 'Blocked, rest dropped' / 'Rest dropped' for verdicts nothing could produce
+   * (entrypoints/sidepanel/labels.ts, STEP_VERDICT).
+   *
+   * That is the wrong way round for a system whose whole claim is that it refuses things: a plan
+   * dropped for carrying a token in a URL is the single most important row a reviewer can see.
+   *
+   * Nothing here decides anything. It is called only on paths that have ALREADY rejected, and it
+   * adds no branch to them. The phases that never ran are recorded as 0 rather than invented, and
+   * the digest/bytes are the real ones from the payload that was actually sealed and sent.
+   */
+  private blocked(action: HistoryEntry['action'], verdict: HistoryEntry['verdict'], code: FailureCode, level: string, eid?: EID): void {
+    const t=this.last?.preview.timings;
+    this.timeline.push({step:this.steps,action,eid,level,verdict,code,
+      digest:this.last?.payload.digest??'',bytes:this.last?.payload.size??0,
+      sensing:this.session.scene?.image?'image':'dom',
+      timings:{observe:this.observed?.observation.timings.totalMs??0,detect:t?.detectMs??0,policy:t?.policyMs??0,
+        redact:t?.redactMs??0,seal:t?.sealMs??0,network:0,model:0,check:0,approval:0,execute:0,verify:0}});
+    this.emit();
+  }
   private async observe(light=false): Promise<void> {
     this.move('observing');
     let observed=await this.wait(sendMessage('OBSERVE',{tabId:this.tabId,domOnly:light}));
@@ -194,7 +220,11 @@ export class TaskRunner {
         if(this.contextDenied==='BUDGET_EXHAUSTED') this.denialSent=true;
         this.move('checking');
         const checked=checkPlan(response.body,{stateTokens:this.session.stateTokens,planStepsSeen:this.planStepsSeen});
-        if(!checked.ok){if(await this.recover(checked.reason)) continue;break;}
+        if(!checked.ok){
+          // The whole plan is dropped here, before any action is classified, approved or run.
+          this.blocked(checked.action??'observe','REJECT',checked.reason,'—');
+          if(await this.recover(checked.reason)) continue;break;
+        }
         const {plan,context}=checked;this.planStepsSeen ||= Boolean(plan.plan_steps);
         if('answer' in plan || 'extract' in plan){
           this.ui.answer('answer' in plan?plan.answer.text:JSON.stringify(plan.extract.data,null,2),this.session,this.session.scene!.page.origin);
@@ -223,7 +253,11 @@ export class TaskRunner {
           const grants=this.grants.get(scene.page.origin)??new Set<Category>();
           const start=performance.now();
           const gate=checkAction(action,{...context,authority:{origin:scene.page.origin,consentedCategories:grants}},scene);
-          if(gate.verdict!=='PASS'){this.record(action.action,gate.verdict,gate.reason,action.target?.eid);if(await this.recover(gate.reason))continue main;break main;}
+          if(gate.verdict!=='PASS'){
+            this.record(action.action,gate.verdict,gate.reason,action.target?.eid);
+            this.blocked(action.action,gate.verdict,gate.reason,classifyAction(action,el,{origin:scene.page.origin,consentedCategories:grants}).level,el?.eid);
+            if(await this.recover(gate.reason))continue main;break main;
+          }
           if(action.action==='ask_user'){if(await this.askModel(action.reason!))continue main;break main;}
           if(action.action==='fail'){this.record('fail','FAIL','MODEL_FAILED');this.ui.answer(action.reason!,this.session,scene.page.origin);this.move('failed');break main;}
           if(action.action==='done'){

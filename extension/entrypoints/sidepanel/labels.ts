@@ -28,7 +28,11 @@ export const RUN_STATUS: Record<TaskState, string> = {
   verifying: 'Checking it worked',
   recovering: 'That did not work — trying another way',
   asking_user: 'It has a question for you',
-  done: 'Finished',
+  // "Finished" alone would read the same whether Aegis confirmed the outcome or merely relayed the
+  // model's claim. It is never the latter: `runAgentLoop` only reaches `done` when `verify()`
+  // returns PASS against the re-observed page, and a `done` whose evidence fails verification sets
+  // `falseSuccess` and goes to recovery instead. The wording says which of the two this is.
+  done: 'Finished — Aegis checked the page and confirmed it',
   failed: 'Could not finish this task',
   stopped: 'Stopped',
 };
@@ -55,7 +59,11 @@ export const STEP_ACTION: Record<HistoryEntry['action'], string> = {
   wait: 'Waited',
   navigate: 'Opened a page',
   ask_user: 'Asked you',
-  done: 'Finished',
+  // "Finished" alone would read the same whether Aegis confirmed the outcome or merely relayed the
+  // model's claim. It is never the latter: `runAgentLoop` only reaches `done` when `verify()`
+  // returns PASS against the re-observed page, and a `done` whose evidence fails verification sets
+  // `falseSuccess` and goes to recovery instead. The wording says which of the two this is.
+  done: 'Finished — Aegis checked the page and confirmed it',
   fail: 'Gave up',
   request_context: 'Asked to see more',
 };

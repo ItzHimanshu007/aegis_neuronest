@@ -7,7 +7,11 @@ import type { SceneGraph, EID } from '../scene';
 import type { StateTokens, SealedState } from '../scene/stateTokens';
 export type CheckReason = 'STALE_PLAN' | 'INVALID_SCHEMA' | 'PLAN_STEPS_REPEATED' | 'NEW_SCREEN' | 'TARGET_MISSING' | 'FP_MISMATCH' | 'AMBIGUOUS_TARGET' | 'NOT_VISIBLE' | 'NOT_HITTABLE' | 'DISABLED' | 'TOKEN_TYPE_MISMATCH' | 'TOKEN_IN_URL' | 'TOKEN_IN_KEY' | 'TOKEN_OUTSIDE_TYPE' | 'UNSUPPORTED_URL' | 'NEVER_AUTOMATED';
 export interface PlanSession { stateTokens: StateTokens; planStepsSeen?: boolean }
-export type PlanCheck = { ok: true; plan: PlanV2; context: SealedState } | { ok: false; reason: CheckReason };
+/** On rejection, `action` names the kind of action that caused it when one is identifiable, so the
+ * step timeline can say "Opened a page — Blocked" instead of attributing the block to nothing. It
+ * is reporting metadata only: no caller branches on it, and it never affects whether a plan is
+ * accepted. */
+export type PlanCheck = { ok: true; plan: PlanV2; context: SealedState } | { ok: false; reason: CheckReason; action?: Action['action'] };
 export function checkPlan(value: unknown, session: PlanSession): PlanCheck {
   if (!validatePlan(value)) return { ok: false, reason: 'INVALID_SCHEMA' };
   const plan = value as PlanV2;
@@ -17,7 +21,7 @@ export function checkPlan(value: unknown, session: PlanSession): PlanCheck {
   if ('plan' in plan) {
     for (const action of plan.plan) {
       const reason = forbiddenContent(action);
-      if (reason) return { ok: false, reason };
+      if (reason) return { ok: false, reason, action: action.action };
     }
   }
   return { ok: true, plan, context };
