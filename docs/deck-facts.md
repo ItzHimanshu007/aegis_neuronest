@@ -60,7 +60,7 @@ inferring one. No papers or model cards were consulted — only this repository.
 | Local ML runtime in the extension | **None present.** No ONNX/TF.js/WASM model files or runtime packages are bundled in the extension (`extension/models/README.md` is a placeholder; no `.onnx`/`.gguf`/`.safetensors`/`.bin` model file exists anywhere in the repo). | n/a | repo-wide file search |
 | Backend used for local (on-device-host) inference | **Ollama**, `0.33.3`, OpenAI-compatible endpoint at `http://localhost:11434/v1` | `0.33.3` | `eval/model_selection/raw/2026-09-18-preflight.json` |
 | Server-wired model (current default in code) | `qwen2.5vl:7b` (Qwen2.5-VL, 8.3B params per Ollama's own `general.parameter_count`, GGUF, quantization `Q4_K_M`) | file size on disk (installed blob): **5,969,245,856 bytes ≈ 5.56 GiB** logical, 5,969,264,640 bytes allocated | `server/.env.example` defaults (`AEGIS_ADAPTER=openai_compat`, `AEGIS_LLM_MODEL=qwen2.5vl:7b`); `eval/model_selection/raw/2026-09-18-registry-and-disk.json`, `...-preflight.json` |
-| Other model present on the same Ollama install (not the wired default) | `qwen3-vl:4b` (parameter_size `4.4B`, GGUF, `Q4_K_M`) | installed size **3,295,636,135 bytes ≈ 3.07 GiB** | `eval/model_selection/raw/2026-09-18-preflight.json` |
+| Other model present on the same Ollama install (not the wired default) | ~~`qwen3-vl:4b` (parameter_size `4.4B`, GGUF, `Q4_K_M`)~~ — **uninstalled 2026-09-21 to reclaim disk; no longer present.** It was probed once and rejected on measured grounds (§3.5), so nothing depends on it being installed; its recorded results stay valid as a record of what was measured. `qwen2.5vl:7b` is deliberately still installed. | was **3,295,636,135 bytes ≈ 3.07 GiB** when measured | `eval/model_selection/raw/2026-09-18-preflight.json` |
 | Server default when no live model is configured | `AEGIS_ADAPTER=mock` — a deterministic canned-plan adapter, no network call, no model | n/a | `README.md`, `server/app/vlm/mock_scenarios.py` |
 
 ### Planned, not implemented today (`docs/STAGES.md`)
@@ -305,14 +305,15 @@ arm was NOT MEASURED because this machine had no local model installed (see §3.
 
 ### 3.5 Live-model latency and behavior (`qwen2.5vl:7b`, via local Ollama, GPU/CPU on the same M2)
 
-> **Reproducibility note, 2026-09-21.** These numbers remain **valid** — they were measured, and a
-> measurement does not become false because the model was later removed from the machine. But they
-> are **no longer reproducible on demand**: as of 2026-09-21 this machine has no local model
-> installed (`/api/tags` returns `{"models":[]}`; `~/.ollama/models/manifests` is empty, mtime
-> 08:42:35 that morning). Re-running any figure in this section, or answering a judge who asks for a
-> live demonstration, requires `ollama pull qwen2.5vl:7b` (~6 GB) first. Nothing in the repo checks
-> for a local model before a run that needs one, so the failure currently shows up only as an empty
-> model list.
+> **`qwen2.5vl:7b` was uninstalled 2026-09-21** to reclaim disk; no Ollama model remains on this
+> host (`/api/tags` returns `{"models":[]}`; `~/.ollama/models/manifests` is empty, mtime 08:42:35
+> that morning). These numbers remain **valid** — they were measured, and a measurement does not
+> become false because the model was later removed from the machine; none of it is retracted. But
+> they are **no longer reproducible on demand**: treat them as archived measurements, not as figures
+> you can re-run during judging. Re-running any figure in this section, or answering a judge who
+> asks for a live demonstration, requires `ollama pull qwen2.5vl:7b` (~6 GB) first. Nothing in the
+> repo checks for a local model before a run that needs one, so the failure currently shows up only
+> as an empty model list.
 
 Source: `eval/reports/model-probe-qwen2.5vl-7b.md` (10 sealed fixtures, 1 run each) and
 `eval/reports/stage3-tasks.md`:

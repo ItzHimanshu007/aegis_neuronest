@@ -70,8 +70,18 @@ Serves on `http://localhost:8000`. `GET /health` and `POST /v1/plan` are availab
 ### Running with a live model
 
 Copy `server/.env.example` to `server/.env` and set `AEGIS_ADAPTER=openai_compat`. The default
-there points at a local Ollama (`AEGIS_LLM_BASE_URL=http://localhost:11434/v1`,
-`AEGIS_LLM_MODEL=qwen2.5vl:7b`) — see [`eval/reports/model-probe-qwen2.5vl-7b.md`](eval/reports/model-probe-qwen2.5vl-7b.md)
+there points at Groq (`AEGIS_LLM_BASE_URL=https://api.groq.com/openai/v1`,
+`AEGIS_LLM_MODEL=qwen/qwen3.8-27b`) and needs `AEGIS_LLM_API_KEY` set to your key. Local Ollama
+(`http://localhost:11434/v1`, `qwen2.5vl:7b`) is a documented fallback, not the default.
+
+> **No local model is installed as of 2026-09-21.** `qwen2.5vl:7b` was removed to reclaim disk, so
+> the Ollama fallback will fail until you re-pull it (`ollama pull qwen2.5vl:7b`, ~6 GB). The
+> measured figures below remain valid as a record of what was measured against that model; they are
+> just no longer reproducible on this host without that pull. The hosted default above is the path
+> that runs live today.
+
+The figures below were measured against `qwen2.5vl:7b` on local Ollama, not against the current
+hosted default. See [`eval/reports/model-probe-qwen2.5vl-7b.md`](eval/reports/model-probe-qwen2.5vl-7b.md)
 for single-call numbers (schema validity, grounding, latency) and
 [`eval/reports/stage3-tasks.md`](eval/reports/stage3-tasks.md) for two full multi-step tasks run
 against it end to end through the real agent loop. On ordinary local hardware this model is slow
