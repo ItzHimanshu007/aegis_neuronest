@@ -41,6 +41,9 @@ BLOCKED_BY = {
     "evil_hidden_click": "client",
     "evil_wrong_token_type": "client",
     "evil_commit_without_ask": "client",
+    #   premature done  -> the client's task requirement ledger: the server never learns which
+    #                      of the task's tokens were actually typed, or whether anything ran
+    "evil_premature_done": "client",
 }
 
 

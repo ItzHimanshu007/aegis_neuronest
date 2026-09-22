@@ -83,3 +83,36 @@ describe('assignFpOrdinals', () => {
     expect(result.every((r) => r.fpOrdinal === 0)).toBe(true);
   });
 });
+
+/**
+ * Stage 7F / invariant 12 — adding structural evidence must not move a single EID.
+ *
+ * `RawElement.structure` is a Stage 7 detection input. `computeFingerprint` takes a closed
+ * `FingerprintInput`, and the whole Scene Graph's element identity is derived from its output, so
+ * if a structural field ever became a fingerprint input every EID on every page would change:
+ * stale-plan checks would fire, reacquisition would miss, and the server's view of the page would
+ * silently renumber. These tests pin that the input set is exactly what it was.
+ */
+describe('Stage 7: the fingerprint input set is closed', () => {
+  const base = { role: 'textbox', name: 'Account number', tag: 'input', inputType: 'text', autocomplete: undefined, nameAttr: 'acct', ancestorSignature: 'main', labelText: 'Account number' };
+
+  it('is byte-identical whether or not structural evidence was captured', () => {
+    // The structural block is not part of FingerprintInput at all, so the only way to prove this
+    // is that the same input yields the same fingerprint — and that extra keys are ignored.
+    const withStructure = { ...base, structure: { maxLength: 16, placeholder: 'Enter account number', sectionHeading: 'Transfer to beneficiary' } };
+    expect(computeFingerprint(withStructure as typeof base, 'salt', 8)).toBe(computeFingerprint(base, 'salt', 8));
+  });
+
+  it.each(['placeholder', 'maxLength', 'minLength', 'pattern', 'inputMode', 'legendText', 'columnHeaderText', 'sectionHeading'])(
+    'ignores a stray %s key',
+    (key) => {
+      expect(computeFingerprint({ ...base, [key]: 'anything' } as typeof base, 'salt', 8)).toBe(computeFingerprint(base, 'salt', 8));
+    },
+  );
+
+  it('still changes when a real fingerprint input changes', () => {
+    // Guard on the guard: if computeFingerprint ignored everything, the assertions above would
+    // pass for the wrong reason.
+    expect(computeFingerprint({ ...base, nameAttr: 'other' }, 'salt', 8)).not.toBe(computeFingerprint(base, 'salt', 8));
+  });
+});

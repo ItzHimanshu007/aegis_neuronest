@@ -224,6 +224,7 @@ export interface HistoryEntry {
     | 'EXPECT_FAILED'
     | 'UNVERIFIABLE'
     | 'DONE_UNVERIFIED'
+    | 'REQUIREMENTS_UNMET'
     | 'BUDGET_EXHAUSTED'
     | 'LOOP_DETECTED'
     | 'NO_PROGRESS'

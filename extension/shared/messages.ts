@@ -37,10 +37,15 @@ export interface StateToken {
   innerHeight: number;
 }
 
+export interface ModelProvider { name: string; model: string }
 export interface HealthResult {
   status: string;
   version: string;
   model_adapter: string;
+  /** Which models this server can reach, for the panel's model picker. Older servers omit it. */
+  providers?: ModelProvider[];
+  /** Present when the server could not build its adapter at all (e.g. a provider with no key). */
+  adapter_error?: string;
 }
 
 export interface ObserveResult {

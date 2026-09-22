@@ -7,6 +7,7 @@ import { decideScreenChange, type ChangeResult, type ChangeSnapshot } from '../o
 import { dataUrlToGrayscale, imageSizeFromDataUrl } from '../observe/captureAdapter';
 import { RateLimiter, CoalescingQueue } from '../observe/rateLimiter';
 import { markLocalOnly, type FrameInfo, type RawElement } from '../observe/types';
+import { pageUrlOrThrow } from '../shared/pageUrl';
 
 /**
  * Background: orchestrates the capture pipeline (Stage 1 Part D) on top of the on-demand harvester
@@ -116,6 +117,10 @@ export default defineBackground(() => {
     const totalStart = performance.now();
     const tab = await browser.tabs.get(tabId);
     if (tab.windowId == null) throw new Error('Tab has no window');
+    // Refuse before injecting or capturing. An unreadable address is not a detail to paper over
+    // with `?? ''`: consent, re-hydration and the authority gate are all keyed on origin, so an
+    // observation that cannot name its own site is unusable and must not be built at all.
+    const pageUrl = pageUrlOrThrow(tab.url);
 
     const salt = await getSalt();
     frameHellos.set(tabId, []);
@@ -228,16 +233,9 @@ export default defineBackground(() => {
 
     // Change detection (Part D.5)
     const previous = tabState.get(tabId) ?? null;
-    let urlPath = '';
-    let urlHash = '';
-    try {
-      const url = new URL(tab.url ?? '');
-      urlPath = url.pathname;
-      urlHash = url.hash;
-    } catch {
-      // tab.url can be empty (e.g. chrome://newtab in some states) — treat as a single fixed path
-      // so the URL check simply never fires rather than throwing.
-    }
+    // Always parseable: runObservationPipeline refuses an unreadable address up front, so this
+    // no longer needs the try/catch that used to swallow an empty tab.url.
+    const { pathname: urlPath, hash: urlHash } = new URL(pageUrl);
     const diff = computeMutationDiff(previous?.marks ?? null, composedElements);
 
     let dhashInput;
@@ -270,7 +268,7 @@ export default defineBackground(() => {
     const observation = markLocalOnly({
       capture_id: finalCaptureId,
       ts: Date.now(),
-      url: tab.url ?? '',
+      url: pageUrl,
       title: tab.title ?? '',
       viewport,
       frames: frameInfos,

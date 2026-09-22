@@ -1,5 +1,6 @@
 import type { Observation } from '../observe/types';
 import { runDetectionCascade } from '../privacy/detect';
+import { withEvidenceLayer } from '../privacy/detect/evidence/flag';
 
 /**
  * Stage 4 Part D — eval-mode replay scoring.
@@ -63,10 +64,17 @@ export function categoryMultiset(detections: Array<{ category: string }>): strin
 }
 
 /** Re-runs the real cascade over a recorded observation. No browser, no network, no model. */
-export async function replayDetections(bundle: ReplayObservationBundle): Promise<string[]> {
+export async function replayDetections(
+  bundle: ReplayObservationBundle,
+  options: { evidenceLayerEnabled?: boolean } = {},
+): Promise<string[]> {
   assertSynthetic(bundle);
-  const result = await runDetectionCascade({ observation: bundle.observation });
-  return categoryMultiset(result.detections);
+  // The ambient flag, not just the per-call one: detect/labels.ts is reached from inside the
+  // cascade with no option to thread through, and its tie-break is part of Stage 7 too.
+  const run = async () => categoryMultiset(
+    (await runDetectionCascade({ observation: bundle.observation, evidenceLayerEnabled: options.evidenceLayerEnabled })).detections,
+  );
+  return options.evidenceLayerEnabled === undefined ? run() : withEvidenceLayer(options.evidenceLayerEnabled, run);
 }
 
 /** Recomputes precision/recall from recorded ground truth and recorded hits. */

@@ -12,6 +12,7 @@
  */
 
 import type { Category } from '../categoryTypes';
+import { isEvidenceLayerEnabled } from './evidence/flag';
 
 export interface LabelEntry {
   category: Category;
@@ -84,19 +85,69 @@ function containsPhrase(normalized: string, phrase: string): boolean {
   return normalized.includes(normalizedPhrase);
 }
 
-/** Finds every category whose dictionary phrase appears in `label`. Returns categories in
- * descending specificity order; explicit overrides break equal-length ties. */
-export function matchLabelCategories(label: string): Category[] {
+/**
+ * A dictionary hit: which category, and how long the phrase that matched was. The length is the
+ * specificity measure the whole ordering rests on, and Stage 7's inline binder needs it too (to
+ * choose the most specific key in running prose), so it is exported rather than computed twice.
+ */
+export interface LabelMatch {
+  category: Category;
+  /** Length of the normalized phrase that matched. Longer = more specific. */
+  phraseLength: number;
+}
+
+/**
+ * Head nouns that are too generic to win a tie on their own.
+ *
+ * Stage 4 measured the cost of not having this: "City name" matches CITY's phrase `city` (4
+ * chars) and NAME's phrase `name` (4 chars), the sort is a tie, and the stable sort falls back to
+ * dictionary order — where NAME is the first entry. So three held-out CITY values were reported as
+ * NAME, each one both a false positive for NAME and a false negative for CITY. "UPI address" lost
+ * the same way to ADDRESS.
+ *
+ * The fix is not a new phrase and not a reordering of the dictionary: a phrase that is exactly a
+ * generic head noun is ranked below any non-generic phrase, whatever their lengths. "City name" is
+ * a kind of name, so the qualifier carries the category; `address` in "UPI address" is likewise
+ * the head, not the type.
+ */
+const GENERIC_HEAD_PHRASES = new Set(['name', 'number', 'code', 'id', 'address', 'details', 'no']);
+
+function isGenericHead(normalizedPhrase: string): boolean {
+  // Gated with the rest of Stage 7 so the measurement's BASELINE arm is genuinely the old
+  // behaviour — see evidence/flag.ts for why this one cannot use a per-call override.
+  return isEvidenceLayerEnabled() && GENERIC_HEAD_PHRASES.has(normalizedPhrase);
+}
+
+/** Every dictionary hit in `label`, most specific first. Non-generic phrases outrank generic head
+ * nouns; among equals, the longer phrase wins; explicit overrides break what is left. */
+export function matchLabels(label: string): LabelMatch[] {
   const normalized = normalizeLabel(label);
   if (!normalized) return [];
   const hits = LABEL_DICTIONARY.flatMap(entry => entry.phrases
     .filter(phrase => containsPhrase(normalized, phrase))
-    .map(phrase => ({ category: entry.category, length: normalizeLabel(phrase).length })));
+    .map(phrase => ({ category: entry.category, phrase: normalizeLabel(phrase) })));
   const overrides = Object.entries(LABEL_OVERRIDES).filter(([phrase]) => containsPhrase(normalized, phrase))
-    .map(([phrase, category]) => ({ category, length: normalizeLabel(phrase).length }));
+    .map(([phrase, category]) => ({ category: category as Category, phrase: normalizeLabel(phrase) }));
   hits.unshift(...overrides);
-  hits.sort((a, b) => b.length - a.length);
-  return [...new Set(hits.map(hit => hit.category))];
+  hits.sort((a, b) => {
+    const generic = Number(isGenericHead(a.phrase)) - Number(isGenericHead(b.phrase));
+    if (generic !== 0) return generic;
+    return b.phrase.length - a.phrase.length;
+  });
+  const seen = new Set<Category>();
+  const ordered: LabelMatch[] = [];
+  for (const hit of hits) {
+    if (seen.has(hit.category)) continue;
+    seen.add(hit.category);
+    ordered.push({ category: hit.category, phraseLength: hit.phrase.length });
+  }
+  return ordered;
+}
+
+/** Finds every category whose dictionary phrase appears in `label`. Returns categories in
+ * descending specificity order; explicit overrides break equal-length ties. */
+export function matchLabelCategories(label: string): Category[] {
+  return matchLabels(label).map(hit => hit.category);
 }
 
 /** True if `label` matches OTP, CVV or UPI_PIN — the categories whose raw value the harvester

@@ -42,7 +42,20 @@ export function decide(det: Detection, ctx: DecideContext): Action {
   const policyClass = classOf(category);
   const classData = POLICY_CLASSES[policyClass];
 
-  const baseAction = ctx.necessity === 'needed' ? classData.needed : classData.not_needed;
+  /**
+   * Stage 7J. An UNCERTAIN detection may never take the `needed` branch.
+   *
+   * The `needed` branch is what mints a token — it is how a value reaches the server in
+   * re-hydratable form. A candidate the evidence layer could not confidently classify has no
+   * business being tokenized under a category it is not sure of, so it is forced down the
+   * `not_needed` branch, which for every PII class is FILL: a solid mask. The value is hidden and
+   * the agent simply cannot use it.
+   *
+   * This is strictly more private than the pre-Stage-7 behaviour, where a value nothing detected
+   * was sent verbatim. Uncertainty costs utility here, never privacy.
+   */
+  const uncertain = det.certainty === 'uncertain';
+  const baseAction = ctx.necessity === 'needed' && !uncertain ? classData.needed : classData.not_needed;
 
   // quasi: TOKEN only once an identity item has been seen on this origin during this task.
   let resolved: Action;
@@ -54,10 +67,29 @@ export function decide(det: Detection, ctx: DecideContext): Action {
   }
 
   const override = ctx.userOverrides[category];
-  if (override && ALL_ACTIONS.includes(override) && !isLockedCategory(category)) {
+  // An override may not loosen an uncertain detection: the user is expressing a preference about
+  // a category, and this detection is not confidently in that category to begin with.
+  if (override && ALL_ACTIONS.includes(override) && !isLockedCategory(category) && !uncertain) {
     return det.source === 'vault' && override === 'ALLOW' ? 'FILL' : override;
   }
-  return det.source === 'vault' && resolved === 'ALLOW' ? 'FILL' : resolved;
+  const action = det.source === 'vault' && resolved === 'ALLOW' ? 'FILL' : resolved;
+  return uncertain ? clampUncertain(action) : action;
+}
+
+/**
+ * Stage 7J's actual guarantee: an uncertain detection is never tokenized, whatever class it is in.
+ *
+ * Choosing the `not_needed` branch is not sufficient on its own, and the `quasi` class is exactly
+ * why. Its two branches are the SAME (`TOKEN_IF_IDENTITY_PRESENT` for both), so a PIN_CODE or a
+ * CITY still resolved to TOKEN once any identity had been seen on the origin — no matter which
+ * branch it took. Half the categories Stage 7 newly reaches are quasi ones, so that would have
+ * been most of the feature quietly minting tokens for values it was not sure about.
+ *
+ * FILL is the fail-closed answer for every one of these: the value is masked out of the image and
+ * never leaves as a token.
+ */
+function clampUncertain(action: Action): Action {
+  return action === 'TOKEN' || action === 'TOKEN_WITH_APPROVAL' || action === 'ALLOW' ? 'FILL' : action;
 }
 
 /**
@@ -77,6 +109,11 @@ export class SessionPrivacyState {
    * category was detected with at least `IDENTITY_MIN_CONF` confidence. */
   observeDetections(origin: string, detections: Detection[]): void {
     for (const det of detections) {
+      // Stage 7J: an uncertain detection never marks an origin identity-seen and never counts
+      // toward the linkability K. Both of those make policy STRICTER elsewhere on the page, and
+      // escalating the whole origin on a guess is not a privacy win — it is noise that would make
+      // the linkability signal mean less.
+      if (det.certainty === 'uncertain') continue;
       if (isIdentityCategory(det.category) && det.confidence >= AEGIS_CONFIG.IDENTITY_MIN_CONF) {
         this.identitySeenOrigins.add(origin);
       }

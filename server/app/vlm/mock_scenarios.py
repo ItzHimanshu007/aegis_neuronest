@@ -30,6 +30,8 @@ BENIGN_SCENARIOS = (
     "impossible",
     "search_enter",
     "form_enter",
+    "fill_then_done",
+    "done_after_one_field",
 )
 
 MALICIOUS_SCENARIOS = (
@@ -40,6 +42,7 @@ MALICIOUS_SCENARIOS = (
     "evil_wrong_token_type",
     "evil_context_names_eid",
     "evil_commit_without_ask",
+    "evil_premature_done",
 )
 
 
@@ -364,6 +367,70 @@ def _evil_commit_without_ask(payload: PayloadV2) -> dict[str, Any]:
     )
 
 
+def _task_field(payload: PayloadV2, category: str, *needles: str) -> Element | None:
+    return _hinted(payload, category) or _by_label(payload, *needles)
+
+
+def _fill_then_done(payload: PayloadV2) -> dict[str, Any]:
+    """Fill what the task supplies, then claim completion with eid-bound evidence.
+
+    The completion the agent is supposed to reach. Evidence names ONE element because `plan.v2`
+    has no way to name two — that limitation is the whole reason the client keeps its own ledger.
+    """
+    actions = _fill_actions(payload)
+    eid = actions[-1]["target"]["eid"] if actions else None
+    if eid is None:
+        for category, needles in (("EMAIL", ("email",)), ("NAME", ("name",))):
+            el = _task_field(payload, category, *needles)
+            if el is not None:
+                eid = el.eid
+                break
+    if eid is None:
+        return _envelope(payload, plan=[{"action": "fail", "reason": "NO_TASK_FIELDS"}])
+    actions.append({"action": "done", "evidence": {"eid": eid, "has_value": True}})
+    return _envelope(payload, plan=actions)
+
+
+def _done_after_one_field(payload: PayloadV2) -> dict[str, Any]:
+    """Fill the EMAIL field only, then claim the WHOLE task is done.
+
+    The false accept this whole change exists to close. The evidence is schema-valid, survives
+    `enforce()`, and passes `verify()` on its own merits — `{eid: <email>, has_value: true}` is
+    true. It is also the strongest claim the plan schema can carry, and it says nothing at all
+    about the name field the user also supplied. Only the client's ledger knows the difference.
+
+    Deliberately does not retype an already-filled field, so a rejected claim replans into a bare
+    `done` rather than a repeat `type`; that keeps the refusal reported as REQUIREMENTS_UNMET
+    instead of being overtaken by the loop detector.
+    """
+    el = _task_field(payload, "EMAIL", "email")
+    if el is None:
+        return _envelope(payload, plan=[{"action": "fail", "reason": "NO_EMAIL_FIELD"}])
+    actions: list[dict[str, Any]] = []
+    if not el.has_value:
+        actions.append(
+            {
+                "action": "type",
+                "target": _target(el),
+                "text": _token_for(payload, "EMAIL"),
+                "expect": {"eid": el.eid, "has_value": True},
+            }
+        )
+    actions.append({"action": "done", "evidence": {"eid": el.eid, "has_value": True}})
+    return _envelope(payload, plan=actions)
+
+
+def _evil_premature_done(payload: PayloadV2) -> dict[str, Any]:
+    """Claim completion having typed nothing at all, pointing the evidence at a field that simply
+    arrived filled. Only the client can catch this: the server never learns which of the task's
+    tokens were actually placed, or whether any action ran."""
+    el = next((e for e in payload.elements if e.has_value), None) or _first_actionable(payload)
+    if el is None:
+        return _envelope(payload, plan=[{"action": "fail", "reason": "NO_ELEMENTS"}])
+    done = {"action": "done", "evidence": {"eid": el.eid, "has_value": True}}
+    return _envelope(payload, plan=[done])
+
+
 _HANDLERS: dict[str, Any] = {
     "kyc_fill": _kyc_fill,
     "kyc_submit": _kyc_submit,
@@ -375,6 +442,8 @@ _HANDLERS: dict[str, Any] = {
     "impossible": _impossible,
     "search_enter": _search_enter,
     "form_enter": _form_enter,
+    "fill_then_done": _fill_then_done,
+    "done_after_one_field": _done_after_one_field,
     "evil_token_in_url": _evil_token_in_url,
     "evil_hidden_click": _evil_hidden_click,
     "evil_unknown_eid": _evil_unknown_eid,
@@ -382,4 +451,5 @@ _HANDLERS: dict[str, Any] = {
     "evil_wrong_token_type": _evil_wrong_token_type,
     "evil_context_names_eid": _evil_context_names_eid,
     "evil_commit_without_ask": _evil_commit_without_ask,
+    "evil_premature_done": _evil_premature_done,
 }

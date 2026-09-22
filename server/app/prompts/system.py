@@ -8,7 +8,7 @@ prompt produced them.
 
 from __future__ import annotations
 
-PROMPT_VERSION = "3b.1"
+PROMPT_VERSION = "3b.2"
 
 # Kept in sync with the literal in SYSTEM_PROMPT by tests/test_prompts.py. The prompt is a plain
 # literal on purpose: it must be byte-identical on every request for prefix caching to apply, and
@@ -76,7 +76,8 @@ about what to expand is made locally.
 - Every action that changes the page must carry `expect`, a structured post-condition that will be \
 checked locally after it runs.
 - `done` requires `evidence` in the same shape as `expect`: what you can see that shows the task \
-is complete.
+is complete. `done` is a CLAIM, not a conclusion. The client re-captures the page and re-checks \
+your evidence against it; if it cannot be confirmed, the claim is refused and you are asked again.
 - Use `ask_user` with a `reason` when you are unsure, and `fail` with a `reason` when the task \
 cannot be done on this page.
 
@@ -99,14 +100,35 @@ Put expect/evidence inside the action, never at the response level. Minimal form
 {"action":"wait","ms":100}
 {"action":"type","target":{"eid":"COPY","fp":"COPY"},"text":"COPY_TOKEN","expect":{"eid":"COPY","has_value":true}}
 {"action":"click","target":{"eid":"COPY","fp":"COPY"},"expect":{"text_present":"sanitized text"}}
-{"action":"done","evidence":{"text_present":"visible proof"}}
+{"action":"done","evidence":{"eid":"COPY","has_value":true}}
+{"action":"done","evidence":{"text_present":"COPY_EXACT_TEXT_FROM_THE_PAGE"}}
 For a question about a value, answer with {"answer":{"text":"the provided value token"}}.
 Do not claim done just because you proposed an action. Wait for the client's PASS history.
+
+Evidence that cannot be confirmed is worse than no evidence, because it costs a whole turn:
+- has_value, visible and enabled are checked against ONE element and so each requires an eid.
+  Without one there is nothing to check and the claim always fails.
+- text_present matches the page's own text. It never sees what is inside an input, so it cannot
+  show that a field was filled.
+- url_path_prefix must be specific. "/" matches every page and is rejected outright.
+- Never send a placeholder. Copy a real eid, or text you can actually read on the page.
+You do not have to prove every field you filled. Evidence names one element, and the client
+separately confirms that every value it was given reached the page.
+
+Result codes you can act on: REQUIREMENTS_UNMET means a value you were given is still not on the
+page — find the fields still shown as empty and fill them, do not re-claim done. DONE_UNVERIFIED
+means your evidence did not check out — choose evidence of a different kind. EXPECT_FAILED means
+the page did not end up as the step promised. VALUE_MISMATCH means the field did not keep what was
+typed. TARGET_MISSING, NOT_VISIBLE and NEW_SCREEN mean the element is gone, hidden or on a
+different screen; re-read the elements list before acting again.
 
 Output JSON only."""
 
 
-# Two short synthetic examples (Part D2). No real data appears in either.
+# Short synthetic examples (Part D2). No real data appears in any of them. The third is the second
+# turn of a two-field fill: it is the only worked example that ends in a `done` which actually
+# passes verification, and it exists because the prompt previously taught completion only through
+# `ask_user` and a `text_present` placeholder that could never match.
 FEW_SHOT_EXAMPLES: list[dict[str, str]] = [
     {
         "role": "user",
@@ -130,6 +152,30 @@ FEW_SHOT_EXAMPLES: list[dict[str, str]] = [
             '{"action":"type","target":{"eid":"E2","fp":"2222"},'
             '"text":"[[PII:EMAIL:bbbbbbbb]]","expect":{"eid":"E2","has_value":true}},'
             '{"action":"ask_user","reason":"Both fields are filled. Continue to the next step?"}]}'
+        ),
+    },
+    {
+        "role": "user",
+        "content": (
+            "task: Fill in my name and email on this form, but do not submit it\n"
+            "state_token: Sexampleccc\n"
+            "page: https://example.test/signup | Sign up | form\n"
+            "elements:\n"
+            'E1 fp=1111 textbox "Full name" [64,200,300,28] filled value=[[PII:NAME:aaaaaaaa]]\n'
+            'E2 fp=2222 textbox "Email address" [64,260,300,28] filled '
+            "value=[[PII:EMAIL:bbbbbbbb]]\n"
+            'E3 fp=3333 button "Continue" [64,320,120,36] occluded=false\n'
+            "\n"
+            "history (most recent last):\n"
+            '{"step":1,"action":"type","eid":"E1","verdict":"PASS"}\n'
+            '{"step":2,"action":"type","eid":"E2","verdict":"PASS"}\n'
+        ),
+    },
+    {
+        "role": "assistant",
+        "content": (
+            '{"schema":"aegis/2","state_token":"Sexampleccc",'
+            '"plan":[{"action":"done","evidence":{"eid":"E2","has_value":true}}]}'
         ),
     },
     {

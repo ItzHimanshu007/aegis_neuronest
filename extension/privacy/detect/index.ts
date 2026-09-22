@@ -27,11 +27,15 @@ import { detectFromAutocomplete } from './autocomplete';
 import { detectUnscannedMedia } from './unscannedMedia';
 import { nerDetect, ocrDetect, visualDetect } from './hooks';
 import { findNearestLabelCategory, getElementFieldContext, getKeyValueKeyContext, pairDtDd } from './fieldContext';
+import { findInlineKeyValues } from './evidence/binder';
+import { runEvidenceLayer, type EvidenceLayerResult } from './evidence';
+import { isEvidenceLayerEnabled } from './evidence/flag';
 import { mergeDetections, type MergedDetection } from './merge';
 import { runRules } from './rules';
+import { LABEL_DICTIONARY, normalizeLabel } from './labels';
 import { markLocalOnlyValue, type Detection } from './types';
 import type { Category } from '../categoryTypes';
-import type { Observation } from '../../observe/types';
+import type { Observation, RawElement } from '../../observe/types';
 
 export interface SpanLookupRequest {
   detectionId: string;
@@ -43,6 +47,8 @@ export interface SpanLookupRequest {
 export interface CascadeResult {
   detections: MergedDetection[];
   spanLookups: SpanLookupRequest[];
+  /** Stage 7M/7O counters from the evidence layer. Local measurement only; never sent. */
+  evidenceStats: EvidenceLayerResult['stats'];
 }
 
 export interface CascadeInput {
@@ -52,6 +58,37 @@ export interface CascadeInput {
   task?: string;
   registry?: EIDRegistry;
   knownValues?: KnownDetectionValue[];
+  /** Stage 7C `page_context` signal: an identity category has already been seen on this origin
+   * during this task. Supplied by the agentHost, which owns SessionPrivacyState. */
+  identitySeenOnOrigin?: boolean;
+  /**
+   * Overrides AEGIS_CONFIG.EVIDENCE_LAYER_ENABLED for this one call. Same shape as the
+   * `maskLabelsEnabled` override in privacy/redactor.ts, and it exists for the same reason: the
+   * Stage 7 evaluation must run BASELINE and STAGE 7 over the same corpus in the same build, so
+   * the measured delta is attributable to the layer and not to a different binary. `false`
+   * reproduces the pre-Stage-7 cascade exactly, which `eval/__tests__/replay.test.ts` pins
+   * against recorded bundles.
+   */
+  evidenceLayerEnabled?: boolean;
+}
+
+/**
+ * Returns true if an element's value is merely its structural label text, accessible name,
+ * placeholder, or a generic dictionary phrase for the category, rather than actual user-entered
+ * PII. Such structural values must not be promoted into a sensitive detection's rawValue.
+ */
+function isStructuralValue(value: string, el: RawElement, category: Category): boolean {
+  const normVal = normalizeLabel(value);
+  if (!normVal) return true;
+
+  if (el.labelText && normalizeLabel(el.labelText) === normVal) return true;
+  if (el.name && normalizeLabel(el.name) === normVal) return true;
+  if (el.structure?.placeholder && normalizeLabel(el.structure.placeholder) === normVal) return true;
+
+  const entry = LABEL_DICTIONARY.find((e) => e.category === category);
+  if (entry && entry.phrases.some((p) => normalizeLabel(p) === normVal)) return true;
+
+  return false;
 }
 
 export async function runDetectionCascade(input: CascadeInput): Promise<CascadeResult> {
@@ -61,6 +98,8 @@ export async function runDetectionCascade(input: CascadeInput): Promise<CascadeR
   const captureId = observation.capture_id;
   let counter = 0;
   const idFor = (suffix: string) => `${captureId}-${counter++}-${suffix}`;
+
+  const evidenceEnabled = input.evidenceLayerEnabled ?? isEvidenceLayerEnabled();
 
   const raw: Detection[] = [];
   const spanLookups: SpanLookupRequest[] = [];
@@ -75,6 +114,7 @@ export async function runDetectionCascade(input: CascadeInput): Promise<CascadeR
 
     const fieldCategory = getElementFieldContext(el);
     if (fieldCategory) {
+      const isStructural = el.value !== undefined && isStructuralValue(el.value, el, fieldCategory);
       raw.push({
         id: idFor('field-context'),
         capture_id: captureId,
@@ -85,7 +125,7 @@ export async function runDetectionCascade(input: CascadeInput): Promise<CascadeR
         confidence: 0.7,
         target: { kind: 'element', ref: eid },
         rects: [el.bbox],
-        rawValue: el.value !== undefined ? markLocalOnlyValue(el.value) : undefined,
+        rawValue: el.value !== undefined && !isStructural ? markLocalOnlyValue(el.value) : undefined,
       });
     }
 
@@ -116,6 +156,61 @@ export async function runDetectionCascade(input: CascadeInput): Promise<CascadeR
     const keyValue = getKeyValueKeyContext(block.text);
     const blockCategory: Category | undefined =
       keyValue?.category ?? dtDdContext.get(block.blockRef) ?? findNearestLabelCategory(block.bbox, observation.textBlocks);
+
+    /**
+     * Stage 7E. A block may carry SEVERAL labelled values, at any offset — running prose is
+     * written "Label: value, and Label: value", and `getKeyValueKeyContext` above can only ever
+     * see the first pair and only when it starts at character zero. So the rules run once per
+     * bound region with that region's own category, and once over the whole block with the
+     * block-level category for everything outside a binding.
+     *
+     * This is why it matters: `ctx.fieldCategory` is the gate on all six context-only rules and
+     * all six Indian-identifier rules. In prose it was permanently undefined, which is 31 of the
+     * 63 false negatives Stage 4 measured. Nothing about what counts as a label changes here.
+     */
+    const inlineBindings = evidenceEnabled ? findInlineKeyValues(block.text) : [];
+    for (const binding of inlineBindings) {
+      const regionText = block.text.slice(binding.valueStart, binding.valueEnd);
+      for (const match of runRules(regionText, { fieldCategory: binding.category })) {
+        const start = binding.valueStart + match.start;
+        const end = start + match.matchedText.length;
+        const id = idFor(`inline-${match.category}`);
+        raw.push({
+          id,
+          capture_id: captureId,
+          source: 'rule',
+          category: match.category,
+          confidence: match.confidence,
+          target: { kind: 'text_span', ref: block.blockRef },
+          span: { start, end },
+          rawValue: markLocalOnlyValue(match.matchedText),
+          rects: [],
+        });
+        spanLookups.push({ detectionId: id, blockRef: block.blockRef, start, end });
+      }
+
+      // A bound label whose value matched no rule is still sensitive, because the LABEL says so —
+      // the same argument as the block-level fallback below, applied to an inline binding.
+      const alreadyCovered = raw.some(
+        (d) => d.target.kind === 'text_span' && d.target.ref === block.blockRef && d.span
+          && d.span.start < binding.valueEnd && binding.valueStart < d.span.end,
+      );
+      if (!alreadyCovered && regionText.trim().length > 0) {
+        const id = idFor('inline-field-context');
+        raw.push({
+          id,
+          capture_id: captureId,
+          source: 'field_context',
+          category: binding.category,
+          confidence: 0.65,
+          target: { kind: 'text_span', ref: block.blockRef },
+          span: { start: binding.valueStart, end: binding.valueEnd },
+          rawValue: markLocalOnlyValue(regionText),
+          rects: [],
+        });
+        spanLookups.push({ detectionId: id, blockRef: block.blockRef, start: binding.valueStart, end: binding.valueEnd });
+      }
+    }
 
     for (const match of [...runRules(block.text, { fieldCategory: blockCategory }).map(m => ({ ...m, known: false })), ...findKnownValues(block.text, input.knownValues ?? []).map(m => ({ ...m, confidence: 1, known: true }))]) {
       const id = idFor(`rule-${match.category}`);
@@ -222,6 +317,19 @@ export async function runDetectionCascade(input: CascadeInput): Promise<CascadeR
     }
   }
 
+  // --- 4.5: Stage 7 evidence layer ------------------------------------------------------------
+  // Runs after the rule/field-context layers so it can only ever ADD candidates, never weaken one.
+  const evidence = runEvidenceLayer({
+    observation,
+    captureId,
+    idFor,
+    registry,
+    identitySeenOnOrigin: input.identitySeenOnOrigin,
+    enabled: evidenceEnabled,
+  });
+  raw.push(...evidence.detections);
+  spanLookups.push(...evidence.spanLookups);
+
   // --- 5/6: media and later-stage hooks -------------------------------------------------------
   raw.push(...detectUnscannedMedia(observation.media, captureId, idFor));
   raw.push(...(await visualDetect(observation, captureId)));
@@ -233,7 +341,7 @@ export async function runDetectionCascade(input: CascadeInput): Promise<CascadeR
     const el = d.target.kind === 'element' ? observation.elements.find(e => registry.identity(e).eid === d.target.ref) : undefined;
     return el ? { ...d, fill: classifyFill(el, d.category) } : d;
   });
-  return { detections, spanLookups };
+  return { detections, spanLookups, evidenceStats: evidence.stats };
 }
 
 export interface SpanRectsResponse {

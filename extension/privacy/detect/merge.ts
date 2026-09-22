@@ -66,11 +66,27 @@ export function mergeDetections(detections: Detection[]): MergedDetection[] {
     }
 
     for (const cluster of clusters) {
-      const explicit = cluster.find(d => d.source === 'field_context' && d.category !== 'PRIVATE_GENERIC');
-      const secret = cluster.find(d => ['PASSWORD', 'OTP', 'CVV', 'UPI_PIN', 'SECRET'].includes(d.category));
-      const winner = secret ?? explicit ?? cluster.reduce((best, current) => (riskRank(current.category) < riskRank(best.category) ? current : best));
+      /**
+       * Stage 7J. Certainty is decided by the CLUSTER, not by whichever member won the category
+       * arbitration below. A cluster is uncertain only when every member of it is uncertain.
+       *
+       * Getting this backwards would be a real regression: an uncertain evidence candidate
+       * overlapping a confident rule hit could win the risk ordering (a low-confidence AADHAAR
+       * outranks a confident EMAIL by design) and drag the whole cluster down to `uncertain`,
+       * which forces it to the `not_needed` branch and silently stops a value that WAS confidently
+       * detected from being tokenized. Confident evidence must always dominate.
+       */
+      const anyConfident = cluster.some(d => d.certainty !== 'uncertain');
+      const certainty: Detection['certainty'] = anyConfident ? 'detected' : 'uncertain';
+      // Only confident members may win the category, for the same reason.
+      const eligible = anyConfident ? cluster.filter(d => d.certainty !== 'uncertain') : cluster;
+      const explicit = eligible.find(d => d.source === 'field_context' && d.category !== 'PRIVATE_GENERIC');
+      const secret = eligible.find(d => ['PASSWORD', 'OTP', 'CVV', 'UPI_PIN', 'SECRET'].includes(d.category));
+      const winner = secret ?? explicit ?? eligible.reduce((best, current) => (riskRank(current.category) < riskRank(best.category) ? current : best));
       const sources = Array.from(new Set(cluster.map((d) => d.source)));
-      const confidences = cluster.map((d) => d.confidence);
+      // Only the members that could win contribute confidence; an uncertain candidate must not
+      // inflate a cluster it was not allowed to name.
+      const confidences = eligible.map((d) => d.confidence);
       // Combine confidences as "probability at least one source is right" (1 - product of misses)
       // — multiple independent sources agreeing should never end up LESS confident than the best
       // single source alone.
@@ -78,8 +94,13 @@ export function mergeDetections(detections: Detection[]): MergedDetection[] {
       const confidence = Math.max(...confidences, 1 - combinedMiss);
       const rects = cluster.flatMap((d) => d.rects);
 
+      // Stage 7H: keep every contributing signal name, deduplicated, for the panel's reasoning.
+      const evidence = Array.from(new Set(cluster.flatMap((d) => d.evidence ?? [])));
+
       merged.push({
         ...winner,
+        certainty,
+        evidence: evidence.length > 0 ? evidence : undefined,
         confidence: Math.min(1, confidence),
         sources,
         rects,

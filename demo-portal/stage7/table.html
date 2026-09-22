@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stage 7 &mdash; table column headers</title>
+    <link rel="stylesheet" href="/src/style.css" />
+    <style>
+      section { border: 1px solid #ddd; border-radius: 6px; padding: 12px 16px; margin-bottom: 16px; }
+      h2 { margin-top: 0; font-size: 15px; }
+      .kv { display: grid; grid-template-columns: 220px 1fr; gap: 6px 12px; font-size: 13px; }
+      .kv dt { font-weight: 600; } .kv dd { margin: 0; }
+      table { border-collapse: collapse; font-size: 13px; }
+      th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
+      label { display: block; font-size: 13px; margin: 8px 0 2px; }
+      input { font-size: 13px; padding: 4px 6px; width: 260px; }
+      p, li { font-size: 13px; }
+      iframe { width: 340px; height: 120px; border: 1px solid #ccc; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p class="badge">STAGE 7 FIXTURE &mdash; SYNTHETIC DATA. Every value is fabricated.</p>
+    </header>
+    <main class="page">
+      <h1>Stage 7 &mdash; table column headers</h1>
+      <p><a href="/index.html">&larr; back</a> &middot; see <code>demo-portal/stage7/README.md</code> for the labelling rule.</p>
+
+      <section>
+        <h2>Registered holders</h2>
+        <table>
+          <thead><tr><th scope="col">Serial</th><th scope="col">Aadhaar number</th><th scope="col">Email address</th><th scope="col">Closing balance</th></tr></thead>
+          <tbody>
+            <tr>
+              <td data-gt="NONE" data-gt-label="none" data-gt-construct="table">1</td>
+              <td data-gt="AADHAAR" data-gt-label="none" data-gt-construct="table">3941 8276 5016</td>
+              <td data-gt="EMAIL" data-gt-label="none" data-gt-construct="table">asha.verma@example.com</td>
+              <td data-gt="FINANCIAL_VALUE" data-gt-label="none" data-gt-construct="table">&#8377;18,948.52</td>
+            </tr>
+            <tr>
+              <td data-gt="NONE" data-gt-label="none" data-gt-construct="table">2</td>
+              <td data-gt="AADHAAR" data-gt-label="none" data-gt-construct="table">4720 5318 6927</td>
+              <td data-gt="EMAIL" data-gt-label="none" data-gt-construct="table">rohit.menon@example.com</td>
+              <td data-gt="FINANCIAL_VALUE" data-gt-label="none" data-gt-construct="table">&#8377;2,140.00</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+  </body>
+</html>

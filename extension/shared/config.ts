@@ -171,6 +171,40 @@ export const AEGIS_CONFIG = {
    * released, so a burst of captures over several regions/steps doesn't reload the model every
    * time, but an idle side panel doesn't hold ~14MB of WASM memory forever. */
   FACE_MODEL_IDLE_UNLOAD_MS: 30_000,
+
+  // --- Stage 7: label-independent evidence layer (extension/privacy/detect/evidence/) --------
+
+  /**
+   * The Stage 7 evidence layer: intrinsic value shape + DOM structure + negative evidence,
+   * scored deterministically into DETECTED / UNCERTAIN / NOT_DETECTED.
+   *
+   * ON by default. Setting it false reproduces the pre-Stage-7 cascade EXACTLY — that is not a
+   * convenience, it is the control arm: `eval/reports/stage7-label-independence.md` measures
+   * BASELINE vs STAGE 7 by running the same corpus twice in one build with this flag flipped, so
+   * the delta is attributable to the layer rather than to a different binary.
+   */
+  EVIDENCE_LAYER_ENABLED: true,
+
+  /** Evidence score at or above which a candidate is DETECTED — treated as a normal detection and
+   * decided by policy as usual. See evidence/score.ts for the full signal/point table. */
+  EVIDENCE_DETECT_MIN: 5,
+  /** Evidence score at or above which a candidate is UNCERTAIN: masked (forced to the policy
+   * class's `not_needed` action), never tokenized, never vaulted, and never counted toward
+   * identity-seen or linkability. Below this, nothing is emitted. Fail-closed by construction —
+   * an uncertain value is hidden rather than asserted. */
+  EVIDENCE_UNCERTAIN_MIN: 3,
+
+  /** Inline key-value binding (evidence/binder.ts): how many words before a ':' may form the key.
+   * Bounded so a running-prose lead ("Thank you for your request. Our records currently show ")
+   * cannot be swallowed into the key — only the last few words before the colon are considered. */
+  EVIDENCE_KEY_MAX_WORDS: 6,
+  /** Maximum characters after a bound ':' that form the value region, when no earlier clause
+   * boundary (", and", ';', '.') ends it first. Bounds how much page text a single binding
+   * retains — Stage 7E's "retain only the minimum required contextual information". */
+  EVIDENCE_VALUE_WINDOW_CHARS: 64,
+  /** A normalized value appearing on at least this many distinct targets in one capture is
+   * catalogue/table furniture, not personal data — negative evidence (evidence/negative.ts). */
+  EVIDENCE_REPEAT_NEGATIVE_N: 3,
 } as const;
 
 export type AegisConfig = typeof AEGIS_CONFIG;

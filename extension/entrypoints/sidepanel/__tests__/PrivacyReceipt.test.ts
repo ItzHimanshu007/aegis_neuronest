@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { explainEvidence } from '../PrivacyPreview';
 import { parseSealed, countTokens, tallyCategories, tallyLayers } from '../PrivacyReceipt';
 import type { PreviewDetection } from '../../../agentHost';
 
@@ -16,6 +17,7 @@ function det(overrides: Partial<PreviewDetection> = {}): PreviewDetection {
     category: 'EMAIL',
     sources: ['rule'],
     confidence: 0.9,
+    certainty: 'detected',
     action: 'FILL',
     targetKind: 'element',
     targetRef: 'fp-1',
@@ -87,5 +89,21 @@ describe('tallyLayers', () => {
   it('excludes ALLOW detections', () => {
     const detections = [det({ sources: ['visual'], action: 'ALLOW' })];
     expect(tallyLayers(detections)).toEqual([]);
+  });
+});
+
+describe('Stage 7H: explainEvidence', () => {
+  it('turns signal names into plain language', () => {
+    expect(explainEvidence(['checksum_pass', 'inline_label_bound']))
+      .toBe('why: passes its checksum · a nearby label names it');
+  });
+
+  it('explains negative evidence too, so an absent detection is also accountable', () => {
+    expect(explainEvidence(['non_pii_container'])).toContain('reference/catalogue');
+  });
+
+  it('never echoes a raw signal name it does not recognise', () => {
+    expect(explainEvidence(['something_new'])).toBe('');
+    expect(explainEvidence([])).toBe('');
   });
 });

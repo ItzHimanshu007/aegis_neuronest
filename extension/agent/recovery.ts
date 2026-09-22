@@ -33,6 +33,7 @@ export const FAILURE_REASON: Record<FailureCode, string> = {
   EXPECT_FAILED: 'the page did not end up the way the step promised',
   UNVERIFIABLE: 'it cannot confirm whether that worked',
   DONE_UNVERIFIED: 'it says it is finished but cannot show that it is',
+  REQUIREMENTS_UNMET: 'it says it is finished, but a value you gave it is not on the page',
   BUDGET_EXHAUSTED: 'it has used up the time and steps allowed for one task',
   LOOP_DETECTED: 'it is going round in circles',
   NO_PROGRESS: 'it is not getting anywhere',

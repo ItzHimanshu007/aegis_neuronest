@@ -30,6 +30,16 @@ it.each(['fast','balanced','accurate'] as const)('sensing %s separates server im
  expect(second).toMatchObject({reuse:true,serverImage:'none'});
  expect(countSensing(countSensing(emptyCounters(),first),second)).toEqual({steps:2,domOnly:2,reused:1,visionRequired:0,ocrRequired:0,highResEscalations:0});
 });
+// The router already withholds the image on SAME_SCREEN, so a task pays for one per screen. A user
+// who chooses text-only is asking for none at all — including on the NEW_SCREEN step that would
+// otherwise always carry one. Measured: ~1.3s and ~1,000 prompt tokens per screen.
+it.each(['fast','balanced','accurate'] as const)('sensing %s withholds the image entirely when asked',mode=>{
+ const s=scene(), meta={screen:s.screen,captureId:'c'};
+ expect(decideSensing(undefined,meta,mode,{elements:25},false)).toMatchObject({serverImage:'none',reuse:false});
+ expect(decideSensing(s,{...meta,screen:{decision:'SAME_SCREEN',reason:'input'}},mode,{elements:25},false)).toMatchObject({serverImage:'none',reuse:true});
+ // Default stays vision-on: withholding is a choice, never something a caller gets by omission.
+ expect(decideSensing(undefined,meta,mode,{elements:25}).serverImage).toBe(mode);
+});
 it('linkability accumulates distinct quasi categories per origin and resets at task end',()=>{
  const state=new SessionPrivacyState();
  const det=(category:Category)=>({id:'d',capture_id:'c',source:'field_context' as const,category,confidence:.8,target:{kind:'text_span' as const,ref:'t'},rects:[]});

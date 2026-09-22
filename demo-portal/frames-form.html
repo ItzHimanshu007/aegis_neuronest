@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aegis Demo &mdash; Framed two-field form</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header>
+      <p class="badge">DEMO &mdash; SYNTHETIC DATA. No field on this page identifies a real person.</p>
+    </header>
+
+    <main class="page">
+      <h1>Framed two-field form</h1>
+      <p><a href="/index.html">&larr; back</a></p>
+
+      <p>
+        Both fields live inside a same-origin iframe, so every element the agent acts on is reached
+        through a frame path rather than the top document. Kept separate from
+        <a href="/frames.html">Frames</a>, which the observation tests pin by element name and
+        frame rect.
+      </p>
+
+      <iframe id="two-field-frame" title="Framed two-field form" src="/frame-fields.html"
+              width="420" height="170" style="border: 1px solid #ccc; border-radius: 6px;"></iframe>
+    </main>
+  </body>
+</html>

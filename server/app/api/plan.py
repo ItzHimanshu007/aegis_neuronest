@@ -51,6 +51,7 @@ async def plan(
     response: Response,
     x_aegis_digest: str | None = Header(default=None),
     x_aegis_mock_scenario: str | None = Header(default=None),
+    x_aegis_provider: str | None = Header(default=None),
     settings: Settings = Depends(get_settings),
     store: SessionStore = Depends(get_store),
 ) -> PlanV2:
@@ -93,15 +94,28 @@ async def plan(
 
     adapter: VLMAdapter = settings.adapter
     history = store.history_for_prompt(payload.session)
-    result = await _call_adapter(adapter, payload, history)
+    result = await _call_adapter(adapter, payload, history, x_aegis_provider)
     _record_and_annotate(
         store, payload, result, response, timings=getattr(adapter, "last_metrics", None)
     )
     return result
 
 
-async def _call_adapter(adapter: VLMAdapter, payload: PayloadV2, history: list[str]) -> PlanV2:
-    """The mock adapter predates the history argument; only pass it to adapters that take one."""
+async def _call_adapter(
+    adapter: VLMAdapter,
+    payload: PayloadV2,
+    history: list[str],
+    provider: str | None = None,
+) -> PlanV2:
+    """Adapters were added in layers: the mock predates the history argument, and only the
+    rotating adapter understands a provider pin. Offer each argument, fall back when it is not
+    accepted. The pin names a provider this server already has configured — it can never introduce
+    an endpoint, so it carries no ability to redirect where a payload goes."""
+    if provider:
+        try:
+            return await adapter.plan(payload, history, provider)  # type: ignore[call-arg]
+        except TypeError:
+            pass
     try:
         return await adapter.plan(payload, history)  # type: ignore[call-arg]
     except TypeError:

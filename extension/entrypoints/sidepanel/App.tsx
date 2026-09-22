@@ -12,6 +12,7 @@ import type { RawElement } from '../../observe/types';
 import { AEGIS_CONFIG } from '../../shared/config';
 import { isFaceModelLoaded } from '../../perception/faceModel';
 import { getLastFaceRegionTimings } from '../../privacy/detect/hooks';
+import { setEvidenceLayerEnabled } from '../../privacy/detect/evidence/flag';
 
 type ServerStatus = 'checking' | 'online' | 'offline';
 
@@ -100,6 +101,12 @@ export default function App() {
   useEffect(() => {
     (window as unknown as { __aegisIsFaceModelLoaded?: () => boolean }).__aegisIsFaceModelLoaded = isFaceModelLoaded;
     (window as unknown as { __aegisLastFaceRegionTimings?: () => ReturnType<typeof getLastFaceRegionTimings> }).__aegisLastFaceRegionTimings = getLastFaceRegionTimings;
+    // Stage 7, test-only: lets e2e/stage7.spec.ts run the BASELINE and STAGE 7 arms over the same
+    // corpus in the SAME BUILD. Measuring the two arms from two different builds would make the
+    // reported delta partly a build difference, which is the one thing that comparison must not
+    // be. Same convention and same risk profile as the hooks above: this is the extension's own
+    // side-panel document, which no web page can script.
+    (window as unknown as { __aegisSetEvidenceLayer?: (enabled: boolean | undefined) => void }).__aegisSetEvidenceLayer = setEvidenceLayerEnabled;
     // Labelled masks, test-only: `verifyMasks()` is a canvas check, so its regression cases have to
     // run in a real browser rather than in Vitest. Exposing the two functions here lets
     // e2e/mask-labels.spec.ts drive them on SYNTHETIC images it builds itself — it never needs a

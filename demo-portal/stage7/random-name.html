@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stage 7 &mdash; random field names</title>
+    <link rel="stylesheet" href="/src/style.css" />
+    <style>
+      section { border: 1px solid #ddd; border-radius: 6px; padding: 12px 16px; margin-bottom: 16px; }
+      h2 { margin-top: 0; font-size: 15px; }
+      .kv { display: grid; grid-template-columns: 220px 1fr; gap: 6px 12px; font-size: 13px; }
+      .kv dt { font-weight: 600; } .kv dd { margin: 0; }
+      table { border-collapse: collapse; font-size: 13px; }
+      th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
+      label { display: block; font-size: 13px; margin: 8px 0 2px; }
+      input { font-size: 13px; padding: 4px 6px; width: 260px; }
+      p, li { font-size: 13px; }
+      iframe { width: 340px; height: 120px; border: 1px solid #ccc; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p class="badge">STAGE 7 FIXTURE &mdash; SYNTHETIC DATA. Every value is fabricated.</p>
+    </header>
+    <main class="page">
+      <h1>Stage 7 &mdash; random field names</h1>
+      <p><a href="/index.html">&larr; back</a> &middot; see <code>demo-portal/stage7/README.md</code> for the labelling rule.</p>
+
+      <section>
+        <h2>Transfer to beneficiary</h2>
+        <form>
+          <label for="q7x2fa">&nbsp;</label>
+          <input id="q7x2fa" name="q7x2fa" type="text" value="3941 8276 5016" maxlength="14"
+                 inputmode="numeric" data-gt="AADHAAR" data-gt-label="random" data-gt-construct="input" />
+          <label for="zz91kd">&nbsp;</label>
+          <input id="zz91kd" name="zz91kd" type="email" value="rohit.menon@example.com"
+                 data-gt="EMAIL" data-gt-label="random" data-gt-construct="input" />
+          <label for="bb34qq">&nbsp;</label>
+          <input id="bb34qq" name="bb34qq" type="text" value="560001" maxlength="6" inputmode="numeric"
+                 autocomplete="postal-code" data-gt="PIN_CODE" data-gt-label="random" data-gt-construct="input" />
+          <label for="k1p8zr">&nbsp;</label>
+          <input id="k1p8zr" name="k1p8zr" type="tel" value="9876543210" maxlength="10"
+                 data-gt="PHONE" data-gt-label="random" data-gt-construct="input" />
+        </form>
+      </section>
+    </main>
+  </body>
+</html>

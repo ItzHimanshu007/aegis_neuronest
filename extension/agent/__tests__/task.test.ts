@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { taskReducer, TASK_STATES, cancellable } from '../../agentHost/task/state';
 import { Recovery } from '../recovery';
 import { verify } from '../verifier';
-import { scene } from '../../scene/__tests__/fixtures';
+import { scene, element } from '../../scene/__tests__/fixtures';
+import { RequirementLedger, checkRequirements } from '../requirements';
 import { consentRequest } from '../../agentHost/task/consent';
 import { PrivacySession } from '../../agentHost/session';
 import { TokenVault } from '../../privacy/vault';
@@ -102,4 +103,86 @@ it('clearing a vault during an asynchronous token operation cannot restore secre
   const spy=vi.spyOn(crypto.subtle,'sign').mockImplementation(async(...args)=>{await gate;return sign(...args);});
   const pending=vault.tokenize('EMAIL','synthetic@example.test',{source:'task',origin:'https://example.test'});
   vault.clear();release();await expect(pending).rejects.toThrow('ended');expect(vault.allTokens()).toEqual([]);spy.mockRestore();
+});
+
+// --- Task requirement ledger: multi-field completion the plan schema cannot express ---
+// `plan.v2` gives `done` ONE `evidence` with at most one `eid`, forbids `target` on it, and
+// runAgentLoop stops at the first `done`. So for "fill in my name and email", the best claim a
+// model can make is `{eid:E1,has_value:true}` — which PASSED while the email beside it was still
+// empty (a real false-accept), and every other form is unsatisfiable by construction. Real runs
+// ended DONE_UNVERIFIED/falseSuccess after 10 replans. The ledger is the client's own record of
+// which supplied values actually landed, checked against a fresh scene.
+describe('task requirement ledger',()=>{
+  const two=()=>[element({fp:'fpa',nodeRef:'n1',name:'Full name',labelText:'Full name',inputType:'text',value:'',hasValue:false}),
+    element({fp:'fpb',nodeRef:'n2',name:'Email',labelText:'Email',value:'',hasValue:false})];
+  const filled=(...names:string[])=>two().map(e=>names.includes(e.name!)?{...e,value:'x@example.test',hasValue:true}:e);
+  const done={action:'done'} as const, ev={eid:'E1',has_value:true} as const;
+
+  it('empty requirements leave done verification exactly as it was',()=>
+    expect(verify(ev,scene(),done,undefined,{required:[],placements:[]}).verdict).toBe('PASS'));
+
+  // The headline bug: this evidence passes on its own merits and must no longer carry the task.
+  it('a required value that was never placed fails a done that its own evidence would pass',()=>{
+    expect(verify(ev,scene(),done).verdict).toBe('PASS');
+    expect(verify(ev,scene(),done,undefined,{required:['tokenA'],placements:[]}))
+      .toEqual({verdict:'FAIL',code:'REQUIREMENTS_UNMET'});
+  });
+
+  it.each([
+    ['both placed and still filled',['Full name','Email'],[['tokenA','E1'],['tokenB','E2']],'PASS'],
+    ['one of two placed',['Full name'],[['tokenA','E1']],'FAIL'],
+    ['placed but the page reverted it',[],[['tokenA','E1'],['tokenB','E2']],'FAIL'],
+  ] as const)('%s',(_name,fill,places,verdict)=>{
+    const s=scene(filled(...fill));
+    const placements=places.map(([token,eid])=>({token,eid:eid as `E${number}`,screenEpoch:1}));
+    expect(verify(ev,s,done,undefined,{required:['tokenA','tokenB'],placements}).verdict).toBe(verdict);
+  });
+
+  it('a placement whose element vanished on the SAME screen is unmet',()=>
+    expect(verify(ev,scene(filled('Full name')),done,undefined,
+      {required:['tokenA'],placements:[{token:'tokenA',eid:'E9',screenEpoch:1}]}).verdict).toBe('FAIL'));
+
+  // EIDs are retired permanently by scene/registry.ts, so after a navigation a good placement
+  // points at an EID that can never reappear. Failing there would punish a finished task for the
+  // page having moved on.
+  it('a placement whose element vanished after the screen changed is satisfied by history',()=>
+    expect(verify(ev,scene(filled('Full name'),undefined,{},2),done,undefined,
+      {required:['tokenA'],placements:[{token:'tokenA',eid:'E9',screenEpoch:1}]}).verdict).toBe('PASS'));
+
+  it('gates done only — other actions are untouched by an unmet ledger',()=>
+    expect(verify({has_value:true,eid:'E1'},scene(),{action:'click'},undefined,{required:['tokenA'],placements:[]}).verdict).toBe('PASS'));
+
+  it('a value mismatch still outranks the ledger',()=>
+    expect(verify(ev,scene(),{action:'type',target:{eid:'E1',fp:'fp'}},{ok:true,match:false},{required:['tokenA'],placements:[]}))
+      .toEqual({verdict:'FAIL',code:'VALUE_MISMATCH'}));
+
+  it('unmet requirements outrank vacuous evidence, so the reason reported is the real one',()=>
+    expect(verify({url_path_prefix:'/'},scene(),done,undefined,{required:['tokenA'],placements:[]}))
+      .toEqual({verdict:'FAIL',code:'REQUIREMENTS_UNMET'}));
+});
+
+describe('requirement ledger bookkeeping',()=>{
+  // Keyed by token, not category: vault.tokenize() de-dupes on (type, normalized value), so two
+  // NAME rows with different values are two tokens and one filled field must not satisfy both.
+  it('tracks each required token separately',()=>{
+    const ledger=new RequirementLedger();ledger.require('a');ledger.require('a');ledger.require('b');
+    ledger.place('a','E1',1);
+    expect(checkRequirements(ledger.view(()=>true),scene()).verdict).toBe('UNMET');
+    expect(ledger.view(()=>true).required).toEqual(['a','b']);
+  });
+  // Typing a second value into the same field overwrites the first; the first must stop counting.
+  it('a re-typed field stops satisfying the value it replaced',()=>{
+    const ledger=new RequirementLedger();ledger.require('a');ledger.require('b');
+    ledger.place('a','E1',1);ledger.place('b','E1',1);
+    const check=checkRequirements(ledger.view(()=>true),scene());
+    expect(check).toEqual({verdict:'UNMET',unmet:['a']});
+  });
+  it('drops requirements the origin has no consent for',()=>{
+    const ledger=new RequirementLedger();ledger.require('a');ledger.require('b');ledger.place('a','E1',1);
+    expect(checkRequirements(ledger.view(t=>t==='a'),scene()).verdict).toBe('SATISFIED');
+  });
+  it('a waiver clears every outstanding requirement',()=>{
+    const ledger=new RequirementLedger();ledger.require('a');ledger.waiveAll();
+    expect(checkRequirements(ledger.view(()=>true),scene()).verdict).toBe('SATISFIED');
+  });
 });

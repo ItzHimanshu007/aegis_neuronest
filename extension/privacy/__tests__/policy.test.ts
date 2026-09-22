@@ -238,3 +238,65 @@ describe('canTokenizeFromPage', () => {
     }
   });
 });
+
+/**
+ * Stage 7J — uncertainty is fail-closed.
+ *
+ * The contract, in one sentence: an uncertain detection is MASKED and never TOKENIZED. Everything
+ * below is a way of saying that from a different direction, because a token is the artifact that
+ * carries a value off the device in reusable form and a mask is the artifact that does not.
+ */
+describe('Stage 7: uncertain detections', () => {
+  const ctx = { necessity: 'needed' as const, identitySeenOnOrigin: true, userOverrides: {} };
+  const uncertain = (category: Category) => det(category, 0.5, { certainty: 'uncertain' });
+
+  it.each<[Category, Action]>([
+    ['AADHAAR', 'FILL'],
+    ['CARD_NUMBER', 'FILL'],
+    ['NAME', 'FILL'],
+    ['EMAIL', 'FILL'],
+    ['FINANCIAL_VALUE', 'FILL'],
+    ['PIN_CODE', 'FILL'],
+  ])('a needed %s that is uncertain is masked, not tokenized (%s)', (category, expected) => {
+    expect(decide(uncertain(category), ctx)).toBe(expected);
+  });
+
+  it('the same detection, confident, IS tokenized — so the mask is the uncertainty, not the category', () => {
+    expect(decide(det('AADHAAR'), ctx)).toBe('TOKEN_WITH_APPROVAL');
+    expect(decide(det('NAME'), ctx)).toBe('TOKEN');
+  });
+
+  it('a user override cannot loosen an uncertain detection', () => {
+    const loosened = { ...ctx, userOverrides: { NAME: 'ALLOW' as Action } };
+    expect(decide(uncertain('NAME'), loosened)).toBe('FILL');
+    // ...but it still applies to a confident one, so the override is not simply broken.
+    expect(decide(det('NAME'), loosened)).toBe('ALLOW');
+  });
+
+  it('never marks an origin identity-seen', () => {
+    const state = new SessionPrivacyState();
+    state.observeDetections('https://a.test', [uncertain('AADHAAR')]);
+    expect(state.hasIdentitySeen('https://a.test')).toBe(false);
+
+    state.observeDetections('https://a.test', [det('AADHAAR')]);
+    expect(state.hasIdentitySeen('https://a.test')).toBe(true);
+  });
+
+  it('never counts toward the linkability K', () => {
+    const state = new SessionPrivacyState();
+    state.observeDetections('https://b.test', [
+      uncertain('CITY'), uncertain('PIN_CODE'), uncertain('EMPLOYER'),
+    ]);
+    expect(state.hasLinkability('https://b.test', 3)).toBe(false);
+  });
+
+  it('is strictly more private than the pre-Stage-7 behaviour, which sent an undetected value as-is', () => {
+    // There is no path by which uncertainty produces ALLOW for any PII class.
+    const categories: Category[] = ['AADHAAR', 'PAN', 'NAME', 'EMAIL', 'CITY', 'ORDER_ID', 'FINANCIAL_VALUE'];
+    for (const category of categories) {
+      for (const necessity of ['needed', 'not_needed'] as const) {
+        expect(decide(uncertain(category), { ...ctx, necessity })).not.toBe('ALLOW');
+      }
+    }
+  });
+});

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aegis Demo &mdash; Controlled inputs</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header>
+      <p class="badge">DEMO &mdash; SYNTHETIC DATA. No field on this page identifies a real person.</p>
+    </header>
+
+    <main class="page">
+      <h1>Controlled inputs</h1>
+      <p><a href="/index.html">&larr; back</a></p>
+
+      <p>
+        These fields do not own their own values. A module-level state object does, and every
+        <code>input</code> event writes the state back onto the element &mdash; the pattern React,
+        Vue and Angular produce. A naive fill that only assigns <code>el.value</code> is undone by
+        the next event; the executor's native-setter write survives it.
+      </p>
+      <p>
+        <a href="/controlled.html?revert=c-full-name">Same page, but the form silently drops the
+        first field</a> once a later one is filled &mdash; a value that was really typed, and really
+        lost afterwards.
+      </p>
+
+      <form id="controlled-form" autocomplete="off">
+        <div class="field">
+          <label for="c-full-name">Full name</label>
+          <input id="c-full-name" name="c-full-name" type="text" />
+        </div>
+
+        <div class="field">
+          <label for="c-email">Email address</label>
+          <input id="c-email" name="c-email" type="email" placeholder="you@example.com" />
+        </div>
+
+        <button id="c-submit" type="submit">Save</button>
+      </form>
+
+      <p id="c-submitted-status" hidden>Saved.</p>
+    </main>
+
+    <script type="module" src="/src/controlled.ts"></script>
+  </body>
+</html>

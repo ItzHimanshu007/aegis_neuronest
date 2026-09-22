@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stage 7 &mdash; misleading labels</title>
+    <link rel="stylesheet" href="/src/style.css" />
+    <style>
+      section { border: 1px solid #ddd; border-radius: 6px; padding: 12px 16px; margin-bottom: 16px; }
+      h2 { margin-top: 0; font-size: 15px; }
+      .kv { display: grid; grid-template-columns: 220px 1fr; gap: 6px 12px; font-size: 13px; }
+      .kv dt { font-weight: 600; } .kv dd { margin: 0; }
+      table { border-collapse: collapse; font-size: 13px; }
+      th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
+      label { display: block; font-size: 13px; margin: 8px 0 2px; }
+      input { font-size: 13px; padding: 4px 6px; width: 260px; }
+      p, li { font-size: 13px; }
+      iframe { width: 340px; height: 120px; border: 1px solid #ccc; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p class="badge">STAGE 7 FIXTURE &mdash; SYNTHETIC DATA. Every value is fabricated.</p>
+    </header>
+    <main class="page">
+      <h1>Stage 7 &mdash; misleading labels</h1>
+      <p><a href="/index.html">&larr; back</a> &middot; see <code>demo-portal/stage7/README.md</code> for the labelling rule.</p>
+
+      <section>
+        <h2>Customer record</h2>
+        <p>Each label below names the WRONG category. The value must still be detected for what it is.</p>
+        <dl class="kv">
+          <dt>Order number</dt><dd data-gt="AADHAAR" data-gt-label="misleading" data-gt-construct="list">4720 5318 6927</dd>
+          <dt>Product code</dt><dd data-gt="EMAIL" data-gt-label="misleading" data-gt-construct="list">rohit.menon@example.com</dd>
+          <dt>Quantity</dt><dd data-gt="CARD_NUMBER" data-gt-label="misleading" data-gt-construct="list">4556 1237 8901 2341</dd>
+          <dt>Batch reference</dt><dd data-gt="IFSC" data-gt-label="misleading" data-gt-construct="list">HDFC0001234</dd>
+          <dt>Shelf label</dt><dd data-gt="UPI_ID" data-gt-label="misleading" data-gt-construct="list">meera@okaxis</dd>
+        </dl>
+      </section>
+    </main>
+  </body>
+</html>

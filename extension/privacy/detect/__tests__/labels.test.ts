@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isSecretLabel, matchLabelCategories, normalizeLabel } from '../labels';
+import { isSecretLabel, matchLabelCategories, normalizeLabel, matchLabels } from '../labels';
 
 describe('normalizeLabel', () => {
   it('lowercases, strips punctuation, collapses whitespace', () => {
@@ -111,5 +111,42 @@ describe('labels that name a person rather than the thing they belong to', () =>
 
   it('does not let the account-holder phrases claim a plain account label', () => {
     expect(matchLabelCategories('Account number')).not.toContain('NAME');
+  });
+});
+
+describe('Stage 7: generic head-noun tie-break', () => {
+  // Stage 4 held-out reported three CITY values as NAME and one UPI_ID as ADDRESS. Both were
+  // equal-length phrase ties resolved by dictionary order. The qualifier carries the category.
+  it.each([
+    ['City name', 'CITY'],
+    ['Town / city', 'CITY'],
+    ['District / city', 'CITY'],
+    ['UPI address', 'UPI_ID'],
+    ['Company name', 'EMPLOYER'],
+  ])('%s resolves to %s, not the generic head noun', (label, expected) => {
+    expect(matchLabelCategories(label)[0]).toBe(expected);
+  });
+
+  it.each([
+    ['Account holder name', 'NAME'],
+    ['Registered name', 'NAME'],
+    ['Email address', 'EMAIL'],
+    ['Residential address', 'ADDRESS'],
+    ['Card number', 'CARD_NUMBER'],
+    ['Bank account no.', 'BANK_ACCOUNT'],
+    ['Order number', 'ORDER_ID'],
+    ['PIN code', 'PIN_CODE'],
+    ['Security code', 'CVV'],
+  ])('%s is unchanged and still resolves to %s', (label, expected) => {
+    expect(matchLabelCategories(label)[0]).toBe(expected);
+  });
+
+  it('prefers the more specific phrase over a shorter one in the same label', () => {
+    expect(matchLabelCategories('Permanent account number')[0]).toBe('PAN');
+  });
+
+  it('matchLabels reports the matched phrase length, most specific first', () => {
+    const [best] = matchLabels('Permanent account number');
+    expect(best).toEqual({ category: 'PAN', phraseLength: 'permanent account number'.length });
   });
 });

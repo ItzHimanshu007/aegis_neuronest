@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 
 from app.vlm.base import VLMAdapter
 from app.vlm.mock_adapter import MockAdapter
@@ -57,6 +58,41 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
+# Endpoints for providers that speak the OpenAI chat-completions shape, so a rotating setup needs
+# only a key per provider. An unknown name is fine — supply its BASE_URL and MODEL explicitly.
+PROVIDER_DEFAULTS: dict[str, dict[str, Any]] = {
+    "groq": {
+        "base_url": "https://api.groq.com/openai/v1",
+        "model": "qwen/qwen3.8-27b",
+    },
+    "gemini": {
+        # AI Studio's OpenAI-compatible surface.
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+        # A *lite* model on purpose. Measured on the real sealed KYC payload, 3 runs each:
+        #   gemini-3.6-flash       9973ms   ~640 thinking tokens before any output
+        #   gemini-3.1-flash-lite  3445ms   0 thinking tokens, still plans BOTH fields in one call
+        #   gemini-flash-lite-latest 1626ms 0 thinking tokens, but plans ONE field per call
+        # The last is fastest per call and slowest per TASK: a second round trip costs another
+        # observation and another chance for the page to move under us. Planning is a short,
+        # heavily-constrained JSON emission against an explicit element list — the reasoning a
+        # thinking model spends ten seconds on buys nothing here.
+        "model": "gemini-3.1-flash-lite",
+        # Thinking tokens are billed against max_tokens, so a budget sized for Groq truncated the
+        # answer to nothing on a reasoning model: finish_reason "length" with zero completion
+        # tokens. Gemini meters requests per minute rather than output tokens per minute, so the
+        # headroom costs nothing here in a way it would on Groq.
+        "max_tokens": 2000,
+    },
+    "openai": {"base_url": "https://api.openai.com/v1", "model": "gpt-4o-mini"},
+    "openrouter": {
+        "base_url": "https://openrouter.ai/api/v1",
+        "model": "qwen/qwen2.5-vl-72b-instruct",
+    },
+    # Local runtimes need no credential.
+    "ollama": {"base_url": "http://localhost:11434/v1", "model": "qwen2.5vl", "needs_key": False},
+}
+
+
 class Settings:
     def __init__(self) -> None:
         load_env_file()
@@ -81,9 +117,32 @@ class Settings:
         self.llm_json_mode: JsonMode = os.environ.get("AEGIS_LLM_JSON_MODE", "json_object")
         self.llm_image_detail = os.environ.get("AEGIS_LLM_IMAGE_DETAIL", "auto")
 
+        # Rotation (AEGIS_ADAPTER=rotating). An ordered, explicit list — a provider is never
+        # inferred, because adding one decides who receives sealed payloads.
+        self.llm_providers = [
+            name.strip().lower()
+            for name in os.environ.get("AEGIS_LLM_PROVIDERS", "").split(",")
+            if name.strip()
+        ]
+
         self.session_ttl_s = _env_float("AEGIS_SESSION_TTL_S", 900.0)
 
-        self.adapter: VLMAdapter = self._build_adapter()
+        self._adapter: VLMAdapter | None = None
+
+    @property
+    def adapter(self) -> VLMAdapter:
+        """Built on first use, not in __init__.
+
+        `app/main.py` calls `get_settings()` at module import to name the app version, so an
+        eagerly-built adapter made merely IMPORTING the app read this machine's `server/.env` and
+        construct real provider clients from it. The test suite's `_isolate_environment` fixture
+        sets AEGIS_IGNORE_ENV_FILE, but a fixture cannot run before conftest's own imports — so a
+        developer's private .env decided whether the suite could even be collected. A misconfigured
+        provider list took every test down with an ImportError in conftest.
+        """
+        if self._adapter is None:
+            self._adapter = self._build_adapter()
+        return self._adapter
 
     def _build_adapter(self) -> VLMAdapter:
         if self.adapter_name == "mock":
@@ -101,7 +160,56 @@ class Settings:
                 json_mode=self.llm_json_mode,
                 image_detail=self.llm_image_detail,
             )
+        if self.adapter_name == "rotating":
+            return self._build_rotating_adapter()
         raise ValueError(f"Unknown AEGIS_ADAPTER: {self.adapter_name!r}")
+
+    def _provider_setting(self, provider: str, suffix: str, default: str | None) -> str | None:
+        """Per-provider override, else the known default. Never falls back to another provider's
+        value: a missing key must fail loudly, not silently reuse the wrong credential."""
+        return os.environ.get(f"AEGIS_LLM_{provider.upper()}_{suffix}") or default
+
+    def _build_rotating_adapter(self) -> VLMAdapter:
+        from app.vlm.openai_compatible_adapter import OpenAICompatibleAdapter
+        from app.vlm.rotating_adapter import RotatingAdapter
+
+        if not self.llm_providers:
+            raise ValueError("AEGIS_ADAPTER=rotating requires AEGIS_LLM_PROVIDERS")
+
+        providers: list[tuple[str, object]] = []
+        for name in self.llm_providers:
+            known = PROVIDER_DEFAULTS.get(name, {})
+            base_url = self._provider_setting(name, "BASE_URL", known.get("base_url"))
+            model = self._provider_setting(name, "MODEL", known.get("model"))
+            api_key = self._provider_setting(name, "API_KEY", None)
+            max_tokens = _env_int(
+                f"AEGIS_LLM_{name.upper()}_MAX_TOKENS",
+                int(known.get("max_tokens", self.llm_max_tokens)),
+            )
+            if not base_url or not model:
+                raise ValueError(
+                    f"Provider {name!r} needs AEGIS_LLM_{name.upper()}_BASE_URL and "
+                    f"AEGIS_LLM_{name.upper()}_MODEL (no built-in default for this name)"
+                )
+            if api_key is None and known.get("needs_key", True):
+                raise ValueError(f"Provider {name!r} needs AEGIS_LLM_{name.upper()}_API_KEY")
+            providers.append(
+                (
+                    name,
+                    OpenAICompatibleAdapter(
+                        base_url=base_url,
+                        model=model,
+                        api_key=api_key,
+                        timeout_s=self.llm_timeout_s,
+                        max_tokens=max_tokens,
+                        temperature=self.llm_temperature,
+                        json_mode=self._provider_setting(name, "JSON_MODE", self.llm_json_mode)
+                        or self.llm_json_mode,
+                        image_detail=self.llm_image_detail,
+                    ),
+                )
+            )
+        return RotatingAdapter(providers)
 
 
 @lru_cache

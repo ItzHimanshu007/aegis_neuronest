@@ -1,11 +1,20 @@
 import type { Expect, Action } from '../shared/schema/plan.v2';
 import type { SceneGraph, EID } from '../scene';
 import type { ExecutionResult } from './executor';
-export type Verification = { verdict: 'PASS' } | { verdict: 'FAIL'; code: 'VALUE_MISMATCH' | 'EXPECT_FAILED' | 'EXEC_UNTRUSTED_REJECTED' } | { verdict: 'UNVERIFIABLE'; code: 'UNVERIFIABLE' };
+import { checkRequirements, type RequirementsView } from './requirements';
+export type Verification = { verdict: 'PASS' } | { verdict: 'FAIL'; code: 'VALUE_MISMATCH' | 'EXPECT_FAILED' | 'EXEC_UNTRUSTED_REJECTED' | 'REQUIREMENTS_UNMET' } | { verdict: 'UNVERIFIABLE'; code: 'UNVERIFIABLE' };
 
 /** Checks sanitized scene facts only. Secret value comparison is never performed here. */
-export function verify(expect: Expect | undefined, scene: SceneGraph, action?: Action, execution?: ExecutionResult): Verification {
+export function verify(expect: Expect | undefined, scene: SceneGraph, action?: Action, execution?: ExecutionResult, requirements?: RequirementsView): Verification {
   if (action?.action === 'type' && execution?.match === false) return { verdict: 'FAIL', code: 'VALUE_MISMATCH' };
+  // A `done` must clear the client's own ledger as well as its stated evidence. `plan.v2` gives
+  // `done` a single `evidence` with at most one `eid`, so the strongest claim a model can make
+  // about a two-field task proves one field; `{eid:E1,has_value:true}` passed below while the
+  // email beside it was still empty. The ledger is the fact the plan schema cannot carry. This
+  // only ever REMOVES accepts: evidence must still pass on its own merits underneath.
+  if (action?.action === 'done' && requirements && checkRequirements(requirements, scene).verdict === 'UNMET') {
+    return { verdict: 'FAIL', code: 'REQUIREMENTS_UNMET' };
+  }
   if (!expect) return { verdict: 'UNVERIFIABLE', code: 'UNVERIFIABLE' };
   const eid = expect.eid ?? action?.target?.eid;
   const el = eid ? scene.elements.get(eid as EID) : undefined;

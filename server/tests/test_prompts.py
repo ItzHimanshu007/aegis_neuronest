@@ -51,6 +51,9 @@ class TestSystemPrompt:
             "evidence",
             "ask_user",
             "confirmed by the user",
+            "done` is a CLAIM",
+            "each requires an eid",
+            "REQUIREMENTS_UNMET",
         ],
     )
     def test_covers_each_required_instruction(self, required):
@@ -61,6 +64,19 @@ class TestSystemPrompt:
 
     def test_has_a_version(self):
         assert PROMPT_VERSION
+
+    def test_done_examples_are_never_placeholders(self):
+        """The prompt's only `done` template used to be `text_present:"visible proof"` — a literal
+        that matches no page, so every completion claim built from it was refused. `text_present`
+        also only ever searches page TEXT, so it can never show that an input was filled."""
+        assert '"visible proof"' not in SYSTEM_PROMPT
+        assert '{"action":"done","evidence":{"eid":"COPY","has_value":true}}' in SYSTEM_PROMPT
+
+    def test_a_worked_example_ends_in_a_verifiable_done(self):
+        """Completion was previously modelled only by `ask_user`; nothing showed the model a `done`
+        that passes. This pins the eid-bound example that does."""
+        assistant = [m["content"] for m in FEW_SHOT_EXAMPLES if m["role"] == "assistant"]
+        assert any('"action":"done"' in m and '"eid":"E2"' in m for m in assistant)
 
     def test_few_shot_examples_carry_no_real_data(self):
         blob = " ".join(m["content"] for m in FEW_SHOT_EXAMPLES)

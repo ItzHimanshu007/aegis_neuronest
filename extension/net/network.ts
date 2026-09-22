@@ -40,7 +40,7 @@ export interface SendResult {
  * `as SanitizedPayload` still fails), re-verifies the digest over the exact bytes, and consumes
  * the registry entry so the same payload can never be sent twice.
  */
-export async function send(payload: SanitizedPayload, signal?: AbortSignal): Promise<SendResult> {
+export async function send(payload: SanitizedPayload, signal?: AbortSignal, provider?: string): Promise<SendResult> {
   if (!isRegisteredSealed(payload)) {
     throw new Error('network.send() refused: payload was not produced by firewall.seal() (or has already been sent)');
   }
@@ -62,6 +62,11 @@ export async function send(payload: SanitizedPayload, signal?: AbortSignal): Pro
     headers: {
       'content-type': 'application/json',
       'X-Aegis-Digest': payload.digest,
+      // Which of the server's OWN configured models to prefer, chosen by the user in the panel.
+      // A provider name, never an endpoint: it cannot introduce a destination, so it does not
+      // widen where a sealed payload can go. Restricted to a name shape for the same reason a
+      // header is never built from page data — this one never is.
+      ...(provider && /^[a-z0-9_-]{1,32}$/.test(provider) ? { 'X-Aegis-Provider': provider } : {}),
     },
     body: payload.bytes as unknown as BodyInit,
   });

@@ -26,6 +26,8 @@ export default defineConfig({
   //   baseline.spec.ts        writes eval/reports/stage2-baseline.md + .json
   //   heldout.spec.ts         writes eval/reports/stage4-heldout.md and the replay bundle
   //   privacy-timings.spec.ts writes eval/reports/stage2-timings.md
+  //   stage7.spec.ts          writes eval/reports/stage7-label-independence.md (via
+  //                           playwright.stage7.config.ts -- `pnpm eval:stage7`)
   //
   // The last three are cited by name as sources in docs/deck-facts.md. All four are reachable
   // through playwright.reports.config.ts — `pnpm eval:heldout` and `pnpm eval:timings`. This does
@@ -35,6 +37,7 @@ export default defineConfig({
     '**/baseline.spec.ts',
     '**/heldout.spec.ts',
     '**/privacy-timings.spec.ts',
+    '**/stage7.spec.ts',
   ],
   use: {
     baseURL: 'http://localhost:5174',

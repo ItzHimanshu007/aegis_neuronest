@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stage 7 &mdash; obvious labels (control)</title>
+    <link rel="stylesheet" href="/src/style.css" />
+    <style>
+      section { border: 1px solid #ddd; border-radius: 6px; padding: 12px 16px; margin-bottom: 16px; }
+      h2 { margin-top: 0; font-size: 15px; }
+      .kv { display: grid; grid-template-columns: 220px 1fr; gap: 6px 12px; font-size: 13px; }
+      .kv dt { font-weight: 600; } .kv dd { margin: 0; }
+      table { border-collapse: collapse; font-size: 13px; }
+      th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
+      label { display: block; font-size: 13px; margin: 8px 0 2px; }
+      input { font-size: 13px; padding: 4px 6px; width: 260px; }
+      p, li { font-size: 13px; }
+      iframe { width: 340px; height: 120px; border: 1px solid #ccc; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p class="badge">STAGE 7 FIXTURE &mdash; SYNTHETIC DATA. Every value is fabricated.</p>
+    </header>
+    <main class="page">
+      <h1>Stage 7 &mdash; obvious labels (control)</h1>
+      <p><a href="/index.html">&larr; back</a> &middot; see <code>demo-portal/stage7/README.md</code> for the labelling rule.</p>
+
+      <section>
+        <h2>Account summary</h2>
+        <dl class="kv">
+          <dt>Aadhaar number</dt><dd data-gt="AADHAAR" data-gt-label="labelled" data-gt-construct="list">3941 8276 5016</dd>
+          <dt>Email address</dt><dd data-gt="EMAIL" data-gt-label="labelled" data-gt-construct="list">asha.verma@example.com</dd>
+          <dt>Mobile number</dt><dd data-gt="PHONE" data-gt-label="labelled" data-gt-construct="list">9876543210</dd>
+          <dt>Account number</dt><dd data-gt="BANK_ACCOUNT" data-gt-label="labelled" data-gt-construct="list">5853936029031980</dd>
+          <dt>PIN code</dt><dd data-gt="PIN_CODE" data-gt-label="labelled" data-gt-construct="list">560001</dd>
+        </dl>
+      </section>
+    </main>
+  </body>
+</html>

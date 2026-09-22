@@ -15,11 +15,11 @@ export function observation(elements = [element()], overrides: Partial<Observati
     screenshot: { dataUrl: '', pxW: 800, pxH: 600, scaleX: 1, scaleY: 1 },
     timings: { injectMs: 0, harvestMs: 0, captureMs: 0, totalMs: 0 }, counts: { elements: elements.length, visibleElements: elements.length, hiddenInteractive: 0, media: 0, textBlocks: 0, frames: 1 }, ...overrides });
 }
-export function scene(elements = [element()], registry = new EIDRegistry(), obsOverrides: Partial<Observation> = {}): SceneGraph {
+export function scene(elements = [element()], registry = new EIDRegistry(), obsOverrides: Partial<Observation> = {}, screenEpoch = 1): SceneGraph {
   const obs = observation(elements, obsOverrides); registry.reconcile(obs);
   return buildScene(obs, [], [], registry, { sessionId: 'session', stateTokenId: 'Sabcdefghij',
     stateToken: { mutationCounter: 0, scrollX: 0, scrollY: 0, dpr: 1, visualScale: 1, innerWidth: 800, innerHeight: 600 },
-    screen: { decision: 'NEW_SCREEN', reason: 'test' }, screenEpoch: 1,
+    screen: { decision: 'NEW_SCREEN', reason: 'test' }, screenEpoch,
     mode: 'balanced', url: 'https://example.test/a', title: 'Example', task: 'Fill the form',
     labels: new Map(elements.map(e => [registry.identity(e).eid, e.name])), texts: [], elementDecisions: new Map(), tokensByDetection: new Map() });
 }

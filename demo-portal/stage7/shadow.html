@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stage 7 &mdash; shadow DOM</title>
+    <link rel="stylesheet" href="/src/style.css" />
+    <style>
+      section { border: 1px solid #ddd; border-radius: 6px; padding: 12px 16px; margin-bottom: 16px; }
+      h2 { margin-top: 0; font-size: 15px; }
+      .kv { display: grid; grid-template-columns: 220px 1fr; gap: 6px 12px; font-size: 13px; }
+      .kv dt { font-weight: 600; } .kv dd { margin: 0; }
+      table { border-collapse: collapse; font-size: 13px; }
+      th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
+      label { display: block; font-size: 13px; margin: 8px 0 2px; }
+      input { font-size: 13px; padding: 4px 6px; width: 260px; }
+      p, li { font-size: 13px; }
+      iframe { width: 340px; height: 120px; border: 1px solid #ccc; }
+    </style>
+    <script type="module" src="/src/stage7-shadow.ts"></script>
+  </head>
+  <body>
+    <header>
+      <p class="badge">STAGE 7 FIXTURE &mdash; SYNTHETIC DATA. Every value is fabricated.</p>
+    </header>
+    <main class="page">
+      <h1>Stage 7 &mdash; shadow DOM</h1>
+      <p><a href="/index.html">&larr; back</a> &middot; see <code>demo-portal/stage7/README.md</code> for the labelling rule.</p>
+
+      <section>
+        <h2>Account summary</h2>
+        <p>Unlabelled values inside an OPEN shadow root.</p>
+        <stage7-open-field category="AADHAAR" value="3941 8276 5016"></stage7-open-field>
+        <stage7-open-field category="EMAIL" value="shadow.open@example.com"></stage7-open-field>
+        <stage7-open-field category="FINANCIAL_VALUE" value="&#8377;18,948.52"></stage7-open-field>
+      </section>
+      <section>
+        <h2>Identity documents</h2>
+        <p>Unlabelled values inside a CLOSED shadow root.</p>
+        <stage7-closed-field category="CARD_NUMBER" value="4556 1237 8901 2341"></stage7-closed-field>
+        <stage7-closed-field category="PAN" value="ABCPE1234F"></stage7-closed-field>
+      </section>
+      <section>
+        <h2>Recent reference numbers</h2>
+        <p>Look-alike negatives inside a shadow root must stay negative.</p>
+        <stage7-open-field category="NONE" value="735547520627"></stage7-open-field>
+        <stage7-closed-field category="NONE" value="SKU-2027-788"></stage7-closed-field>
+      </section>
+    </main>
+  </body>
+</html>

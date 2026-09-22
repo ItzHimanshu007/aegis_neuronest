@@ -114,10 +114,19 @@ export function PrivacyPreview({ result }: { result: ProcessResult }) {
               {isLockedCategory(d.category) ? <span className="locked" title="Locked class — user settings cannot downgrade this"> 🔒</span> : null}{' '}
               <span className="action">{d.action}</span>
               <br />
+              {d.certainty === 'uncertain' ? (
+                <span className="uncertain" title="Not confidently classified — masked out of the image, and never sent as a token"> · uncertain</span>
+              ) : null}
               <span className="meta">
                 {d.targetKind === 'element' ? `${d.targetRef} · ` : ''}{d.sources.join('+')} · conf {d.confidence.toFixed(2)} · {d.targetKind}
                 {d.valueLength !== undefined ? ` · value length ${d.valueLength}` : ''} · {d.rectCount} rect(s)
               </span>
+              {d.evidence?.length ? (
+                <>
+                  <br />
+                  <span className="meta">{explainEvidence(d.evidence)}</span>
+                </>
+              ) : null}
             </div>
           ))}
         </div>
@@ -197,4 +206,36 @@ function prettyPrint(json: string): string {
   } catch {
     return json;
   }
+}
+
+/**
+ * Stage 7H — a concise, plain-language reason for one detection.
+ *
+ * Deliberately readable rather than exhaustive: the panel says "matches a known checksum" where
+ * the detector recorded `checksum_pass`. The signal names themselves stay local, and none of this
+ * is ever put in a payload — telling the server, and therefore a hostile page, exactly which
+ * signals fired would be a map of how to evade them.
+ */
+const EVIDENCE_REASONS: Record<string, string> = {
+  checksum_pass: 'passes its checksum',
+  self_describing_shape: 'the value names its own type',
+  structured_shape: 'a distinctive value format',
+  weak_shape: 'a loose value format',
+  inline_label_bound: 'a nearby label names it',
+  autocomplete_match: 'the field\u2019s autocomplete agrees',
+  input_semantics: 'the field type agrees',
+  length_constraint_match: 'the field\u2019s length limit agrees',
+  container_label: 'the surrounding section names it',
+  page_context: 'identity data already seen on this site',
+  checksum_fail_definitional: 'fails the checksum for that identifier',
+  non_pii_container: 'sits in a reference/catalogue section',
+  non_pii_shape: 'matches a known non-personal format',
+  repeated_across_page: 'repeats across the page like table data',
+  in_search_scope: 'typed into a search box',
+  generic_username_shape: 'looks like an ordinary username',
+};
+
+export function explainEvidence(signals: string[]): string {
+  const reasons = signals.map((s) => EVIDENCE_REASONS[s]).filter(Boolean);
+  return reasons.length ? `why: ${reasons.join(' · ')}` : '';
 }

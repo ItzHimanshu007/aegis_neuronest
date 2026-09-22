@@ -35,6 +35,8 @@ export interface ProcessOptions {
   contextDenied?: "BUDGET_EXHAUSTED" | "NO_SAFE_ELEMENTS" | "INVALID_REQUEST";
   taskTokens?: string;
   forceImage?: boolean;
+  /** false withholds the screenshot from the sealed payload on every step. See sensing/index.ts. */
+  sendImage?: boolean;
   signal?: AbortSignal;
   observation: Observation;
   task: string;
@@ -59,6 +61,11 @@ export interface PreviewDetection {
   category: Category;
   sources: string[];
   confidence: number;
+  /** Stage 7J. 'uncertain' means masked but never tokenized — see privacy/detect/types.ts. */
+  certainty: import('../privacy/detect/types').Certainty;
+  /** Stage 7H. Signal names that produced this detection, for the panel's plain-language reason.
+   * Local only: this is preview state, never part of a payload. */
+  evidence?: string[];
   action: Action;
   targetKind: string;
   targetRef: string;
@@ -83,6 +90,8 @@ export interface ProcessResult {
     size: number;
     sealTimings: SealTimings;
     timings: { detectMs: number; policyMs: number; redactMs: number; sealMs: number };
+    /** Stage 7M/7O counters from the evidence layer. Local measurement only; never sent. */
+    evidenceStats: { candidates: number; detected: number; uncertain: number; ms: number };
   };
 }
 
@@ -103,7 +112,14 @@ export async function processObservation(options: ProcessOptions): Promise<Proce
 
   // --- detect ---------------------------------------------------------------------------------
   const detectStart = performance.now();
-  const cascade = await runDetectionCascade({ observation, task, registry: session.registry, knownValues: session.vault.knownValues() });
+  const cascade = await runDetectionCascade({
+    observation,
+    task,
+    registry: session.registry,
+    knownValues: session.vault.knownValues(),
+    // Stage 7C `page_context`: what this origin has already shown us during this task.
+    identitySeenOnOrigin: session.privacyState.hasIdentitySeen(origin),
+  });
 
   // One batched SPAN_RECTS call per capture (Stage 2 Part C.7).
   let detections: MergedDetection[] = cascade.detections;
@@ -159,6 +175,10 @@ export async function processObservation(options: ProcessOptions): Promise<Proce
   for (const { detection, action } of decisions) {
     if (!TOKENIZING_ACTIONS.includes(action)) continue;
     if (!canTokenizeFromPage(detection.category)) continue; // page-sourced secrets are never tokenized
+    // Stage 7J: an uncertain detection is masked, never tokenized and never vaulted. decide()
+    // already forces it off the tokenizing branch; this is the second, independent guard, because
+    // a token is the one artifact that carries a value off the device in reusable form.
+    if (detection.certainty === 'uncertain') continue;
     const rawValue = detection.rawValue as unknown as string | undefined;
     if (!rawValue) continue;
     const token = await session.vault.tokenize(detection.category, rawValue, { origin, source: 'page' });
@@ -258,7 +278,7 @@ export async function processObservation(options: ProcessOptions): Promise<Proce
   const redactMs = performance.now() - redactStart;
 
   // --- build + seal ---------------------------------------------------------------------------
-  const sensing = decideSensing(session.scene, { screen, captureId: scene.capture_id }, mode, { elements: scene.elements.size });
+  const sensing = decideSensing(session.scene, { screen, captureId: scene.capture_id }, mode, { elements: scene.elements.size }, options.sendImage ?? true);
   scene.image = sensing.serverImage === 'none' && !options.forceImage ? undefined : redactResult?.image;
   const draft = buildPayload(toOutboundDraft(scene));
   if (options.history) draft.history = options.history.slice(-25);
@@ -298,6 +318,8 @@ export async function processObservation(options: ProcessOptions): Promise<Proce
         category: detection.category,
         sources: detection.sources,
         confidence: detection.confidence,
+        certainty: detection.certainty ?? 'detected',
+        evidence: detection.evidence,
         action,
         targetKind: detection.target.kind,
         targetRef: detection.target.ref,
@@ -314,6 +336,7 @@ export async function processObservation(options: ProcessOptions): Promise<Proce
       size: payload.size,
       sealTimings,
       timings: { detectMs, policyMs, redactMs, sealMs },
+      evidenceStats: cascade.evidenceStats,
     },
   };
 }

@@ -6,6 +6,9 @@ import type { ApprovalRequest, ApprovalReply } from '../../agent/approval';
 import type { Category } from '../../privacy/categoryTypes';
 import type { Mode } from '../../privacy/redactor';
 import { requestSiteAccess } from '../../shared/permissions';
+import { health } from '../../net/network';
+import type { ModelProvider } from '../../shared/messages';
+import { isUsablePageUrl, NO_PAGE_URL } from '../../shared/pageUrl';
 import { TOKEN_PATTERN } from '../../shared/schema/tokens';
 import { unwrapForPanelRender } from '../../privacy/vault';
 import { PrivacyReceipt } from './PrivacyReceipt';
@@ -25,6 +28,14 @@ export function TaskPanel() {
   const [task,setTask]=useState('');
   const [rows,setRows]=useState<TaskData[]>([{category:'NAME',value:''},{category:'EMAIL',value:''}]);
   const [mode,setMode]=useState<Mode>('balanced');
+  // Which model to plan with. '' means "let the server rotate", which is the right default: the
+  // whole point of rotation is that no single free tier has the per-minute budget for one task.
+  const [provider,setProvider]=useState('');
+  // Vision on by default: the Set-of-Marks tags drawn on the screenshot are what the model grounds
+  // target.eid against, and a page of icon-only controls gives the element list little else.
+  const [sendImage,setSendImage]=useState(true);
+  const [providers,setProviders]=useState<ModelProvider[]>([]);
+  const [modelNote,setModelNote]=useState('');
   const [snapshot,setSnapshot]=useState<TaskSnapshot|null>(null);
   const [receipt,setReceipt]=useState<ProcessResult|null>(null);
   const [prompt,setPrompt]=useState<Prompt|null>(null);
@@ -43,12 +54,28 @@ export function TaskPanel() {
   const lastStepMs=lastStep?Math.round(Object.values(lastStep.timings).reduce((sum,ms)=>sum+ms,0)):null;
   useEffect(()=>()=>{runner.current?.stop();},[]);
 
+  useEffect(()=>{
+    let live=true;
+    // The picker is built from what the SERVER says it can reach, never a list hardcoded here —
+    // a model this build has never heard of should still be selectable once configured.
+    health().then(result=>{
+      if(!live)return;
+      setProviders(result.providers??[]);
+      setModelNote(result.adapter_error??'');
+    }).catch(()=>{if(live)setModelNote('Could not reach the Aegis server to list models.');});
+    return ()=>{live=false;};
+  },[]);
+
   const start=async()=>{
     if(active)return;
     setError('');setAnswer([]);setShownValue('');setReceipt(null);
     try {
       const [access,[tab]]=await Promise.all([requestSiteAccess(),browser.tabs.query({active:true,currentWindow:true})]);
       if(!access.granted||!tab?.id)throw new Error('Screen access is required to start.');
+      // Granted access is not the same as a readable address: `<all_urls>` never covers a new tab
+      // or any other browser page, so the tab can arrive with an id and no url. Say so here, in
+      // words, rather than letting the loop discover it and report a DOM exception.
+      if(!isUsablePageUrl(tab.url))throw new Error(NO_PAGE_URL);
       const pending=<T,>(signal:AbortSignal,create:(resolve:(reply:T)=>void)=>Prompt):Promise<T>=>new Promise((resolve,reject)=>{
         const abort=()=>{setPrompt(null);setShownValue('');reject(new DOMException('Stopped','AbortError'));};
         signal.addEventListener('abort',abort,{once:true});
@@ -69,7 +96,7 @@ export function TaskPanel() {
           }
           parts.push({text:text.slice(last)});setAnswer(parts);setAnswerOrigin(origin);
         },
-      });
+      },provider||undefined,sendImage);
       runner.current=current;setSnapshot(current.snapshot());
       const input=rows.map(row=>({...row}));setRows(rows.map(row=>({...row,value:''})));setTask('');
       void current.run(input);
@@ -101,6 +128,19 @@ export function TaskPanel() {
       </div>)}
       <button className="btn btn-neutral btn-sm" onClick={()=>setRows([...rows,{category:'PHONE',value:''}])}>Add another value</button>
       <label className="inline-field">How carefully to look <select value={mode} onChange={e=>setMode(e.target.value as Mode)}>{(['fast','balanced','accurate'] as const).map(m=><option key={m} value={m}>{MODE_LABELS[m]}</option>)}</select></label>
+      {/* Which model plans the task. Disabled while one is running: the model is fixed for the
+        * life of a task, so offering a change mid-run would be a control that quietly does
+        * nothing. Only names the server already has configured are offered. */}
+      <label className="inline-field">Model <select aria-label="Model" value={provider} disabled={active||!providers.length} onChange={e=>setProvider(e.target.value)}>
+        <option value="">{providers.length>1?'Auto (rotate)':'Auto'}</option>
+        {providers.map(p=><option key={p.name} value={p.name}>{p.name} — {p.model}</option>)}
+      </select></label>
+      {/* Withholding the screenshot is a speed/accuracy trade, so it is offered as a choice and
+        * never taken silently. Measured on a labelled form: ~1.3s and ~1,000 prompt tokens saved
+        * per screen, same plan. Capture still happens locally — this only withholds the outbound
+        * copy, so screen-change detection and the privacy receipt are unaffected. */}
+      <label className="inline-field"><input type="checkbox" checked={sendImage} disabled={active} onChange={e=>setSendImage(e.target.checked)} /> Send a screenshot <span className="hint">(off is faster; the model then works from the page structure alone)</span></label>
+      {!!modelNote&&<p className="hint" role="status">{modelNote}</p>}
     </fieldset>
     {/* One obvious primary action, and which one it is depends on where you are: Start until a
       * task is running, Stop once one is. Both keep their exact accessible names — the Playwright

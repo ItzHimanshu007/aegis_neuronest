@@ -18,9 +18,11 @@ import { checkPlan, checkAction } from './checks';
 import { rehydrate } from './rehydrate';
 import { verify } from './verifier';
 import { Recovery, FAILURE_REASON, type FailureCode } from './recovery';
+import { RequirementLedger, checkRequirements, type RequirementsView } from './requirements';
 import type { ApprovalRequest, ApprovalReply } from './approval';
 import type { ExecutionRequest, ExecutionResult } from './executor';
 import { decideContextExpansion } from '../sensing/contextExpansion';
+import { pageOriginOrThrow } from '../shared/pageUrl';
 
 export interface TaskData { category: Category; value: string }
 export interface TimelineEntry {
@@ -49,6 +51,7 @@ export class TaskRunner {
   readonly controller = new AbortController();
   readonly grants = new Map<string, Set<Category>>();
   readonly recovery = new Recovery();
+  private readonly ledger = new RequirementLedger();
   readonly history: HistoryEntry[] = [];
   private tokens: string[] = [];
   private state: TaskState = 'idle';
@@ -67,7 +70,9 @@ export class TaskRunner {
   private cleanupFailed = false;
   private running = false;
   private failureError?: string;
-  constructor(readonly tabId: number, private task: string, private mode: Mode, private readonly ui: TaskUI) {}
+  /** `provider` names one of the SERVER's own configured models to prefer, or undefined to let the
+   * server choose. It is a preference, not a destination — see net/network.ts. */
+  constructor(readonly tabId: number, private task: string, private mode: Mode, private readonly ui: TaskUI, private readonly provider?: string, private readonly sendImage = true) {}
   get signal(): AbortSignal { return this.controller.signal; }
   /** The most recent step's full privacy-pipeline result (payload + preview), for the Privacy
    * Receipt panel view. Local-only — never sent anywhere; `payload.bytes` is the exact sealed
@@ -144,7 +149,7 @@ export class TaskRunner {
     // A task's first scene always carries its current image, even after a preview capture.
     const screen = !this.session.scene ? {decision:'NEW_SCREEN' as const,reason:'task-start'} : observed.change;
     this.last=await this.wait(processObservation({observation:observed.observation,session:this.session,task:this.task,mode:this.mode,
-      forceImage:this.modelCalls===0, stateToken:observed.stateToken,screen,signal:this.signal,history:this.history,contextDenied:this.contextDenied,
+      forceImage:this.modelCalls===0&&this.sendImage,sendImage:this.sendImage, stateToken:observed.stateToken,screen,signal:this.signal,history:this.history,contextDenied:this.contextDenied,
       taskTokens:this.tokens.filter(t=>this.grants.get(new URL(observed.observation.url).origin)?.has(this.session.vault.get(t)!.type)).join(' '),
       requestSpanRects:async data=>{
         const result=await this.wait(browser.tabs.sendMessage(this.tabId,{type:'SPAN_RECTS',data},{frameId:0}));
@@ -162,16 +167,41 @@ export class TaskRunner {
     this.session.consentedOrigins.add(scene.page.origin);
     this.move('observing');
   }
-  private async recover(code: FailureCode): Promise<boolean> {
-    this.move('recovering'); this.record('observe','FAIL',code);
+  /**
+   * `entry` names what actually failed. Until it existed this always wrote `observe`/FAIL, so a
+   * rejected completion claim reached the model as `{"action":"observe","verdict":"FAIL","code":
+   * "DONE_UNVERIFIED"}` — the wrong action, no eid, and nothing to act on. A model cannot build
+   * better evidence from that, which is exactly how a run reached 10 replans without ever changing
+   * strategy. Defaults preserve every existing call site.
+   */
+  private async recover(code: FailureCode, entry: {action?: HistoryEntry['action']; eid?: string; alreadyRecorded?: boolean} = {}): Promise<boolean> {
+    this.move('recovering'); if(!entry.alreadyRecorded) this.record(entry.action??'observe','FAIL',code,entry.eid);
     if(this.recovery.decide(code)==='replan' && !this.budget()) return true;
     this.move('asking_user');
-    const reply=await this.human(this.ui.ask(`Aegis is stuck: ${FAILURE_REASON[code]}. You can reply with a hint, let it try again, or stop. (${code})`,this.signal));
+    const unmet=code==='REQUIREMENTS_UNMET'?this.unmetCategories():[];
+    const detail=unmet.length?` Aegis could not confirm these were entered: ${unmet.join(', ')}. Trying again continues without them.`:'';
+    const reply=await this.human(this.ui.ask(`Aegis is stuck: ${FAILURE_REASON[code]}.${detail} You can reply with a hint, let it try again, or stop. (${code})`,this.signal));
     if(reply.choice==='stop') {this.stop();return false;}
     if(this.budget()) {this.move('failed');return false;}
     if(reply.hint) this.task += `\nUser hint: ${reply.hint}`;
+    // Only the user may relax a local guarantee, and only by explicitly choosing to go on without
+    // the value. A hint means "look harder", so it never waives.
+    else if(code==='REQUIREMENTS_UNMET') this.ledger.waiveAll();
     this.recovery.retry();this.record('ask_user','PASS',reply.hint?'USER_HINT':'USER_RETRY');
     return true;
+  }
+  /** Requirements the current origin's consent actually covers — a declined category never reaches
+   * the model, so requiring it would make the task unwinnable through no fault of the loop. */
+  private requirementsView(): RequirementsView {
+    const grants=this.grants.get(this.session.scene!.page.origin)??new Set<Category>();
+    return this.ledger.view(token=>{const entry=this.session.vault.get(token);return entry!==undefined&&grants.has(entry.type);});
+  }
+  /** Category names only, for the panel's question. Never a value. */
+  private unmetCategories(): string[] {
+    const check=checkRequirements(this.requirementsView(),this.session.scene!);
+    if(check.verdict!=='UNMET') return [];
+    const types=check.unmet.map(t=>this.session.vault.get(t)?.type).filter((c): c is Category=>c!==undefined);
+    return [...new Set(types)].map(c=>c.toLowerCase().replace(/_/g,' '));
   }
   private request(action: Action, el: SceneElement|undefined, approved: boolean): {request:ExecutionRequest;frameId:number} {
     const scene=this.session.scene!;
@@ -198,10 +228,13 @@ export class TaskRunner {
     if(this.running) throw new Error('Task already running'); this.running=true;
     try {
       await this.wait(this.session.init());
-      const tab=await this.wait(browser.tabs.get(this.tabId)); const origin=new URL(tab.url!).origin;
+      const tab=await this.wait(browser.tabs.get(this.tabId)); const origin=pageOriginOrThrow(tab.url);
       for(const row of data) {
         if(['OTP','CVV','UPI_PIN','SECRET','PASSWORD'].includes(row.category)) throw new Error('NEVER_AUTOMATED');
-        if(row.value){this.tokens.push(await this.wait(this.session.vault.tokenize(row.category,row.value,{origin,source:'task'})));this.session.taskCategories.add(row.category);}
+        if(row.value){
+          const token=await this.wait(this.session.vault.tokenize(row.category,row.value,{origin,source:'task'}));
+          this.tokens.push(token);this.ledger.require(token);this.session.taskCategories.add(row.category);
+        }
         row.value='';
       }
       data.length=0;
@@ -221,7 +254,7 @@ export class TaskRunner {
         // Consent may have added a credential token; re-seal before the first send on this origin.
         this.move('planning');this.modelCalls++;this.emit();
         let response;
-        try { response=await this.wait(send(this.last!.payload,this.signal)); }
+        try { response=await this.wait(send(this.last!.payload,this.signal,this.provider)); }
         catch { this.signal.throwIfAborted(); if(await this.recover('NETWORK_ERROR')) continue; break; }
         if(this.contextDenied==='BUDGET_EXHAUSTED') this.denialSent=true;
         this.move('checking');
@@ -267,9 +300,21 @@ export class TaskRunner {
           if(action.action==='ask_user'){if(await this.askModel(action.reason!))continue main;break main;}
           if(action.action==='fail'){this.record('fail','FAIL','MODEL_FAILED');this.ui.answer(action.reason!,this.session,scene.page.origin);this.move('failed');break main;}
           if(action.action==='done'){
-            this.move('verifying');const result=verify(action.evidence,scene,action,await this.sendLocal('PREPARE_ACTION',action));
+            const preflight=await this.sendLocal('PREPARE_ACTION',action);
+            // A completion claim is judged against the page as it is NOW. `scene` above predates the
+            // model round trip by however long the server took, so verifying against it would let a
+            // claim ride on facts that may no longer hold.
+            try {await this.observe(true);}
+            catch {this.signal.throwIfAborted();if(await this.recover('EXEC_FAILED',{action:'done'}))continue main;break main;}
+            this.move('verifying');
+            const result=verify(action.evidence,this.session.scene!,action,preflight,this.requirementsView());
             if(result.verdict==='PASS'){this.record('done','PASS');this.move('done');break main;}
-            this.falseSuccess=true;if(await this.recover('DONE_UNVERIFIED'))continue main;break main;
+            const code=result.verdict==='FAIL'&&result.code==='REQUIREMENTS_UNMET'?'REQUIREMENTS_UNMET':'DONE_UNVERIFIED';
+            this.falseSuccess=true;
+            // A refused completion claim is the row a reviewer most needs, and it never reached the
+            // timeline before — only the model-facing history ever recorded it.
+            this.blocked('done','FAIL',code,'—');
+            if(await this.recover(code,{action:'done'}))continue main;break main;
           }
           const authority=classifyAction(action,el,{origin:scene.page.origin,consentedCategories:grants});
           let approved=false;
@@ -303,7 +348,13 @@ export class TaskRunner {
           // form through the agent loop (Stage 3B Part II) — kyc_submit's own click never hit
           // this because it calls preventDefault() and never actually navigates.
           try {await this.observe(true);}
-          catch {this.signal.throwIfAborted();if(await this.recover('EXEC_FAILED'))continue main;break main;}
+          catch {this.signal.throwIfAborted();if(await this.recover('EXEC_FAILED',{action:action.action,eid:el?.eid}))continue main;break main;}
+          // Only a CONFIRMED write enters the ledger: `match` is the executor's read-back of the
+          // field, not "the command was dispatched". Recorded after the re-observation so the epoch
+          // is the one the value now lives on.
+          if(action.action==='type'&&execution.match===true&&el){
+            for(const token of action.text?.match(new RegExp(TOKEN_PATTERN.source,'g'))??[]) this.ledger.place(token,el.eid,this.session.scene!.screenEpoch);
+          }
           this.move('verifying');const verifyStart=performance.now();
           const result=verify(action.expect,this.session.scene!,action,execution);
           const pass=result.verdict==='PASS'||(result.verdict==='UNVERIFIABLE'&&Number(authority.level.slice(1))<3);
@@ -317,7 +368,7 @@ export class TaskRunner {
           this.emit();
           const digest=await this.wait(sha256Hex(new TextEncoder().encode(JSON.stringify([...this.session.scene!.elements.values()].map(e=>[e.eid,e.fp,e.hasValue,e.visible,e.states])))));
           const stuck=this.recovery.record(action.action,el?.fp??'',digest,pass);
-          if(!pass||stuck){if(await this.recover(stuck??code??'EXPECT_FAILED'))continue main;break main;}
+          if(!pass||stuck){if(await this.recover(stuck??code??'EXPECT_FAILED',{alreadyRecorded:true}))continue main;break main;}
           if(this.session.scene!.screenEpoch!==context.screenEpoch){this.record(action.action,'DROP_REMAINING','NEW_SCREEN',el?.eid);continue main;}
         }
       }

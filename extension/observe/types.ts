@@ -70,6 +70,36 @@ export type PrivacyAttr =
 // RawElement / RawMedia / RawTextBlock
 // ---------------------------------------------------------------------------------------------
 
+/**
+ * Stage 7B — local-only structural evidence about one element.
+ *
+ * These are DETECTION INPUTS, exactly like `nameAttr` already is: they never reach the payload,
+ * and `privacy/__tests__/firewall.noStructureLeak.test.ts` pins that. They are also deliberately
+ * NOT inputs to `computeFingerprint()` — adding them would change every EID in the Scene Graph and
+ * break invariant 12, so `observe/fingerprint.ts` is untouched and
+ * `observe/__tests__/fingerprint.test.ts` proves the fingerprint is byte-identical with and
+ * without this block.
+ *
+ * Why these seven and not more: each one is a signal the Stage 4 false-negative taxonomy actually
+ * needed. `maxLength`/`minLength`/`pattern` corroborate a digit run's length without a label;
+ * `inputMode` distinguishes a numeric field from free text; `legendText`/`columnHeaderText`/
+ * `sectionHeading` supply the container context that both corroborates a value and, via
+ * evidence/negative.ts, argues against one.
+ */
+export interface ElementStructure {
+  placeholder?: string;
+  maxLength?: number;
+  minLength?: number;
+  pattern?: string;
+  inputMode?: string;
+  /** Text of the enclosing <fieldset>'s <legend>. */
+  legendText?: string;
+  /** Text of the <th scope="col"> governing this cell's column. */
+  columnHeaderText?: string;
+  /** Nearest ancestor section heading (<h1>-<h4> inside <section>/<article>, or aria-label). */
+  sectionHeading?: string;
+}
+
 export interface RawElement {
   /** Assigned only by the panel's session EIDRegistry after frame composition. */
   eid?: import('../scene/registry').EID;
@@ -122,6 +152,8 @@ export interface RawElement {
 
   privacyAttrs: PrivacyAttr[];
   inShadow: 'open' | 'closed' | 'none';
+  /** Stage 7B. Local only, never fingerprinted, never serialized. */
+  structure?: ElementStructure;
 }
 
 export type RawMediaKind = 'img' | 'canvas' | 'video' | 'svg-image' | 'iframe-unmapped' | 'embed' | 'object';
@@ -151,6 +183,12 @@ export interface RawTextBlock {
   /** Privacy markers on the block element or any ancestor — a `data-private` wrapper covers
    * everything inside it, which is exactly how site authors use these attributes. */
   privacyAttrs: PrivacyAttr[];
+  /**
+   * Stage 7B. Nearest ancestor section heading, local only. This is what lets
+   * evidence/negative.ts tell a "Recent reference numbers" list from an "Account summary" one —
+   * the single piece of context that keeps intrinsic shape detection from redacting catalogues.
+   */
+  sectionHeading?: string;
 }
 
 // ---------------------------------------------------------------------------------------------

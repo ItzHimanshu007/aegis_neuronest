@@ -16,7 +16,7 @@ import { buildFingerprintKey, computeFingerprint } from './fingerprint';
 import { computeHitTarget, computeVisibility, domStyleReader } from './visibility';
 import { isSecretLabel } from '../privacy/detect/labels';
 import { getTextParts } from './spanRects';
-import type { CssRect, ElementStates, PrivacyAttr, RawElement, RawMedia, RawTextBlock, ValueLenBucket } from './types';
+import type { CssRect, ElementStates, ElementStructure, PrivacyAttr, RawElement, RawMedia, RawTextBlock, ValueLenBucket } from './types';
 import { AEGIS_CONFIG } from '../shared/config';
 
 /** An element as the harvester produces it: `fpOrdinal` is assigned by frame composition and `eid`
@@ -341,6 +341,7 @@ export function harvestFrame(options: HarvestOptions): FrameHarvestResult {
       hitOk: hit.hitOk,
       privacyAttrs: getPrivacyAttrs(el),
       inShadow,
+      structure: getElementStructure(el),
     });
     if (hit.hitNode) coveringNodes.set(elements[elements.length - 1]!, hit.hitNode);
   }
@@ -460,6 +461,7 @@ function harvestTextBlocks(
       role,
       frameId,
       privacyAttrs: getInheritedPrivacyAttrs(blockEl, root),
+      sectionHeading: getSectionHeading(blockEl),
     });
   }
   return blocks;
@@ -484,6 +486,71 @@ function resolveCoveredBy(
     while (node && !captured.has(node)) node = node.parentElement;
     if (node) record.coveredByRef = localNodeRef(node);
   }
+}
+
+/**
+ * Stage 7B — local-only structural evidence (see `ElementStructure`).
+ *
+ * All of it is read from attributes and ancestors that are already in the DOM walk's reach, so
+ * this costs one bounded ancestor climb per element and no extra layout. `maxLength`/`minLength`
+ * come back as -1 from the DOM when unset, which is normalised away here rather than in every
+ * consumer.
+ *
+ * NOTE none of this is passed to `computeFingerprint()`. EIDs must not move (invariant 12).
+ */
+function getElementStructure(el: Element): ElementStructure | undefined {
+  const structure: ElementStructure = {};
+  const input = el as HTMLInputElement;
+
+  const placeholder = el.getAttribute('placeholder');
+  if (placeholder) structure.placeholder = placeholder;
+  const pattern = el.getAttribute('pattern');
+  if (pattern) structure.pattern = pattern;
+  const inputMode = el.getAttribute('inputmode');
+  if (inputMode) structure.inputMode = inputMode;
+  if (typeof input.maxLength === 'number' && input.maxLength >= 0) structure.maxLength = input.maxLength;
+  if (typeof input.minLength === 'number' && input.minLength >= 0) structure.minLength = input.minLength;
+
+  const legend = el.closest('fieldset')?.querySelector('legend')?.textContent?.trim();
+  if (legend) structure.legendText = legend;
+
+  const columnHeader = getColumnHeaderText(el);
+  if (columnHeader) structure.columnHeaderText = columnHeader;
+
+  const heading = getSectionHeading(el);
+  if (heading) structure.sectionHeading = heading;
+
+  return Object.keys(structure).length > 0 ? structure : undefined;
+}
+
+/** The `<th>` governing this cell's column, by position within its row. Only resolves the common
+ * `<thead><tr><th>` shape — a `headers=` attribute graph is deliberately out of scope. */
+function getColumnHeaderText(el: Element): string | undefined {
+  const cell = el.closest('td, th');
+  const row = cell?.closest('tr');
+  const table = row?.closest('table');
+  if (!cell || !row || !table) return undefined;
+  const columnIndex = Array.from(row.children).indexOf(cell);
+  if (columnIndex < 0) return undefined;
+  const headerRow = table.querySelector('thead tr') ?? table.querySelector('tr');
+  if (!headerRow || headerRow === row) return undefined;
+  return headerRow.children[columnIndex]?.textContent?.trim() || undefined;
+}
+
+/** Nearest enclosing section's heading. Bounded by TEXT_BLOCK_MAX_ANCESTOR_DEPTH so a deeply
+ * nested node cannot walk the whole document. */
+function getSectionHeading(el: Element): string | undefined {
+  let node: Element | null = el;
+  for (let depth = 0; node && depth < AEGIS_CONFIG.TEXT_BLOCK_MAX_ANCESTOR_DEPTH * 2; depth++) {
+    const section: Element | null = node.closest('section, article, fieldset, [role=region], [role=group]');
+    if (!section) break;
+    const heading = section.querySelector('h1, h2, h3, h4, legend')?.textContent?.trim();
+    if (heading) return heading;
+    const label = section.getAttribute('aria-label');
+    if (label) return label;
+    node = section.parentElement;
+  }
+  return undefined;
 }
 
 /** Privacy markers on `el` or any ancestor up to and including `root`. Site authors put

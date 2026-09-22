@@ -102,19 +102,52 @@ describe('eval replay — cascade re-run over recorded observations', () => {
     }
   });
 
+  /**
+   * These bundles were recorded by the PRE-STAGE-7 cascade, so they pin the baseline arm, not the
+   * current default. That is the stronger assertion of the two: it proves
+   * `evidenceLayerEnabled: false` reproduces the old detector EXACTLY, which is the whole basis of
+   * the BASELINE column in eval/reports/stage7-label-independence.md. If the control arm drifted,
+   * the Stage 7 delta would be measuring two different detectors instead of one change.
+   */
   it.skipIf(bundles.length === 0)(
-    'the cascade reproduces the recorded detections with no browser',
+    'with the evidence layer OFF, the cascade reproduces the recorded detections exactly',
     async () => {
       for (const file of bundles) {
         const bundle = JSON.parse(readFileSync(path.join(replayDir, file), 'utf8')) as ReplayObservationBundle;
-        const replayed = await replayDetections(bundle);
+        const replayed = await replayDetections(bundle, { evidenceLayerEnabled: false });
         // Text-span and element detections must reproduce exactly. Media/FACE cannot: the
         // screenshot is stripped by design, so vision detections are dropped from the comparison.
         const recorded = categoryMultiset(
           bundle.detections.filter((d) => d.targetKind !== 'media'),
         );
-        expect(replayed.filter((c) => c !== 'FACE' && c !== 'UNSCANNED_MEDIA')).toEqual(recorded);
+        expect(replayed.filter((c) => c !== 'FACE' && c !== 'UNSCANNED_MEDIA'), file).toEqual(recorded);
       }
     },
   );
+
+  it.skipIf(bundles.length === 0)(
+    'with the evidence layer ON, Stage 7 never detects LESS than the baseline',
+    async () => {
+      for (const file of bundles) {
+        const bundle = JSON.parse(readFileSync(path.join(replayDir, file), 'utf8')) as ReplayObservationBundle;
+        const baseline = await replayDetections(bundle, { evidenceLayerEnabled: false });
+        const stage7 = await replayDetections(bundle, { evidenceLayerEnabled: true });
+        // Not "every baseline category survives": Stage 7 deliberately CORRECTS some categories.
+        // On banking-3004 a UPI handle labelled "UPI address" moves from ADDRESS to UPI_ID — the
+        // label tie-break fixing exactly the wrong-category false negative Stage 4 recorded as
+        // "Annotation 47: expected UPI_ID; detected ADDRESS". What must never happen is the
+        // cascade protecting fewer values than before.
+        expect(stage7.length, `${file}: Stage 7 detected fewer values than the baseline`)
+          .toBeGreaterThanOrEqual(baseline.length);
+      }
+    },
+  );
+
+  it.skipIf(bundles.length === 0)('Stage 7 corrects the recorded UPI_ID-as-ADDRESS miss', async () => {
+    const file = bundles.find((f) => f.startsWith('banking-3004'));
+    if (!file) return; // corpus not present on this machine
+    const bundle = JSON.parse(readFileSync(path.join(replayDir, file), 'utf8')) as ReplayObservationBundle;
+    expect(await replayDetections(bundle, { evidenceLayerEnabled: false })).toContain('ADDRESS');
+    expect(await replayDetections(bundle, { evidenceLayerEnabled: true })).toContain('UPI_ID');
+  });
 });
