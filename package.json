@@ -2,7 +2,7 @@
   "name": "aegis",
   "version": "0.1.0",
   "private": true,
-  "description": "Aegis \u2014 a privacy-preserving browser vision agent (SIH26171, ISRO / Dept. of Space)",
+  "description": "Aegis — a privacy-preserving browser vision agent (SIH26171, ISRO / Dept. of Space)",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -47,11 +47,12 @@
     "@eslint/js": "^10.0.1",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
+    "esbuild": "^0.28.2",
     "eslint": "^10.10.0",
     "globals": "^17.12.0",
+    "js-yaml": "^5.4.2",
     "json-schema-to-typescript": "^16.0.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.70.0",
-    "js-yaml": "^5.4.2"
+    "typescript-eslint": "^8.70.0"
   }
 }
