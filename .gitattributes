@@ -1,0 +1,9 @@
+# Every committed blob in this repo is already LF-only (verified against HEAD for a sample across
+# extension/, server/, eval/, and docs). Some contributors' machines have core.autocrlf=true, which
+# silently rewrites the working-tree copy to CRLF on checkout — git's own diff/status normalizes
+# this away, so it's invisible there, but anything that hashes or reads raw bytes off disk (e.g.
+# eval/page_factory's heldout-seal.json, sealed for byte-exact reproduction) sees the mismatch.
+# text=auto lets git's own binary-detection decide what this normalization applies to; eol=lf pins
+# the checkout line ending for everything it decides is text, on every platform, matching what is
+# already stored.
+* text=auto eol=lf

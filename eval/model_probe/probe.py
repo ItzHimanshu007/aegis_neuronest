@@ -123,14 +123,14 @@ def load_fixtures() -> list[dict]:
             "No fixtures. Generate them first:\n"
             "  cd extension && npx playwright test e2e/probe-fixtures.spec.ts"
         )
-    return json.loads(index_path.read_text())
+    return json.loads(index_path.read_text(encoding="utf-8"))
 
 
 async def run_one(
     adapter: OpenAICompatibleAdapter, entry: dict, run_index: int
 ) -> FixtureResult:
     payload = PayloadV2.model_validate(
-        json.loads((ACTIVE_FIXTURES_DIR / f"{entry['name']}.json").read_text())
+        json.loads((ACTIVE_FIXTURES_DIR / f"{entry['name']}.json").read_text(encoding="utf-8"))
     )
     result = FixtureResult(
         name=entry["name"],
